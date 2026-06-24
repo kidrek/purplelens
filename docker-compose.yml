@@ -1,0 +1,92 @@
+name: purplelens
+
+# Deux réseaux pour cloisonner :
+#   - internal : isolé d'Internet (internal: true). Porte la db, minio, backend.
+#                Les conteneurs s'y parlent par leur nom DNS, mais rien n'est
+#                routable depuis l'extérieur ni vers l'extérieur.
+#   - web      : relie le frontend au backend. Seul le frontend y publie un port.
+#
+# Résultat : un seul port exposé sur l'hôte (le frontend). La base, MinIO et
+# l'API ne sont joignables que depuis l'intérieur du réseau Docker.
+
+networks:
+  internal:
+    internal: true
+  web:
+
+services:
+  # --- Base de données (jamais exposée) ---
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-purplelens}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-purplelens}
+      POSTGRES_DB: ${POSTGRES_DB:-purplelens}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-purplelens}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # --- Stockage objet Evidence Vault (jamais exposé par défaut) ---
+  # La console d'admin (9001) peut être ouverte ponctuellement en dev via
+  # le fichier docker-compose.override.yml (voir make minio-console).
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-purplelens}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-purplelens-secret}
+    volumes:
+      - minio_data:/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # --- API FastAPI (jamais exposée ; atteinte via le proxy Nginx) ---
+  backend:
+    build:
+      context: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-purplelens}:${POSTGRES_PASSWORD:-purplelens}@db:5432/${POSTGRES_DB:-purplelens}
+      STORAGE_BACKEND: s3
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: ${S3_BUCKET:-purplelens-evidence}
+      SEED_ON_START: ${SEED_ON_START:-1}
+    networks:
+      - internal   # accès db + minio
+      - web        # accessible par le frontend
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    restart: unless-stopped
+
+  # --- Frontend (seul service exposé sur l'hôte) ---
+  # Nginx sert le SPA et proxifie /api -> http://backend:8000 via le réseau web.
+  # La doc interactive de l'API reste accessible derrière le proxy : /api/docs
+  frontend:
+    build:
+      context: ./frontend
+    networks:
+      - web
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  db_data:
+  minio_data:
