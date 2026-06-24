@@ -157,6 +157,9 @@ class FindingBase(BaseModel):
     owasp: str = ""
     cwe: str = ""
     capec: str = ""
+    owasp_refs: str = ""
+    cwe_refs: str = ""
+    capec_refs: str = ""
     application_id: int
     audit_id: Optional[int] = None
 

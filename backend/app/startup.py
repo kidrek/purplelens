@@ -13,7 +13,8 @@ import time
 from sqlalchemy import inspect, text
 
 from app.core.database import Base, SessionLocal, engine
-from app.models.models import Application  # noqa: F401 — enregistre les modèles
+from app.models.models import Application  # noqa: F401
+from app.models.referentials import ReferentialEntry, ReferentialMeta  # noqa: F401
 
 
 def wait_for_db(max_tries: int = 30, delay: float = 1.5) -> None:
@@ -34,6 +35,7 @@ def init_schema() -> None:
     Base.metadata.create_all(bind=engine)
     print("[startup] Schéma vérifié / créé.")
     _migrate_technologies_cpe()
+    _migrate_finding_refs()
 
 
 def _migrate_technologies_cpe() -> None:
@@ -47,6 +49,24 @@ def _migrate_technologies_cpe() -> None:
         print("[startup] Migration : colonne technologies_cpe ajoutée.")
     else:
         print("[startup] Colonne technologies_cpe déjà présente.")
+
+
+def _migrate_finding_refs() -> None:
+    """Migration additive : ajoute les colonnes *_refs sur findings si absentes."""
+    inspector = inspect(engine)
+    # La table findings peut ne pas encore exister (premier démarrage)
+    if "findings" not in inspector.get_table_names():
+        return
+    existing = {c["name"] for c in inspector.get_columns("findings")}
+    to_add = [col for col in ("owasp_refs", "cwe_refs", "capec_refs") if col not in existing]
+    if to_add:
+        with engine.connect() as conn:
+            for col in to_add:
+                conn.execute(text(f"ALTER TABLE findings ADD COLUMN {col} TEXT DEFAULT ''"))
+            conn.commit()
+        print(f"[startup] Migration : colonnes findings ajoutées : {', '.join(to_add)}.")
+    else:
+        print("[startup] Colonnes findings *_refs déjà présentes.")
 
 
 

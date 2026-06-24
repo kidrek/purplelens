@@ -3,14 +3,41 @@ import { api, ENUMS } from "../api/client";
 import {
   Modal, Field, Input, NumberInput, Select, Textarea, ConfirmDialog, EmptyState,
 } from "../components/Form";
+import { RefGroup } from "../components/RefPicker";
+import { parseRefValue, refToReadable } from "../lib/refData";
 import { severityClass } from "../lib/format";
 import { useToast } from "../lib/useToast";
 
 const EMPTY = {
   title: "", description: "", impact: "", cvss: 0, severity: "Medium",
-  status: "Open", owasp: "", cwe: "", capec: "",
+  status: "Open",
+  owasp: "", owasp_refs: "",
+  cwe: "",   cwe_refs: "",
+  capec: "", capec_refs: "",
   application_id: null, audit_id: null,
 };
+
+/**
+ * Extrait les identifiants lisibles depuis le JSON stocké (owasp_refs, cwe_refs, capec_refs)
+ * ou depuis la chaîne legacy (owasp, cwe, capec) pour les entrées antérieures.
+ */
+function resolveRefs(finding) {
+  return {
+    owasp_refs: finding.owasp_refs || (finding.owasp && !finding.owasp.startsWith("[") ? "" : finding.owasp) || "",
+    cwe_refs:   finding.cwe_refs   || (finding.cwe   && !finding.cwe.startsWith("[")   ? "" : finding.cwe)   || "",
+    capec_refs: finding.capec_refs || (finding.capec && !finding.capec.startsWith("[") ? "" : finding.capec) || "",
+    // Libellés lisibles pour affichage (colonne Mapping)
+    owasp: finding.owasp_refs
+      ? refToReadable(parseRefValue(finding.owasp_refs))
+      : finding.owasp || "",
+    cwe: finding.cwe_refs
+      ? refToReadable(parseRefValue(finding.cwe_refs))
+      : finding.cwe || "",
+    capec: finding.capec_refs
+      ? refToReadable(parseRefValue(finding.capec_refs))
+      : finding.capec || "",
+  };
+}
 
 export default function ManageFindings({ onSelectApp }) {
   const [items, setItems] = useState(null);
@@ -37,9 +64,24 @@ export default function ManageFindings({ onSelectApp }) {
   }
   function openEdit(f) {
     setErr(null);
-    setEditing({ id: f.id, form: { ...EMPTY, ...f } });
+    setEditing({ id: f.id, form: { ...EMPTY, ...f, ...resolveRefs(f) } });
   }
   const set = (k, v) => setEditing((e) => ({ ...e, form: { ...e.form, [k]: v } }));
+
+  function handleRefChange(refs, readables) {
+    setEditing((e) => ({
+      ...e,
+      form: {
+        ...e.form,
+        owasp_refs: refs.owasp,
+        cwe_refs:   refs.cwe,
+        capec_refs: refs.capec,
+        owasp: readables.owasp,
+        cwe:   readables.cwe,
+        capec: readables.capec,
+      },
+    }));
+  }
 
   async function save() {
     const f = editing.form;
@@ -58,7 +100,21 @@ export default function ManageFindings({ onSelectApp }) {
     catch (e) { show(e.message, "err"); setConfirm(null); }
   }
 
-  // audits filtrés sur l'application choisie dans le formulaire
+  // Construit les chips de mapping pour la colonne tableau
+  function mappingChips(f) {
+    const refs = resolveRefs(f);
+    const chips = [];
+    // Depuis les JSON stockés
+    for (const r of parseRefValue(refs.owasp_refs)) chips.push({ id: r.ref_id, cls: "ttp ttp-owasp" });
+    for (const r of parseRefValue(refs.cwe_refs))   chips.push({ id: r.ref_id, cls: "ttp ttp-cwe" });
+    for (const r of parseRefValue(refs.capec_refs)) chips.push({ id: r.ref_id, cls: "ttp ttp-capec" });
+    // Fallback legacy (string courte)
+    if (!chips.length) {
+      [f.owasp, f.cwe, f.capec].filter(Boolean).forEach(m => chips.push({ id: m, cls: "ttp" }));
+    }
+    return chips;
+  }
+
   const auditsForApp = editing
     ? audits.filter((a) => a.application_id === editing.form.application_id)
     : [];
@@ -111,7 +167,9 @@ export default function ManageFindings({ onSelectApp }) {
                     {appName(f.application_id)}
                   </td>
                   <td>
-                    {[f.owasp, f.cwe, f.capec].filter(Boolean).map((m) => <span className="ttp" key={m}>{m}</span>) || "—"}
+                    {mappingChips(f).length > 0
+                      ? mappingChips(f).map(c => <span className={c.cls} key={c.id}>{c.id}</span>)
+                      : <span className="faint">—</span>}
                   </td>
                   <td className="muted" style={{ fontSize: 13 }}>{f.status}</td>
                   <td>
@@ -159,11 +217,18 @@ export default function ManageFindings({ onSelectApp }) {
               <Select value={editing.form.status} onChange={(v) => set("status", v)} options={ENUMS.findingStatus} />
             </Field>
           </div>
-          <div className="field-row-3">
-            <Field label="OWASP"><Input mono value={editing.form.owasp} onChange={(v) => set("owasp", v)} placeholder="A03" /></Field>
-            <Field label="CWE"><Input mono value={editing.form.cwe} onChange={(v) => set("cwe", v)} placeholder="CWE-89" /></Field>
-            <Field label="CAPEC"><Input mono value={editing.form.capec} onChange={(v) => set("capec", v)} placeholder="CAPEC-66" /></Field>
-          </div>
+
+          <Field label="Références de sécurité">
+            <RefGroup
+              values={{
+                owasp: editing.form.owasp_refs || "",
+                cwe:   editing.form.cwe_refs   || "",
+                capec: editing.form.capec_refs  || "",
+              }}
+              onChange={handleRefChange}
+            />
+          </Field>
+
           <div className="field-row">
             <Field label="Application *">
               <select className="select"

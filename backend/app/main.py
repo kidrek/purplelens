@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.database import Base, engine
-from app.routers import applications, audits, cti, dashboard
+from app.routers import applications, audits, cti, dashboard, referentials
 
 # Crée les tables (en MVP ; en prod : Alembic migrations)
 Base.metadata.create_all(bind=engine)
@@ -22,7 +22,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for r in (applications.router, cti.router, audits.router, dashboard.router):
+for r in (applications.router, cti.router, audits.router, dashboard.router, referentials.router):
     app.include_router(r, prefix=settings.api_prefix)
 
 

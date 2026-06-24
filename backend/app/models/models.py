@@ -216,10 +216,13 @@ class Finding(Base):
     severity = Column(Enum(Severity), default=Severity.medium)
     status = Column(Enum(FindingStatus), default=FindingStatus.open)
 
-    # Mapping
-    owasp = Column(String, default="")   # ex. A03
-    cwe = Column(String, default="")     # ex. CWE-89
-    capec = Column(String, default="")   # ex. CAPEC-66
+    # Mapping — stockage dual : libellé court legacy + JSON structuré
+    owasp      = Column(String, default="")  # libellé lisible (ex: "A03:2021, A05:2021")
+    cwe        = Column(String, default="")  # libellé lisible (ex: "CWE-89, CWE-20")
+    capec      = Column(String, default="")  # libellé lisible (ex: "CAPEC-66")
+    owasp_refs = Column(Text, default="")    # JSON [{ref_id, name}, …]
+    cwe_refs   = Column(Text, default="")    # JSON [{ref_id, name}, …]
+    capec_refs = Column(Text, default="")    # JSON [{ref_id, name}, …]
 
     application_id = Column(ForeignKey("applications.id"), nullable=False)
     audit_id = Column(ForeignKey("audits.id"), nullable=True)

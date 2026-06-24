@@ -6,23 +6,16 @@ import ManageApplications from "./pages/ManageApplications";
 import ManageScenarios from "./pages/ManageScenarios";
 import ManageAudits from "./pages/ManageAudits";
 import ManageFindings from "./pages/ManageFindings";
+import Settings from "./pages/Settings";
 
 export default function App() {
   const [view, setView] = useState("portfolio");
   const [appId, setAppId] = useState(null);
   const [auditId, setAuditId] = useState(null);
 
-  function selectApp(id) {
-    setAppId(id);
-    setView("appDetail");
-  }
-  function openAudit(id) {
-    setAuditId(id);
-    setView("auditDetail");
-  }
-  function go(v) {
-    setView(v);
-  }
+  function selectApp(id) { setAppId(id); setView("appDetail"); }
+  function openAudit(id) { setAuditId(id); setView("auditDetail"); }
+  function go(v) { setView(v); }
 
   const navItem = (id, label) => (
     <button
@@ -51,6 +44,9 @@ export default function App() {
         {navItem("scenarios", "Scénarios CTI")}
         {navItem("audits", "Audits")}
         {navItem("findings", "Vulnérabilités")}
+
+        <div className="nav-group-label">Configuration</div>
+        {navItem("settings", "Paramètres")}
       </aside>
 
       <main className="main">
@@ -77,6 +73,7 @@ export default function App() {
           <ManageAudits onSelectApp={selectApp} onOpenAudit={openAudit} />
         )}
         {view === "findings" && <ManageFindings onSelectApp={selectApp} />}
+        {view === "settings" && <Settings />}
       </main>
     </div>
   );
