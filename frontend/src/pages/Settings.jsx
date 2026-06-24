@@ -7,7 +7,7 @@ const REF_META = {
     label: "OWASP Top 10",
     desc: "Les 10 risques de sécurité applicatifs les plus critiques, publiés par l'OWASP Foundation. Utilisé dans le mapping des vulnérabilités.",
     badgeClass: "ref-badge ref-badge-owasp",
-    source: "owasp.org",
+    source: "owasp.org / github.com/OWASP/Top10",
   },
   cwe: {
     label: "CWE — Common Weakness Enumeration",
@@ -20,6 +20,12 @@ const REF_META = {
     desc: "Catalogue des patrons d'attaque courants maintenu par MITRE. Permet de mapper les vulnérabilités aux vecteurs d'attaque connus.",
     badgeClass: "ref-badge ref-badge-capec",
     source: "capec.mitre.org",
+  },
+  cpe: {
+    label: "CPE — Common Platform Enumeration",
+    desc: "Nomenclature standard des systèmes, logiciels et paquets publiée par le NIST (NVD). Utilisé dans le champ Technologies des applications.",
+    badgeClass: "ref-badge ref-badge-cpe",
+    source: "nvd.nist.gov",
   },
 };
 
@@ -98,6 +104,60 @@ export default function Settings() {
 
   const anyBusy = syncingAll || Object.values(syncing).some(Boolean);
 
+  function renderCard(name) {
+    const st = getStatus(name);
+    const meta = REF_META[name];
+    const busy = syncing[name] || syncingAll;
+    const imported = st && st.entry_count > 0;
+    return (
+      <div className="settings-card" key={name}>
+        <div className="settings-card-icon">
+          <span className={meta.badgeClass} style={{ fontSize: 11, padding: "5px 8px" }}>
+            {name.toUpperCase()}
+          </span>
+        </div>
+        <div className="settings-card-body">
+          <div className="settings-card-name">{meta.label}</div>
+          <div className="settings-card-desc">{meta.desc}</div>
+          <div className="settings-card-meta">
+            <span className="settings-meta-item">
+              <StatusDot synced={imported} />
+              {imported ? "En base" : "Non importé"}
+            </span>
+            {st?.version && (
+              <span className="settings-meta-item">
+                Version : <strong>{st.version}</strong>
+              </span>
+            )}
+            {imported && (
+              <span className="settings-meta-item">
+                Entrées : <strong>{st.entry_count.toLocaleString("fr-FR")}</strong>
+              </span>
+            )}
+            <span className="settings-meta-item">
+              Mis à jour : <strong>{fmtDate(st?.synced_at)}</strong>
+            </span>
+            <span className="settings-meta-item settings-meta-source">
+              Source : {meta.source}
+            </span>
+          </div>
+        </div>
+        <div className="settings-card-action">
+          <button
+            className={`btn ${imported ? "btn-ghost" : "btn-primary"}`}
+            onClick={() => syncOne(name)}
+            disabled={anyBusy}
+            style={{ whiteSpace: "nowrap" }}
+          >
+            {busy && !syncingAll
+              ? "Téléchargement…"
+              : imported ? "↻  Mettre à jour" : "⬇  Importer"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="page-head">
@@ -129,68 +189,17 @@ export default function Settings() {
 
       <div className="settings-section-label">Référentiels de vulnérabilités</div>
 
-      {(["owasp", "cwe", "capec"]).map(name => {
-        const st = getStatus(name);
-        const meta = REF_META[name];
-        const busy = syncing[name] || syncingAll;
-        const imported = st && st.entry_count > 0;
+      {(["owasp", "cwe", "capec"]).map(name => renderCard(name))}
 
-        return (
-          <div className="settings-card" key={name}>
-            <div className="settings-card-icon">
-              <span className={meta.badgeClass} style={{ fontSize: 11, padding: "5px 8px" }}>
-                {name.toUpperCase()}
-              </span>
-            </div>
-            <div className="settings-card-body">
-              <div className="settings-card-name">{meta.label}</div>
-              <div className="settings-card-desc">{meta.desc}</div>
-              <div className="settings-card-meta">
-                <span className="settings-meta-item">
-                  <StatusDot synced={imported} />
-                  {imported ? "En base" : "Non importé"}
-                </span>
-                {st?.version && (
-                  <span className="settings-meta-item">
-                    Version : <strong>{st.version}</strong>
-                  </span>
-                )}
-                {imported && (
-                  <span className="settings-meta-item">
-                    Entrées : <strong>{st.entry_count.toLocaleString("fr-FR")}</strong>
-                  </span>
-                )}
-                <span className="settings-meta-item">
-                  Mis à jour : <strong>{fmtDate(st?.synced_at)}</strong>
-                </span>
-                <span className="settings-meta-item settings-meta-source">
-                  Source : {meta.source}
-                </span>
-              </div>
-            </div>
-            <div className="settings-card-action">
-              <button
-                className={`btn ${imported ? "btn-ghost" : "btn-primary"}`}
-                onClick={() => syncOne(name)}
-                disabled={anyBusy}
-                style={{ whiteSpace: "nowrap" }}
-              >
-                {busy && !syncingAll
-                  ? "Téléchargement…"
-                  : imported
-                    ? "↻  Mettre à jour"
-                    : "⬇  Importer"}
-              </button>
-            </div>
-          </div>
-        );
-      })}
+      <div className="settings-section-label" style={{ marginTop: 28 }}>Référentiel de composants logiciels</div>
+
+      {renderCard("cpe")}
 
       <div className="settings-info-box">
         <span className="settings-info-icon">ℹ</span>
         <div className="settings-info-text">
           La synchronisation nécessite un accès réseau vers les sources officielles
-          (owasp.org, cwe.mitre.org, capec.mitre.org). Une fois les référentiels importés,
+          (owasp.org, cwe.mitre.org, capec.mitre.org, nvd.nist.gov). Une fois les référentiels importés,
           la recherche dans les formulaires fonctionne entièrement hors ligne.
           En l'absence d'import, un jeu de données intégré est utilisé automatiquement.
         </div>

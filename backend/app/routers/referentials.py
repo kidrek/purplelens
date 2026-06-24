@@ -15,7 +15,7 @@ from app.services.referentials import get_status, search_entries, sync_referenti
 
 router = APIRouter(prefix="/referentials", tags=["referentials"])
 
-VALID_NAMES = {"owasp", "cwe", "capec"}
+VALID_NAMES = {"owasp", "cwe", "capec", "cpe"}
 
 
 @router.get("/status")
@@ -62,7 +62,7 @@ def sync_all(db: Session = Depends(get_db)):
     """Synchronise tous les référentiels en séquence."""
     results = []
     errors = []
-    for name in ("owasp", "cwe", "capec"):
+    for name in ("owasp", "cwe", "capec", "cpe"):
         try:
             results.append(sync_referential(name, db))
         except Exception as exc:

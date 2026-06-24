@@ -601,6 +601,7 @@ label.lbl { display: block; font-size: 11px; text-transform: uppercase; letter-s
 }
 .ref-badge-owasp  { background: rgba(250,174,94,.18);  color: #854F0B; border: 1px solid rgba(239,159,39,.5); }
 .ref-badge-cwe    { background: rgba(93,202,165,.14);  color: #0F6E56; border: 1px solid rgba(93,202,165,.5); }
+.ref-badge-cpe    { background: rgba(59,130,246,.12);  color: #1D4ED8; border: 1px solid rgba(59,130,246,.4); }
 .ref-badge-capec  { background: rgba(139,131,230,.14); color: #534AB7; border: 1px solid rgba(139,131,230,.5); }
 
 /* Chips sélectionnés */
