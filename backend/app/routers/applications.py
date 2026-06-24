@@ -2,15 +2,53 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models.models import Application
+from app.models.models import Application, Audit
+from app.models.enums import AuditStatus
 from app.schemas.schemas import ApplicationCreate, ApplicationOut
 
 router = APIRouter(prefix="/applications", tags=["applications"])
+
+# Statuts considérés comme "en cours"
+IN_PROGRESS_STATUSES = {AuditStatus.in_progress, AuditStatus.scoping, AuditStatus.review}
+# Statuts considérés comme "réalisé"
+DONE_STATUSES = {AuditStatus.completed, AuditStatus.closed}
 
 
 @router.get("", response_model=list[ApplicationOut])
 def list_applications(db: Session = Depends(get_db)):
     return db.query(Application).order_by(Application.name).all()
+
+
+@router.get("/coverage")
+def applications_coverage(db: Session = Depends(get_db)):
+    """
+    Retourne pour chaque application la couverture par type d'audit.
+    Format : { app_id: { "BAS": "done"|"in_progress"|null, "Pentest": ..., ... } }
+    """
+    audit_types = ["BAS", "Pentest", "Red Team", "Purple Team"]
+    apps = db.query(Application).order_by(Application.name).all()
+    audits = db.query(Audit).all()
+
+    # Indexe les audits par application
+    by_app: dict[int, list] = {a.id: [] for a in apps}
+    for audit in audits:
+        if audit.application_id in by_app:
+            by_app[audit.application_id].append(audit)
+
+    result = {}
+    for app in apps:
+        coverage = {}
+        for atype in audit_types:
+            app_audits = [a for a in by_app[app.id] if a.audit_type.value == atype]
+            if any(a.status in DONE_STATUSES for a in app_audits):
+                coverage[atype] = "done"
+            elif any(a.status in IN_PROGRESS_STATUSES for a in app_audits):
+                coverage[atype] = "in_progress"
+            else:
+                coverage[atype] = None
+        result[app.id] = coverage
+
+    return result
 
 
 @router.post("", response_model=ApplicationOut, status_code=201)

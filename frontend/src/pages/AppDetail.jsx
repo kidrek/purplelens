@@ -6,6 +6,8 @@ import {
   Modal, Field, Input, NumberInput, Select, Textarea, ChipPicker,
 } from "../components/Form";
 import { CpePicker } from "../components/CpePicker";
+import { RefGroup } from "../components/RefPicker";
+import { parseRefValue, refToReadable } from "../lib/refData";
 import {
   severityClass,
   fmtMin,
@@ -112,11 +114,27 @@ export default function AppDetail({ appId, onBack, onManageAudits, onManageApps,
     setModalErr(null);
     setNewFinding({
       title: "", description: "", impact: "", cvss: 0, severity: "Medium",
-      status: "Open", owasp: "", cwe: "", capec: "",
+      status: "Open",
+      owasp: "", owasp_refs: "",
+      cwe: "",   cwe_refs: "",
+      capec: "", capec_refs: "",
       application_id: appId, audit_id: null,
     });
   }
   const setFi = (key, v) => setNewFinding((e) => ({ ...e, [key]: v }));
+
+  function handleFindingRefChange(refs, readables) {
+    setNewFinding((e) => ({
+      ...e,
+      owasp_refs: refs.owasp,
+      cwe_refs:   refs.cwe,
+      capec_refs: refs.capec,
+      owasp: readables.owasp,
+      cwe:   readables.cwe,
+      capec: readables.capec,
+    }));
+  }
+
   async function saveFinding() {
     if (!newFinding.title.trim()) { setModalErr("Le titre est obligatoire."); return; }
     try {
@@ -463,8 +481,12 @@ export default function AppDetail({ appId, onBack, onManageAudits, onManageApps,
             <Input value={newFinding.title} onChange={(v) => setFi("title", v)}
               placeholder="ex. Injection SQL formulaire de recherche" />
           </Field>
-          <Field label="Description"><Textarea value={newFinding.description} onChange={(v) => setFi("description", v)} /></Field>
-          <Field label="Impact"><Textarea value={newFinding.impact} onChange={(v) => setFi("impact", v)} /></Field>
+          <Field label="Description">
+            <Textarea value={newFinding.description} onChange={(v) => setFi("description", v)} />
+          </Field>
+          <Field label="Impact">
+            <Textarea value={newFinding.impact} onChange={(v) => setFi("impact", v)} />
+          </Field>
           <div className="field-row-3">
             <Field label="Sévérité">
               <Select value={newFinding.severity} onChange={(v) => setFi("severity", v)} options={ENUMS.severity} />
@@ -476,11 +498,16 @@ export default function AppDetail({ appId, onBack, onManageAudits, onManageApps,
               <Select value={newFinding.status} onChange={(v) => setFi("status", v)} options={ENUMS.findingStatus} />
             </Field>
           </div>
-          <div className="field-row-3">
-            <Field label="OWASP"><Input mono value={newFinding.owasp} onChange={(v) => setFi("owasp", v)} placeholder="A03" /></Field>
-            <Field label="CWE"><Input mono value={newFinding.cwe} onChange={(v) => setFi("cwe", v)} placeholder="CWE-89" /></Field>
-            <Field label="CAPEC"><Input mono value={newFinding.capec} onChange={(v) => setFi("capec", v)} placeholder="CAPEC-66" /></Field>
-          </div>
+          <Field label="Références de sécurité">
+            <RefGroup
+              values={{
+                owasp: newFinding.owasp_refs || "",
+                cwe:   newFinding.cwe_refs   || "",
+                capec: newFinding.capec_refs  || "",
+              }}
+              onChange={handleFindingRefChange}
+            />
+          </Field>
           <Field label="Audit rattaché (optionnel)">
             <select className="select"
               value={newFinding.audit_id ?? ""}
