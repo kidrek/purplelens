@@ -25,6 +25,7 @@ export const api = {
   applicationMatrix: (id) => req("GET", `/dashboard/application/${id}/matrix`),
 
   applications: () => req("GET", "/applications"),
+  applicationsKpis: () => req("GET", "/applications/kpis"),
   applicationsCoverage: () => req("GET", "/applications/coverage"),
   getApplication: (id) => req("GET", `/applications/${id}`),
   createApplication: (b) => req("POST", "/applications", b),

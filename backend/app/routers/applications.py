@@ -2,16 +2,16 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models.models import Application, Audit
-from app.models.enums import AuditStatus
+from app.models.models import Application, Audit, Finding
+from app.models.enums import AuditStatus, Severity
 from app.schemas.schemas import ApplicationCreate, ApplicationOut
+from app.services.scoring import compute_portfolio
 
 router = APIRouter(prefix="/applications", tags=["applications"])
 
-# Statuts considérés comme "en cours"
 IN_PROGRESS_STATUSES = {AuditStatus.in_progress, AuditStatus.scoping, AuditStatus.review}
-# Statuts considérés comme "réalisé"
 DONE_STATUSES = {AuditStatus.completed, AuditStatus.closed}
+AUDIT_TYPES = ["BAS", "Pentest", "Red Team", "Purple Team"]
 
 
 @router.get("", response_model=list[ApplicationOut])
@@ -19,17 +19,62 @@ def list_applications(db: Session = Depends(get_db)):
     return db.query(Application).order_by(Application.name).all()
 
 
+@router.get("/kpis")
+def applications_kpis(db: Session = Depends(get_db)):
+    """
+    KPIs agrégés pour la page Applications :
+    - Nombre total d'applications
+    - Nombre d'applications exposées Internet
+    - % d'applications couvertes par type d'audit (BAS/Pentest/Red Team/Purple Team)
+    - % de couverture détection (moy. portfolio)
+    - % de couverture réaction (moy. portfolio)
+    """
+    apps = db.query(Application).all()
+    total = len(apps)
+    internet_count = sum(1 for a in apps if a.exposure.value == "Internet")
+
+    # Couverture par type d'audit : % d'apps ayant au moins un audit done/in_progress
+    audits = db.query(Audit).all()
+    by_app: dict[int, list] = {a.id: [] for a in apps}
+    for audit in audits:
+        if audit.application_id in by_app:
+            by_app[audit.application_id].append(audit)
+
+    audit_coverage: dict[str, float] = {}
+    for atype in AUDIT_TYPES:
+        covered = sum(
+            1 for app in apps
+            if any(
+                a.audit_type.value == atype and
+                (a.status in DONE_STATUSES or a.status in IN_PROGRESS_STATUSES)
+                for a in by_app[app.id]
+            )
+        )
+        audit_coverage[atype] = round(100 * covered / total, 1) if total else 0.0
+
+    # Détection & réaction depuis le portfolio scoring
+    portfolio = compute_portfolio(db)
+    summary = portfolio.get("summary", {})
+
+    return {
+        "total":            total,
+        "internet_count":   internet_count,
+        "internet_pct":     round(100 * internet_count / total, 1) if total else 0.0,
+        "audit_coverage":   audit_coverage,
+        "detection_pct":    summary.get("avg_detection_coverage_pct", 0.0),
+        "reaction_pct":     summary.get("avg_response_coverage_pct", 0.0),
+    }
+
+
 @router.get("/coverage")
 def applications_coverage(db: Session = Depends(get_db)):
     """
     Retourne pour chaque application la couverture par type d'audit.
-    Format : { app_id: { "BAS": "done"|"in_progress"|null, "Pentest": ..., ... } }
+    Format : { app_id: { "BAS": "done"|"in_progress"|null, ... } }
     """
-    audit_types = ["BAS", "Pentest", "Red Team", "Purple Team"]
     apps = db.query(Application).order_by(Application.name).all()
     audits = db.query(Audit).all()
 
-    # Indexe les audits par application
     by_app: dict[int, list] = {a.id: [] for a in apps}
     for audit in audits:
         if audit.application_id in by_app:
@@ -38,7 +83,7 @@ def applications_coverage(db: Session = Depends(get_db)):
     result = {}
     for app in apps:
         coverage = {}
-        for atype in audit_types:
+        for atype in AUDIT_TYPES:
             app_audits = [a for a in by_app[app.id] if a.audit_type.value == atype]
             if any(a.status in DONE_STATUSES for a in app_audits):
                 coverage[atype] = "done"
