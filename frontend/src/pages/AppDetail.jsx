@@ -8,6 +8,9 @@ import {
 import { CpePicker } from "../components/CpePicker";
 import { RefGroup } from "../components/RefPicker";
 import { parseRefValue, refToReadable } from "../lib/refData";
+import { Drawer } from "../components/Drawer";
+import { AuditDrawerContent } from "../components/AuditDrawerContent";
+import { FindingDrawerContent } from "../components/FindingDrawerContent";
 import {
   severityClass,
   fmtMin,
@@ -17,14 +20,18 @@ import {
 import { useToast } from "../lib/useToast";
 
 export default function AppDetail({ appId, onBack, onManageAudits, onManageApps, onOpenAudit }) {
-  const [dash, setDash] = useState(null);
-  const [matrix, setMatrix] = useState(null);
+  const [dash, setDash]       = useState(null);
+  const [matrix, setMatrix]   = useState(null);
   const [findings, setFindings] = useState([]);
-  const [audits, setAudits] = useState([]);
-  const [appFull, setAppFull] = useState(null);   // métadonnées complètes (pour édition)
+  const [audits, setAudits]   = useState([]);
+  const [appFull, setAppFull] = useState(null);
   const [scenarios, setScenarios] = useState([]);
   const [registerOpen, setRegisterOpen] = useState(true);
-  const [err, setErr] = useState(null);
+  const [err, setErr]         = useState(null);
+
+  // Drawers
+  const [auditDrawer, setAuditDrawer]     = useState(null); // auditId
+  const [findingDrawer, setFindingDrawer] = useState(null); // finding object
 
   // modales
   const [editApp, setEditApp] = useState(null);
@@ -282,7 +289,7 @@ export default function AppDetail({ appId, onBack, onManageAudits, onManageApps,
               <tbody>
                 {audits.map((audit) => (
                   <tr key={audit.id} className="clickable"
-                      onClick={() => onOpenAudit && onOpenAudit(audit.id)}>
+                      onClick={() => setAuditDrawer(audit.id)}>
                     <td><span className="badge violet">{audit.audit_type}</span></td>
                     <td><span style={{ fontWeight: 500 }}>{audit.team || "—"}</span></td>
                     <td className="mono faint" style={{ fontSize: 13 }}>
@@ -294,7 +301,7 @@ export default function AppDetail({ appId, onBack, onManageAudits, onManageApps,
                     </td>
                     <td style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
                       <button className="register-edit"
-                        onClick={() => onOpenAudit && onOpenAudit(audit.id)}>
+                        onClick={() => setAuditDrawer(audit.id)}>
                         Ouvrir
                       </button>
                     </td>
@@ -326,7 +333,7 @@ export default function AppDetail({ appId, onBack, onManageAudits, onManageApps,
               </tr>
             )}
             {findings.map((f) => (
-              <tr key={f.id}>
+              <tr key={f.id} className="clickable" onClick={() => setFindingDrawer(f)}>
                 <td style={{ fontWeight: 500 }}>{f.title}</td>
                 <td>
                   <span className={`badge ${severityClass(f.severity)}`}>
@@ -335,9 +342,11 @@ export default function AppDetail({ appId, onBack, onManageAudits, onManageApps,
                 </td>
                 <td className="mono">{f.cvss.toFixed(1)}</td>
                 <td>
-                  {[f.owasp, f.cwe, f.capec].filter(Boolean).map((m) => (
-                    <span className="ttp" key={m}>{m}</span>
-                  ))}
+                  {parseRefValue(f.owasp_refs).map(r => <span className="ttp ttp-owasp" key={r.ref_id}>{r.ref_id}</span>)}
+                  {parseRefValue(f.cwe_refs).map(r => <span className="ttp ttp-cwe" key={r.ref_id}>{r.ref_id}</span>)}
+                  {parseRefValue(f.capec_refs).map(r => <span className="ttp ttp-capec" key={r.ref_id}>{r.ref_id}</span>)}
+                  {!f.owasp_refs && !f.cwe_refs && !f.capec_refs &&
+                    [f.owasp, f.cwe, f.capec].filter(Boolean).map(m => <span className="ttp" key={m}>{m}</span>)}
                 </td>
                 <td className="muted" style={{ fontSize: 13 }}>{f.status}</td>
               </tr>
@@ -515,6 +524,35 @@ export default function AppDetail({ appId, onBack, onManageAudits, onManageApps,
           </Field>
         </Modal>
       )}
+      {/* Drawer — Audit */}
+      <Drawer
+        open={auditDrawer !== null}
+        onClose={() => setAuditDrawer(null)}
+        title="Audit"
+      >
+        {auditDrawer !== null && (
+          <AuditDrawerContent
+            auditId={auditDrawer}
+            onClose={() => setAuditDrawer(null)}
+          />
+        )}
+      </Drawer>
+
+      {/* Drawer — Vulnérabilité */}
+      <Drawer
+        open={findingDrawer !== null}
+        onClose={() => setFindingDrawer(null)}
+        title="Vulnérabilité"
+      >
+        {findingDrawer !== null && (
+          <FindingDrawerContent
+            finding={findingDrawer}
+            onClose={() => setFindingDrawer(null)}
+            onUpdated={() => loadAll()}
+          />
+        )}
+      </Drawer>
+
       {node}
     </>
   );

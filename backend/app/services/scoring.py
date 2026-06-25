@@ -199,12 +199,11 @@ def compute_portfolio(db: Session) -> dict:
 
 
 def _audit_recency_key(audit):
-    """Clé de récence d'un audit : date de fin, sinon début, sinon id.
+    """Clé de récence d'un audit : date de fin, sinon début, sinon datetime.min.
     Sert à départager les doublons (on garde la valeur la plus récente)."""
-    return (
-        audit.end_date or audit.start_date,
-        audit.id,
-    )
+    from datetime import datetime as dt
+    date = audit.end_date or audit.start_date or dt.min
+    return (date, audit.id)
 
 
 def compute_application_matrix(db: Session, app_id: int) -> dict:
