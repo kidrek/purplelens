@@ -120,6 +120,7 @@ body {
 .kpi-unit { font-size: 14px; color: var(--text-faint); font-family: var(--mono); }
 .kpi-bar { height: 4px; border-radius: 2px; background: var(--line); margin-top: 14px; overflow: hidden; }
 .kpi-bar > span { display: block; height: 100%; border-radius: 2px; }
+.kpi-hint { font-size: 10px; color: var(--text-faint); margin-top: 6px; line-height: 1.35; }
 
 /* --- Table -------------------------------------------------------------- */
 table { width: 100%; border-collapse: collapse; }

@@ -175,33 +175,21 @@ export default function AppDetail({ appId, onBack, onManageAudits, onManageApps,
 
       {/* Profil de risque de l'application */}
       <div className="profile-row">
-        <div
-          className="profile-card clickable-card"
-          onClick={() => onManageApps && onManageApps()}
-          title="Modifier dans la gestion des applications"
-        >
-          <div className="profile-label">Criticité métier · C<sub>M</sub></div>
+        <div className="profile-card">
+          <div className="profile-label">Criticité métier</div>
           <div className="profile-main">
             <span className={`crit-pill crit-${dash.business_criticality.level}`}>
               {dash.business_criticality.label}
             </span>
-            <span className="profile-coef">×{dash.business_criticality.coefficient}</span>
           </div>
-          <div className="profile-hint">cliquez pour changer</div>
         </div>
 
-        <div
-          className="profile-card clickable-card"
-          onClick={() => onManageApps && onManageApps()}
-          title="Modifier dans la gestion des applications"
-        >
-          <div className="profile-label">Exposition réseau · E<sub>NET</sub></div>
+        <div className="profile-card">
+          <div className="profile-label">Exposition réseau</div>
           <div className="profile-main">
             <span className="exp-dot" />
             <span className="profile-strong">{dash.network_exposure.exposure}</span>
-            <span className="profile-coef">×{dash.network_exposure.coefficient}</span>
           </div>
-          <div className="profile-hint">cliquez pour changer</div>
         </div>
 
         <div className="profile-card">
@@ -219,7 +207,16 @@ export default function AppDetail({ appId, onBack, onManageAudits, onManageApps,
 
       {/* Les 5 KPIs du MVP */}
       <div className="kpi-row">
-        <KpiTile name="Couverture ATT&CK" value={k.attack_coverage_pct} unit="%" pct={k.attack_coverage_pct} />
+        <KpiTile
+          name={k.catalog_synced ? "Couverture ATT&CK" : "Exécution scénarios"}
+          value={k.attack_coverage_pct}
+          unit="%"
+          pct={k.attack_coverage_pct}
+          hint={k.catalog_synced
+            ? `${dash.techniques_tested} techniques testées / ${dash.catalog_size} dans le catalogue ATT&CK`
+            : `${dash.techniques_tested}/${dash.techniques_relevant} techniques jouées — importez le catalogue ATT&CK dans Paramètres pour le vrai %`
+          }
+        />
         <KpiTile name="Détection" value={k.detection_coverage_pct} unit="%" pct={k.detection_coverage_pct} />
         <KpiTile name="Réaction" value={k.response_coverage_pct} unit="%" pct={k.response_coverage_pct} />
         <KpiTile name="MTTD" value={fmtMin(k.mttd_min)} unit="min" />

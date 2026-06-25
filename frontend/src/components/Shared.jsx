@@ -1,10 +1,10 @@
 import { scoreColor, scoreBg } from "../lib/format";
 
-export function KpiTile({ name, value, unit, pct }) {
+export function KpiTile({ name, value, unit, pct, hint }) {
   const showBar = pct != null;
   const color = showBar ? scoreColor(pct) : "var(--violet-bright)";
   return (
-    <div className="kpi">
+    <div className="kpi" title={hint || ""}>
       <div className="kpi-name">{name}</div>
       <div className="kpi-value" style={{ color }}>
         {value}
@@ -15,6 +15,7 @@ export function KpiTile({ name, value, unit, pct }) {
           <span style={{ width: `${Math.min(pct, 100)}%`, background: color }} />
         </div>
       )}
+      {hint && <div className="kpi-hint">{hint}</div>}
     </div>
   );
 }

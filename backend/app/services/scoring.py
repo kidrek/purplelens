@@ -24,6 +24,7 @@ from app.models.models import (
     Scenario,
 )
 from app.models.enums import Severity
+from app.services.mitre_catalog import get_catalog_size
 
 
 def _pct(numerator: int, denominator: int) -> float:
@@ -117,6 +118,9 @@ def compute_application_scores(db: Session, app_id: int) -> dict:
     for f in findings:
         by_severity[f.severity.value] = by_severity.get(f.severity.value, 0) + 1
 
+    # --- Couverture sur le catalogue ATT&CK complet
+    catalog_size = get_catalog_size(db, include_subtechniques=False)
+
     return {
         "application_id": application.id,
         "application_name": application.name,
@@ -130,11 +134,18 @@ def compute_application_scores(db: Session, app_id: int) -> dict:
         "techniques_tested": len(tested_technique_ids),
         "techniques_detected": detected,
         "techniques_responded": responded,
+        "catalog_size": catalog_size,
         "kpis": {
-            # KPI 1
+            # KPI 1 — couverture sur le catalogue complet ATT&CK (0 si catalogue non synchronisé)
             "attack_coverage_pct": _pct(
+                len(tested_technique_ids), catalog_size
+            ) if catalog_size else _pct(
                 len(tested_technique_ids), len(relevant_technique_ids)
             ),
+            "attack_coverage_pct_of_relevant": _pct(
+                len(tested_technique_ids), len(relevant_technique_ids)
+            ),
+            "catalog_synced": catalog_size > 0,
             # KPI 2
             "detection_coverage_pct": _pct(detected, tested),
             # KPI 3

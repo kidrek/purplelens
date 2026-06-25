@@ -56,9 +56,14 @@ export default function Settings() {
     try {
       const res = await fetch("/api/referentials/status");
       if (res.ok) setStatuses(await res.json());
-    } catch (_) {
-      // backend indisponible — pas de statut
-    }
+    } catch (_) {}
+    try {
+      const res = await fetch("/api/referentials/mitre/status");
+      if (res.ok) {
+        const data = await res.json();
+        setStatuses(prev => prev ? [...prev.filter(s => s.name !== "mitre_attack"), data] : [data]);
+      }
+    } catch (_) {}
   }
 
   useEffect(() => { loadStatus(); }, []);
@@ -75,6 +80,21 @@ export default function Settings() {
       show(`Erreur : ${e.message}`, "err");
     } finally {
       setSyncing(s => ({ ...s, [name]: false }));
+    }
+  }
+
+  async function syncMitre() {
+    setSyncing(s => ({ ...s, mitre: true }));
+    try {
+      const res = await fetch("/api/referentials/mitre/sync", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Erreur serveur");
+      show(`Catalogue ATT&CK mis à jour (${data.entry_count} techniques)`);
+      await loadStatus();
+    } catch (e) {
+      show(`Erreur : ${e.message}`, "err");
+    } finally {
+      setSyncing(s => ({ ...s, mitre: false }));
     }
   }
 
@@ -175,7 +195,7 @@ export default function Settings() {
           <span className="settings-global-icon">⬇</span>
           <span>
             <strong>Tout mettre à jour</strong> — télécharge simultanément OWASP Top 10,
-            CWE et CAPEC depuis leurs sources officielles et met à jour la base locale.
+            CWE, CAPEC, CPE et le catalogue ATT&CK Enterprise depuis leurs sources officielles et met à jour la base locale.
           </span>
         </div>
         <button
@@ -202,6 +222,85 @@ export default function Settings() {
           (owasp.org, cwe.mitre.org, capec.mitre.org, nvd.nist.gov). Une fois les référentiels importés,
           la recherche dans les formulaires fonctionne entièrement hors ligne.
           En l'absence d'import, un jeu de données intégré est utilisé automatiquement.
+        </div>
+      </div>
+
+      <hr style={{ border: "none", borderTop: "1px solid var(--line)", margin: "24px 0" }} />
+
+      <div className="settings-section-label">Catalogue MITRE ATT&CK</div>
+
+      {(() => {
+        const st = getStatus("mitre_attack");
+        const imported = st && st.entry_count > 0;
+        const busy = syncing.mitre;
+        return (
+          <div className="settings-card">
+            <div className="settings-card-icon">
+              <span className="ref-badge" style={{
+                fontSize: 11, padding: "5px 8px", fontFamily: "var(--mono)",
+                fontWeight: 600, background: "rgba(226,75,74,.1)",
+                color: "#A32D2D", border: "1px solid rgba(226,75,74,.4)",
+                borderRadius: 5
+              }}>ATT&CK</span>
+            </div>
+            <div className="settings-card-body">
+              <div className="settings-card-name">MITRE ATT&CK Enterprise</div>
+              <div className="settings-card-desc">
+                Catalogue complet des techniques adversariales MITRE ATT&CK Enterprise.
+                Utilisé comme dénominateur pour calculer le vrai taux de couverture ATT&CK
+                de chaque application (techniques testées / total catalogue).
+              </div>
+              <div className="settings-card-meta">
+                <span className="settings-meta-item">
+                  <span className={`settings-dot ${imported ? "settings-dot-ok" : "settings-dot-none"}`} />
+                  {imported ? "En base" : "Non importé"}
+                </span>
+                {st?.version && (
+                  <span className="settings-meta-item">
+                    Version : <strong>{st.version}</strong>
+                  </span>
+                )}
+                {imported && (
+                  <>
+                    <span className="settings-meta-item">
+                      Techniques : <strong>{st.entry_count?.toLocaleString("fr-FR")}</strong>
+                    </span>
+                    {st.parent_count && (
+                      <span className="settings-meta-item">
+                        Dont parentes : <strong>{st.parent_count?.toLocaleString("fr-FR")}</strong>
+                      </span>
+                    )}
+                  </>
+                )}
+                <span className="settings-meta-item">
+                  Mis à jour : <strong>{fmtDate(st?.synced_at)}</strong>
+                </span>
+                <span className="settings-meta-item settings-meta-source">
+                  Source : github.com/mitre/cti
+                </span>
+              </div>
+            </div>
+            <div className="settings-card-action">
+              <button
+                className={`btn ${imported ? "btn-ghost" : "btn-primary"}`}
+                onClick={syncMitre}
+                disabled={anyBusy}
+                style={{ whiteSpace: "nowrap" }}
+              >
+                {busy ? "Téléchargement…" : imported ? "↻  Mettre à jour" : "⬇  Importer"}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
+      <div className="settings-info-box" style={{ marginTop: 12 }}>
+        <span className="settings-info-icon">ℹ</span>
+        <div className="settings-info-text">
+          Le catalogue ATT&CK Enterprise contient environ <strong>200 techniques parentes</strong> et
+          plus de <strong>400 sous-techniques</strong>. Le téléchargement depuis GitHub MITRE/CTI
+          peut prendre quelques secondes. Le KPI de couverture dans les fiches applications
+          utilise uniquement les techniques parentes comme dénominateur.
         </div>
       </div>
 
