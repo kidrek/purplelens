@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Drawer } from "../components/Drawer";
+import { AuditDrawerContent } from "../components/AuditDrawerContent";
 
 const API = "/api";
 
@@ -263,9 +265,10 @@ export default function ManageAudits({ onSelectApp, onOpenAudit }) {
   const [audits, setAudits]       = useState([]);
   const [kpis, setKpis]           = useState(null);
   const [period, setPeriod]       = useState("1a");
-  const [typeFilter, setTypeFilter] = useState(null);   // null = tous
+  const [typeFilter, setTypeFilter] = useState(null);
   const [statusFilter, setStatusFilter] = useState(null);
   const [loading, setLoading]     = useState(true);
+  const [drawerAuditId, setDrawerAuditId] = useState(null);
 
   // ── Fetch données ──────────────────────────────────────────────────────
   const fetchAll = useCallback(async (p) => {
@@ -508,11 +511,12 @@ export default function ManageAudits({ onSelectApp, onOpenAudit }) {
                 <tr
                   key={audit.id}
                   style={{ borderBottom: "0.5px solid #1a192c", cursor: "pointer" }}
+                  onClick={() => setDrawerAuditId(audit.id)}
                   onMouseEnter={e => e.currentTarget.style.background = "#17162a"}
                   onMouseLeave={e => e.currentTarget.style.background = "transparent"}
                 >
                   {/* Nom */}
-                  <td style={S.td} onClick={() => onOpenAudit(audit.id)}>
+                  <td style={S.td}>
                     <div style={S.auditName}>{audit.name}</div>
                     <div style={S.auditApp}>{audit.application?.name || "—"} · {scenarioName}</div>
                   </td>
@@ -579,24 +583,12 @@ export default function ManageAudits({ onSelectApp, onOpenAudit }) {
                   </td>
 
                   {/* Actions */}
-                  <td style={S.td}>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <button style={S.actionBtn} title="Voir" onClick={() => onOpenAudit(audit.id)}
-                        onMouseEnter={e => { e.currentTarget.style.borderColor = "#7c70d8"; e.currentTarget.style.color = "#a89fff"; }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = "#2a2840"; e.currentTarget.style.color = "#6b6788"; }}>
-                        <i className="ti ti-eye" aria-hidden="true" />
-                      </button>
-                      <button style={S.actionBtn} title="Rapport"
-                        onMouseEnter={e => { e.currentTarget.style.borderColor = "#7c70d8"; e.currentTarget.style.color = "#a89fff"; }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = "#2a2840"; e.currentTarget.style.color = "#6b6788"; }}>
-                        <i className="ti ti-file-text" aria-hidden="true" />
-                      </button>
-                      <button style={S.actionBtn} title="Supprimer" onClick={() => deleteAudit(audit.id)}
-                        onMouseEnter={e => { e.currentTarget.style.borderColor = "#e03c52"; e.currentTarget.style.color = "#e03c52"; }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = "#2a2840"; e.currentTarget.style.color = "#6b6788"; }}>
-                        <i className="ti ti-trash" aria-hidden="true" />
-                      </button>
-                    </div>
+                  <td style={S.td} onClick={e => e.stopPropagation()}>
+                    <button style={S.actionBtn} title="Supprimer" onClick={() => deleteAudit(audit.id)}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = "#e03c52"; e.currentTarget.style.color = "#e03c52"; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = "#2a2840"; e.currentTarget.style.color = "#6b6788"; }}>
+                      <i className="ti ti-trash" aria-hidden="true" />
+                    </button>
                   </td>
                 </tr>
               );
@@ -604,6 +596,20 @@ export default function ManageAudits({ onSelectApp, onOpenAudit }) {
           </tbody>
         </table>
       </div>
+
+      <Drawer
+        open={drawerAuditId !== null}
+        onClose={() => setDrawerAuditId(null)}
+        title="Détail de l'audit"
+        width="60vw"
+      >
+        {drawerAuditId !== null && (
+          <AuditDrawerContent
+            auditId={drawerAuditId}
+            onClose={() => setDrawerAuditId(null)}
+          />
+        )}
+      </Drawer>
     </div>
   );
 }
