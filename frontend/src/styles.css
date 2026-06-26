@@ -1109,3 +1109,12 @@ label.lbl { display: block; font-size: 11px; text-transform: uppercase; letter-s
   margin: 4px 0 0;
   line-height: 1.2;
 }
+
+/* ── Matrice MITRE — vue scénarios (présence/absence) ─────────────────────── */
+.scen-matrix-cell {
+  background: rgba(83,74,183,.1) !important;
+  border: 1px solid rgba(83,74,183,.4) !important;
+  cursor: default;
+}
+.scen-matrix-cell .matrix-ttp { color: var(--violet-bright) !important; }
+.scen-matrix-cell:hover { filter: brightness(1.15); transform: translateY(-1px); }

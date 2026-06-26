@@ -1,84 +1,198 @@
 import { useEffect, useState } from "react";
 import { api, ENUMS } from "../api/client";
-import {
-  Modal, Field, Input, Textarea, SegmentedControl, ConfirmDialog, EmptyState,
-} from "../components/Form";
+import { ConfirmDialog, EmptyState } from "../components/Form";
+import { Drawer } from "../components/Drawer";
+import { ScenarioDrawerContent } from "../components/ScenarioDrawerContent";
+import { ScenarioForm } from "../components/ScenarioForm";
 import { useToast } from "../lib/useToast";
 
-const EMPTY = {
-  name: "", objective: "", threat_actor: "",
-  engagement_type: "Pentest", sophistication: "Intermédiaire",
-  references: "", description: "", ioc: "", ioa: "",
-  steps: [],
+// ── Constantes ────────────────────────────────────────────────────────────────
+
+const ENGAGEMENT_COLORS = {
+  "BAS":         { bg: "rgba(55,138,221,.1)",  border: "rgba(55,138,221,.4)",  text: "#185FA5" },
+  "Pentest":     { bg: "rgba(239,159,39,.1)",  border: "rgba(239,159,39,.4)",  text: "#854F0B" },
+  "Red Team":    { bg: "rgba(226,75,74,.1)",   border: "rgba(226,75,74,.4)",   text: "#A32D2D" },
+  "Purple Team": { bg: "rgba(83,74,183,.1)",   border: "rgba(83,74,183,.4)",   text: "#534AB7" },
 };
 
-// brouillon d'étape en cours d'ajout
-const EMPTY_STEP = { tactic: "Initial Access", mitre_id: "", technique_name: "", action: "", description: "" };
+// ── KPIs ─────────────────────────────────────────────────────────────────────
+
+function ScenarioKpis({ items }) {
+  if (!items || items.length === 0) return null;
+
+  // Nombre de scénarios
+  const total = items.length;
+
+  // Acteurs émulés uniques
+  const actors = [...new Set(items.map(s => s.threat_actor).filter(Boolean))];
+
+  // Répartition par type d'engagement
+  const byType = {};
+  for (const type of ENUMS.auditType) byType[type] = 0;
+  for (const s of items) byType[s.engagement_type] = (byType[s.engagement_type] || 0) + 1;
+
+  // Tactiques uniques couvertes
+  const tactics = new Set();
+  const techniques = new Set();
+  for (const s of items) {
+    for (const st of s.steps) {
+      if (st.tactic) tactics.add(st.tactic);
+      if (st.mitre_id) techniques.add(st.mitre_id);
+    }
+  }
+
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, marginBottom: 20 }}>
+
+      {/* 1. Scénarios */}
+      <div className="app-kpi">
+        <span className="app-kpi-label">Scénarios CTI</span>
+        <span className="app-kpi-value">{total}</span>
+        <span className="app-kpi-sub">dans la bibliothèque</span>
+      </div>
+
+      {/* 2. Acteurs émulés */}
+      <div className="app-kpi">
+        <span className="app-kpi-label">Acteurs émulés</span>
+        <span className="app-kpi-value" style={{ color: "#534AB7" }}>{actors.length}</span>
+        <span className="app-kpi-sub" style={{ wordBreak: "break-word" }}>
+          {actors.slice(0, 3).join(" · ")}{actors.length > 3 ? ` +${actors.length - 3}` : ""}
+        </span>
+      </div>
+
+      {/* 3. Répartition engagement */}
+      <div className="app-kpi">
+        <span className="app-kpi-label">Répartition</span>
+        <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginTop: 8 }}>
+          {ENUMS.auditType.filter(t => byType[t] > 0).map(type => {
+            const c = ENGAGEMENT_COLORS[type] || {};
+            return (
+              <span key={type} style={{
+                fontSize: 12, fontWeight: 600, padding: "3px 8px", borderRadius: 5,
+                background: c.bg, border: `0.5px solid ${c.border}`, color: c.text,
+              }}>
+                {byType[type]} {type}
+              </span>
+            );
+          })}
+        </div>
+        <span className="app-kpi-sub" style={{ marginTop: 6 }}>par type d'engagement</span>
+      </div>
+
+      {/* 4. Tactiques couvertes */}
+      <div className="app-kpi">
+        <span className="app-kpi-label">Tactiques MITRE</span>
+        <span className="app-kpi-value" style={{ color: "#1D9E75" }}>{tactics.size}</span>
+        <span className="app-kpi-sub">tactiques couvertes</span>
+      </div>
+
+      {/* 5. Techniques uniques */}
+      <div className="app-kpi">
+        <span className="app-kpi-label">Techniques MITRE</span>
+        <span className="app-kpi-value" style={{ color: "#534AB7" }}>{techniques.size}</span>
+        <span className="app-kpi-sub">techniques uniques mappées</span>
+      </div>
+
+    </div>
+  );
+}
+
+// ── Matrice MITRE simplifiée ──────────────────────────────────────────────────
+
+// Ordre canonique des tactiques MITRE ATT&CK Enterprise
+const TACTIC_ORDER = [
+  "Reconnaissance", "Resource Development", "Initial Access", "Execution",
+  "Persistence", "Privilege Escalation", "Defense Evasion", "Credential Access",
+  "Discovery", "Lateral Movement", "Collection", "Command and Control",
+  "Exfiltration", "Impact",
+];
+
+function ScenarioMatrix({ items }) {
+  if (!items || items.length === 0) return null;
+
+  // Collecte toutes les techniques depuis les steps
+  const byTactic = {};
+  for (const s of items) {
+    for (const st of s.steps) {
+      if (!st.mitre_id) continue;
+      const tactic = st.tactic || "Unknown";
+      if (!byTactic[tactic]) byTactic[tactic] = new Map();
+      if (!byTactic[tactic].has(st.mitre_id)) {
+        byTactic[tactic].set(st.mitre_id, {
+          mitre_id: st.mitre_id,
+          name: st.technique_name || st.mitre_id,
+          scenarios: [],
+        });
+      }
+      byTactic[tactic].get(st.mitre_id).scenarios.push(s.name);
+    }
+  }
+
+  // Tri des tactiques selon l'ordre canonique
+  const tactics = [
+    ...TACTIC_ORDER.filter(t => byTactic[t]),
+    ...Object.keys(byTactic).filter(t => !TACTIC_ORDER.includes(t)),
+  ];
+
+  if (tactics.length === 0) return (
+    <div className="card faint" style={{ fontSize: 13, marginBottom: 20 }}>
+      Aucune technique mappée. Ajoutez des étapes à vos scénarios.
+    </div>
+  );
+
+  return (
+    <div className="matrix-wrap" style={{ marginBottom: 20 }}>
+      <div className="matrix-grid">
+        {tactics.map(tactic => {
+          const techs = [...byTactic[tactic].values()];
+          return (
+            <div className="matrix-col" key={tactic}>
+              <div className="matrix-col-head" title={tactic}>{tactic}</div>
+              <div className="matrix-cells">
+                {techs.map(t => (
+                  <div
+                    key={t.mitre_id}
+                    className="matrix-cell scen-matrix-cell"
+                    title={`${t.mitre_id} — ${t.name}\nScénarios : ${t.scenarios.join(", ")}`}
+                  >
+                    <span className="matrix-ttp">{t.mitre_id}</span>
+                    <span className="matrix-tname">{t.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12 }}>
+        <span style={{
+          width: 13, height: 13, borderRadius: 4, display: "inline-block", flexShrink: 0,
+          background: "rgba(83,74,183,.18)", border: "1px solid rgba(83,74,183,.55)",
+        }} />
+        <span style={{ fontSize: 12, color: "var(--text-dim)" }}>
+          Technique présente dans au moins un scénario — survolez une cellule pour voir les scénarios associés
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ── Composant principal ───────────────────────────────────────────────────────
 
 export default function ManageScenarios() {
-  const [items, setItems] = useState(null);
-  const [editing, setEditing] = useState(null);
-  const [confirm, setConfirm] = useState(null);
-  const [draft, setDraft] = useState({ ...EMPTY_STEP });
-  const [err, setErr] = useState(null);
-  const { show, node } = useToast();
+  const [items, setItems]         = useState(null);
+  const [confirm, setConfirm]     = useState(null);
+  const [drawer, setDrawer]       = useState(null);   // scenario object → vue détail
+  const [createDrawer, setCreateDrawer] = useState(false); // drawer création
+  const { show, node }            = useToast();
 
   const load = () => api.scenarios().then(setItems).catch(() => setItems([]));
   useEffect(() => { load(); }, []);
-
-  function openNew() { setErr(null); setDraft({ ...EMPTY_STEP }); setEditing({ form: { ...EMPTY, steps: [] } }); }
-  function openEdit(s) {
-    setErr(null);
-    setDraft({ ...EMPTY_STEP });
-    setEditing({
-      id: s.id,
-      form: {
-        name: s.name, objective: s.objective, threat_actor: s.threat_actor,
-        engagement_type: s.engagement_type, sophistication: s.sophistication,
-        references: s.references, description: s.description, ioc: s.ioc, ioa: s.ioa,
-        steps: s.steps.map((st) => ({
-          tactic: st.tactic, mitre_id: st.mitre_id, technique_name: st.technique_name,
-          action: st.action, description: st.description,
-        })),
-      },
-    });
-  }
-  const set = (k, v) => setEditing((e) => ({ ...e, form: { ...e.form, [k]: v } }));
-  const setD = (k, v) => setDraft((d) => ({ ...d, [k]: v }));
-
-  function addStep() {
-    // technique_name peut contenir "T1190 description" : on parse l'id éventuel
-    const raw = draft.mitre_id.trim();
-    if (!raw && !draft.technique_name.trim()) return;
-    const newStep = { ...draft, mitre_id: raw.toUpperCase() };
-    set("steps", [...editing.form.steps, newStep]);
-    setDraft({ ...EMPTY_STEP, tactic: draft.tactic });
-  }
-  function removeStep(i) {
-    set("steps", editing.form.steps.filter((_, idx) => idx !== i));
-  }
-
-  async function save() {
-    const f = editing.form;
-    if (!f.name.trim()) { setErr("Le nom est obligatoire."); return; }
-    const payload = {
-      ...f,
-      steps: f.steps.map((s, i) => ({ ...s, order: i + 1 })),
-      technique_mitre_ids: [],
-    };
-    try {
-      if (editing.id) { await api.updateScenario(editing.id, payload); show("Scénario mis à jour"); }
-      else { await api.createScenario(payload); show("Scénario créé"); }
-      setEditing(null); load();
-    } catch (e) { setErr(e.message); }
-  }
 
   async function doDelete() {
     try { await api.deleteScenario(confirm.id); show("Scénario supprimé"); setConfirm(null); load(); }
     catch (e) { show(e.message, "err"); setConfirm(null); }
   }
-
-  const tacticLabel = (val) => (ENUMS.tactics.find((t) => t[0] === val) || [val, val])[1];
 
   return (
     <>
@@ -86,14 +200,31 @@ export default function ManageScenarios() {
         <div className="page-eyebrow">Module 2 · CTI</div>
         <h1 className="page-title">Gestion des scénarios</h1>
         <p className="page-sub">
-          Chaînes d'étapes mappées MITRE ATT&CK, réutilisables lors de la
-          planification d'un audit.
+          Chaînes d'étapes mappées MITRE ATT&CK, réutilisables lors de la planification d'un audit.
         </p>
       </div>
 
       <div className="toolbar">
-        <button className="btn btn-primary" onClick={openNew}>+ Nouveau scénario</button>
+        <button className="btn btn-primary" onClick={() => setCreateDrawer(true)}>
+          + Nouveau scénario
+        </button>
       </div>
+
+      {/* KPIs */}
+      <ScenarioKpis items={items} />
+
+      {/* Matrice MITRE */}
+      {items && items.length > 0 && (
+        <>
+          <h2 className="section-title">Matrice MITRE ATT&CK — couverture des scénarios</h2>
+          <ScenarioMatrix items={items} />
+        </>
+      )}
+
+      {/* Liste des scénarios */}
+      {items && items.length > 0 && (
+        <h2 className="section-title">Scénarios</h2>
+      )}
 
       {items?.length === 0 ? (
         <EmptyState title="Aucun scénario" hint="Créez un scénario de menace pour le rejouer en audit." />
@@ -108,136 +239,48 @@ export default function ManageScenarios() {
             </thead>
             <tbody>
               {!items && <tr><td colSpan={5} className="faint">Chargement…</td></tr>}
-              {items?.map((s) => (
-                <tr key={s.id}>
-                  <td style={{ fontWeight: 600 }}>
-                    {s.name}
-                    {s.objective && <div className="faint" style={{ fontSize: 12, fontWeight: 400, marginTop: 3 }}>{s.objective}</div>}
-                  </td>
-                  <td><span className="badge violet">{s.threat_actor || "—"}</span></td>
-                  <td className="muted" style={{ fontSize: 13 }}>{s.engagement_type}</td>
-                  <td className="wrap" style={{ maxWidth: 280 }}>
-                    {s.steps.length
-                      ? s.steps.map((st, i) => <span className="ttp" key={i} title={st.technique_name}>{st.mitre_id || "—"}</span>)
-                      : <span className="faint">—</span>}
-                  </td>
-                  <td>
-                    <div className="row-actions">
-                      <button className="icon-btn" title="Modifier" onClick={() => openEdit(s)}>✎</button>
-                      <button className="icon-btn danger" title="Supprimer" onClick={() => setConfirm(s)}>🗑</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {items?.map(s => {
+                const ec = ENGAGEMENT_COLORS[s.engagement_type] || {};
+                return (
+                  <tr key={s.id} className="clickable" onClick={() => setDrawer(s)}>
+                    <td style={{ fontWeight: 600 }}>
+                      {s.name}
+                      {s.objective && (
+                        <div className="faint" style={{ fontSize: 12, fontWeight: 400, marginTop: 3 }}>
+                          {s.objective}
+                        </div>
+                      )}
+                    </td>
+                    <td><span className="badge violet">{s.threat_actor || "—"}</span></td>
+                    <td>
+                      <span style={{
+                        fontSize: 11, fontWeight: 500, padding: "2px 7px", borderRadius: 5,
+                        background: ec.bg, border: `0.5px solid ${ec.border}`, color: ec.text,
+                        fontFamily: "var(--mono)",
+                      }}>
+                        {s.engagement_type}
+                      </span>
+                    </td>
+                    <td className="wrap" style={{ maxWidth: 280 }}>
+                      {s.steps.length
+                        ? s.steps.map((st, i) => (
+                            <span className="ttp" key={i} title={st.technique_name}>
+                              {st.mitre_id || "—"}
+                            </span>
+                          ))
+                        : <span className="faint">—</span>}
+                    </td>
+                    <td onClick={e => e.stopPropagation()}>
+                      <div className="row-actions">
+                        <button className="icon-btn danger" title="Supprimer" onClick={() => setConfirm(s)}>🗑</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
-      )}
-
-      {editing && (
-        <Modal
-          title={editing.id ? "Modifier le scénario d'attaque" : "Nouveau scénario d'attaque"}
-          onClose={() => setEditing(null)}
-          error={err}
-          footer={
-            <>
-              <button className="btn btn-ghost" onClick={() => setEditing(null)}>Annuler</button>
-              <button className="btn btn-primary" onClick={save}>
-                {editing.id ? "Enregistrer" : "Créer le scénario"}
-              </button>
-            </>
-          }
-        >
-          <p className="faint" style={{ fontSize: 13, marginTop: -12, marginBottom: 18 }}>
-            Chaîne d'étapes mappées MITRE ATT&CK · réutilisable lors de la planification d'un audit
-          </p>
-
-          <Field label="Nom du scénario *">
-            <Input value={editing.form.name} onChange={(v) => set("name", v)}
-              placeholder="ex. Intrusion externe → exfiltration de données" />
-          </Field>
-
-          <div className="field-row">
-            <Field label="Objectif visé">
-              <Input value={editing.form.objective} onChange={(v) => set("objective", v)}
-                placeholder="ex. Démontrer le vol de la base clients" />
-            </Field>
-            <Field label="Adversaire émulé">
-              <Input value={editing.form.threat_actor} onChange={(v) => set("threat_actor", v)}
-                placeholder="ex. Affilié ransomware" />
-            </Field>
-          </div>
-
-          <div className="field-row">
-            <Field label="Type d'engagement">
-              <SegmentedControl value={editing.form.engagement_type}
-                onChange={(v) => set("engagement_type", v)} options={ENUMS.auditType} />
-            </Field>
-            <Field label="Sophistication">
-              <SegmentedControl value={editing.form.sophistication}
-                onChange={(v) => set("sophistication", v)} options={ENUMS.sophistication} />
-            </Field>
-          </div>
-
-          {/* Kill-chain */}
-          <div className="lbl" style={{ marginTop: 6, marginBottom: 8 }}>
-            Étapes de la kill-chain · {editing.form.steps.length}
-          </div>
-
-          {editing.form.steps.length > 0 && (
-            <div className="step-list">
-              {editing.form.steps.map((st, i) => (
-                <div className="step-item" key={i}>
-                  <span className="step-idx">{i + 1}</span>
-                  <div className="step-content">
-                    <div className="flex gap-sm center wrap">
-                      <span className="kc-tactic">{tacticLabel(st.tactic)}</span>
-                      {st.mitre_id && <span className="ttp">{st.mitre_id}</span>}
-                      {st.technique_name && <span className="muted" style={{ fontSize: 13 }}>{st.technique_name}</span>}
-                    </div>
-                    {st.action && <div className="kc-cmd" style={{ marginTop: 6 }}><span className="kc-prompt">$</span> {st.action}</div>}
-                    {st.description && <div className="kc-desc">{st.description}</div>}
-                  </div>
-                  <button className="icon-btn danger" title="Retirer" onClick={() => removeStep(i)}>🗑</button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Ajout d'une étape */}
-          <div className="step-builder">
-            <div className="tactic-picker">
-              {ENUMS.tactics.map(([val, label]) => (
-                <button key={val} type="button"
-                  className={`tactic-chip ${draft.tactic === val ? "sel" : ""}`}
-                  onClick={() => setD("tactic", val)}>
-                  {label}
-                </button>
-              ))}
-            </div>
-            <Input mono value={draft.mitre_id} onChange={(v) => setD("mitre_id", v)}
-              placeholder="Technique MITRE · ID (T1190)" />
-            <div style={{ height: 8 }} />
-            <Input mono value={draft.technique_name} onChange={(v) => setD("technique_name", v)}
-              placeholder="Nom de la technique (ex. Exploit Public-Facing Application)" />
-            <div style={{ height: 8 }} />
-            <Input mono value={draft.action} onChange={(v) => setD("action", v)}
-              placeholder="Action · commande système ou outil (ex. nmap -sV, mimikatz)" />
-            <div style={{ height: 8 }} />
-            <Textarea value={draft.description} onChange={(v) => setD("description", v)}
-              placeholder="Description de l'action et résultat attendu / observable…" />
-            <button className="btn btn-ghost btn-sm" style={{ marginTop: 10 }}
-              onClick={addStep}
-              disabled={!draft.mitre_id.trim() && !draft.technique_name.trim()}>
-              + Ajouter l'étape
-            </button>
-          </div>
-
-          <Field label="Références" hint="Conservé : liens MITRE, rapports CTI…">
-            <Input value={editing.form.references} onChange={(v) => set("references", v)}
-              placeholder="https://attack.mitre.org/…" />
-          </Field>
-        </Modal>
       )}
 
       {confirm && (
@@ -247,6 +290,34 @@ export default function ManageScenarios() {
           onCancel={() => setConfirm(null)}
         />
       )}
+
+      {/* Drawer — Création */}
+      <Drawer
+        open={createDrawer}
+        onClose={() => setCreateDrawer(false)}
+        title="Nouveau scénario"
+      >
+        <ScenarioForm
+          onSaved={() => { setCreateDrawer(false); load(); }}
+          onCancel={() => setCreateDrawer(false)}
+        />
+      </Drawer>
+
+      {/* Drawer — Détail / édition */}
+      <Drawer
+        open={drawer !== null}
+        onClose={() => setDrawer(null)}
+        title="Scénario CTI"
+      >
+        {drawer !== null && (
+          <ScenarioDrawerContent
+            scenario={drawer}
+            onClose={() => setDrawer(null)}
+            onUpdated={() => { load(); setDrawer(null); }}
+          />
+        )}
+      </Drawer>
+
       {node}
     </>
   );
