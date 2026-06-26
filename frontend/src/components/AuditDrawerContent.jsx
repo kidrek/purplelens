@@ -15,17 +15,18 @@ import { useToast } from "../lib/useToast";
  *   onClose    {fn}      — ferme le drawer
  */
 export function AuditDrawerContent({ auditId, onClose }) {
-  const [audit, setAudit]       = useState(null);
-  const [rows, setRows]         = useState([]);
-  const [findings, setFindings] = useState([]);
-  const [apps, setApps]         = useState([]);
+  const [audit, setAudit]         = useState(null);
+  const [rows, setRows]           = useState([]);
+  const [findings, setFindings]   = useState([]);
+  const [apps, setApps]           = useState([]);
   const [scenarios, setScenarios] = useState([]);
-  const [editing, setEditing]   = useState(null);
-  const [execEdit, setExecEdit] = useState(false);
-  const [stepEdit, setStepEdit] = useState(null);
-  const [err, setErr]           = useState(null);
-  const [loadErr, setLoadErr]   = useState(null);
-  const { show, node }          = useToast();
+  const [editing, setEditing]     = useState(null);   // null = vue, objet = mode édition inline
+  const [saving, setSaving]       = useState(false);
+  const [execEdit, setExecEdit]   = useState(false);
+  const [stepEdit, setStepEdit]   = useState(null);
+  const [err, setErr]             = useState(null);
+  const [loadErr, setLoadErr]     = useState(null);
+  const { show, node }            = useToast();
 
   async function load() {
     try {
@@ -43,6 +44,36 @@ export function AuditDrawerContent({ auditId, onClose }) {
 
   const appName = (id) => apps.find((a) => a.id === id)?.name || "—";
 
+  // ── Édition inline ────────────────────────────────────────────────────
+  function openEdit() {
+    setErr(null);
+    setExecEdit(true);
+    setEditing({
+      name: audit.name, audit_type: audit.audit_type, status: audit.status,
+      application_id: audit.application_id, team: audit.team ?? "",
+      results: audit.results ?? "", scenario_ids: audit.scenarios.map((s) => s.id),
+    });
+  }
+  function cancelEdit() { setEditing(null); setExecEdit(false); setErr(null); }
+  const setF = (k, v) => setEditing((e) => ({ ...e, [k]: v }));
+  function toggleScenario(id) {
+    const cur = editing.scenario_ids;
+    setF("scenario_ids", cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]);
+  }
+  async function save() {
+    if (!editing.name.trim()) { setErr("Le nom est obligatoire."); return; }
+    setSaving(true);
+    try {
+      await api.updateAudit(auditId, editing);
+      if (editing.scenario_ids.length) await api.populateAudit(auditId);
+      setEditing(null);
+      setExecEdit(false);
+      show("Audit mis à jour");
+      load();
+    } catch (e) { setErr(e.message); } finally { setSaving(false); }
+  }
+
+  // ── Assessments ───────────────────────────────────────────────────────
   async function saveStep(row, patch) {
     await api.upsertAssessment(auditId, {
       audit_id: auditId,
@@ -74,30 +105,6 @@ export function AuditDrawerContent({ auditId, onClose }) {
     show("Étape mise à jour");
   }
 
-  function openEdit() {
-    setErr(null);
-    setEditing({
-      name: audit.name, audit_type: audit.audit_type, status: audit.status,
-      application_id: audit.application_id, team: audit.team,
-      results: audit.results, scenario_ids: audit.scenarios.map((s) => s.id),
-    });
-  }
-  const setF = (k, v) => setEditing((e) => ({ ...e, [k]: v }));
-  function toggleScenario(id) {
-    const cur = editing.scenario_ids;
-    setF("scenario_ids", cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]);
-  }
-  async function save() {
-    if (!editing.name.trim()) { setErr("Le nom est obligatoire."); return; }
-    try {
-      await api.updateAudit(auditId, editing);
-      if (editing.scenario_ids.length) await api.populateAudit(auditId);
-      setEditing(null);
-      show("Audit mis à jour");
-      load();
-    } catch (e) { setErr(e.message); }
-  }
-
   if (loadErr) return <div className="empty">Erreur : {loadErr}</div>;
   if (!audit)  return <div className="loading">Chargement de l'audit…</div>;
 
@@ -107,39 +114,87 @@ export function AuditDrawerContent({ auditId, onClose }) {
       <div className="drawer-content-head">
         <div>
           <div className="page-eyebrow">{audit.audit_type} · Audit #{audit.id}</div>
-          <h2 className="drawer-content-title">{audit.name}</h2>
+          <h2 className="drawer-content-title">{editing ? "Modifier l'audit" : audit.name}</h2>
         </div>
-        <button className="btn btn-primary btn-sm" onClick={openEdit}>Éditer</button>
-      </div>
-
-      {/* Métadonnées */}
-      <div className="card" style={{ marginBottom: 20 }}>
-        <span className="card-label">Métadonnées</span>
-        <div className="meta-grid" style={{ marginTop: 14 }}>
-          <Meta label="Type" value={<span className="badge violet">{audit.audit_type}</span>} />
-          <Meta label="Statut" value={<span className={`badge ${auditStatusClass(audit.status)}`}>{audit.status}</span>} />
-          <Meta label="Application" value={appName(audit.application_id)} />
-          <Meta label="Prestataire / équipe" value={audit.team || "—"} />
-          <Meta label="Jalons" value={<span className="mono">{fmtMilestones(audit.start_date, audit.end_date)}</span>} />
-          <Meta label="Scénarios CTI"
-            value={audit.scenarios.length
-              ? audit.scenarios.map((s) => s.threat_actor || s.name).join(", ")
-              : "—"} />
-        </div>
-        {audit.results && (
-          <div style={{ marginTop: 16 }}>
-            <span className="card-label">Résultats / notes</span>
-            <p className="muted" style={{ fontSize: 14, lineHeight: 1.5, marginTop: 6 }}>{audit.results}</p>
+        {editing ? (
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="btn btn-ghost btn-sm" onClick={cancelEdit}>Annuler</button>
+            <button className="btn btn-primary btn-sm" onClick={save} disabled={saving}>
+              {saving ? "Enregistrement…" : "Enregistrer"}
+            </button>
           </div>
+        ) : (
+          <button className="btn btn-primary btn-sm" onClick={openEdit}>Éditer</button>
         )}
       </div>
+
+      {/* Métadonnées — lecture ou édition inline */}
+      {editing ? (
+        <>
+          {err && <div className="modal-err" style={{ marginBottom: 16 }}>{err}</div>}
+          <div className="card" style={{ marginBottom: 20 }}>
+            <Field label="Nom *">
+              <Input value={editing.name} onChange={(v) => setF("name", v)} placeholder="Nom de l'audit" />
+            </Field>
+            <div className="field-row">
+              <Field label="Type">
+                <Select value={editing.audit_type} onChange={(v) => setF("audit_type", v)} options={ENUMS.auditType} />
+              </Field>
+              <Field label="Statut">
+                <Select value={editing.status} onChange={(v) => setF("status", v)} options={ENUMS.auditStatus} />
+              </Field>
+            </div>
+            <div className="field-row">
+              <Field label="Application *">
+                <select className="select" value={editing.application_id ?? ""}
+                  onChange={(e) => setF("application_id", Number(e.target.value))}>
+                  {apps.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              </Field>
+              <Field label="Prestataire / équipe">
+                <Input value={editing.team} onChange={(v) => setF("team", v)} placeholder="Nom de l'équipe" />
+              </Field>
+            </div>
+            <Field label="Scénarios CTI">
+              {scenarios.length === 0
+                ? <span className="faint" style={{ fontSize: 13 }}>Aucun scénario disponible.</span>
+                : <ChipPicker
+                    items={scenarios.map((s) => ({ value: s.id, label: s.threat_actor || s.name, title: s.name }))}
+                    selected={editing.scenario_ids}
+                    onToggle={toggleScenario}
+                  />}
+            </Field>
+            <Field label="Résultats / notes">
+              <Textarea value={editing.results} onChange={(v) => setF("results", v)} placeholder="Observations, conclusions…" />
+            </Field>
+          </div>
+        </>
+      ) : (
+        <div className="card" style={{ marginBottom: 20 }}>
+          <span className="card-label">Métadonnées</span>
+          <div className="meta-grid" style={{ marginTop: 14 }}>
+            <Meta label="Type" value={<span className="badge violet">{audit.audit_type}</span>} />
+            <Meta label="Statut" value={<span className={`badge ${auditStatusClass(audit.status)}`}>{audit.status}</span>} />
+            <Meta label="Application" value={appName(audit.application_id)} />
+            <Meta label="Prestataire / équipe" value={audit.team || "—"} />
+            <Meta label="Jalons" value={<span className="mono">{fmtMilestones(audit.start_date, audit.end_date)}</span>} />
+            <Meta label="Scénarios CTI"
+              value={audit.scenarios.length
+                ? audit.scenarios.map((s) => s.threat_actor || s.name).join(", ")
+                : "—"} />
+          </div>
+          {audit.results && (
+            <div style={{ marginTop: 16 }}>
+              <span className="card-label">Résultats / notes</span>
+              <p className="muted" style={{ fontSize: 14, lineHeight: 1.5, marginTop: 6 }}>{audit.results}</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Exécution ATT&CK */}
       <div className="flex between center" style={{ marginBottom: 12 }}>
         <h3 className="section-title" style={{ margin: 0 }}>Exécution ATT&CK</h3>
-        <button className="btn btn-ghost btn-sm" onClick={() => setExecEdit((v) => !v)}>
-          {execEdit ? "Terminer l'édition" : "Éditer l'exécution"}
-        </button>
       </div>
 
       {rows.length === 0 ? (
@@ -244,42 +299,7 @@ export function AuditDrawerContent({ auditId, onClose }) {
         )}
       </div>
 
-      {/* Modale édition métadonnées */}
-      {editing && (
-        <Modal title="Modifier l'audit" onClose={() => setEditing(null)} error={err}
-          footer={<>
-            <button className="btn btn-ghost" onClick={() => setEditing(null)}>Annuler</button>
-            <button className="btn btn-primary" onClick={save}>Enregistrer</button>
-          </>}
-        >
-          <Field label="Nom *"><Input value={editing.name} onChange={(v) => setF("name", v)} /></Field>
-          <div className="field-row">
-            <Field label="Type"><Select value={editing.audit_type} onChange={(v) => setF("audit_type", v)} options={ENUMS.auditType} /></Field>
-            <Field label="Statut"><Select value={editing.status} onChange={(v) => setF("status", v)} options={ENUMS.auditStatus} /></Field>
-          </div>
-          <div className="field-row">
-            <Field label="Application *">
-              <select className="select" value={editing.application_id ?? ""}
-                onChange={(e) => setF("application_id", Number(e.target.value))}>
-                {apps.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-              </select>
-            </Field>
-            <Field label="Prestataire / équipe"><Input value={editing.team} onChange={(v) => setF("team", v)} /></Field>
-          </div>
-          <Field label="Scénarios CTI">
-            {scenarios.length === 0
-              ? <span className="faint" style={{ fontSize: 13 }}>Aucun scénario disponible.</span>
-              : <ChipPicker
-                  items={scenarios.map((s) => ({ value: s.id, label: s.threat_actor || s.name, title: s.name }))}
-                  selected={editing.scenario_ids}
-                  onToggle={toggleScenario}
-                />}
-          </Field>
-          <Field label="Résultats / notes"><Textarea value={editing.results} onChange={(v) => setF("results", v)} /></Field>
-        </Modal>
-      )}
-
-      {/* Modale édition étape */}
+      {/* Modale édition étape ATT&CK */}
       {stepEdit && (
         <Modal title={`Étape ${stepEdit.step_order ?? ""} · ${stepEdit.technique.mitre_id}`}
           onClose={() => setStepEdit(null)}
