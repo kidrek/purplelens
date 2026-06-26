@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, ENUMS } from "../api/client";
+import { Drawer } from "../components/Drawer";
+import { AppDrawerContent } from "../components/AppDrawerContent";
 import {
   Modal, Field, Input, NumberInput, Select,
   Textarea, ConfirmDialog, EmptyState,
@@ -196,6 +198,7 @@ export default function ManageApplications({ onSelectApp }) {
   const [editing, setEditing]   = useState(null);
   const [confirm, setConfirm]   = useState(null);
   const [err, setErr]           = useState(null);
+  const [drawerAppId, setDrawerAppId] = useState(null);
   const { show, node }          = useToast();
 
   // État des filtres
@@ -524,8 +527,8 @@ export default function ManageApplications({ onSelectApp }) {
             <tbody>
               {!items && <tr><td colSpan={6} className="faint">Chargement…</td></tr>}
               {filtered.map(a => (
-                <tr key={a.id}>
-                  <td style={{ fontWeight: 600, cursor: "pointer" }} onClick={() => onSelectApp && onSelectApp(a.id)}>
+                <tr key={a.id} style={{ background: drawerAppId === a.id ? "rgba(83,74,183,.06)" : undefined }}>
+                  <td style={{ fontWeight: 600, cursor: "pointer" }} onClick={() => setDrawerAppId(a.id)}>
                     {a.name}
                   </td>
                   <td><span className="badge violet">{a.exposure}</span></td>
@@ -609,6 +612,24 @@ export default function ManageApplications({ onSelectApp }) {
           onCancel={() => setConfirm(null)}
         />
       )}
+      {/* ── Drawer détail application ── */}
+      <Drawer
+        open={!!drawerAppId}
+        onClose={() => setDrawerAppId(null)}
+        title=""
+      >
+        {drawerAppId && (
+          <AppDrawerContent
+            appId={drawerAppId}
+            onEdit={() => {
+              const app = items?.find(a => a.id === drawerAppId);
+              if (app) { openEdit(app); }
+            }}
+            onClose={() => setDrawerAppId(null)}
+          />
+        )}
+      </Drawer>
+
       {node}
     </>
   );

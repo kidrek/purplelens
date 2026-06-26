@@ -8,10 +8,10 @@ import { useToast } from "../lib/useToast";
 import { attackUrl } from "../lib/d3fendData";
 
 const ENGAGEMENT_COLORS = {
-  "BAS":         { bg: "rgba(55,138,221,.1)",  border: "rgba(55,138,221,.4)",  text: "#185FA5" },
-  "Pentest":     { bg: "rgba(239,159,39,.1)",  border: "rgba(239,159,39,.4)",  text: "#854F0B" },
-  "Red Team":    { bg: "rgba(226,75,74,.1)",   border: "rgba(226,75,74,.4)",   text: "#A32D2D" },
-  "Purple Team": { bg: "rgba(83,74,183,.1)",   border: "rgba(83,74,183,.4)",   text: "#534AB7" },
+  "BAS":         { bg: "#042C53", border: "#0C447C", text: "#85B7EB" },
+  "Pentest":     { bg: "#412402", border: "#633806", text: "#FAC775" },
+  "Red Team":    { bg: "#501313", border: "#791F1F", text: "#F09595" },
+  "Purple Team": { bg: "#26215C", border: "#3C3489", text: "#AFA9EC" },
 };
 
 /**
