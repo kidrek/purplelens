@@ -622,8 +622,8 @@ export default function ManageApplications({ onSelectApp }) {
           <AppDrawerContent
             appId={drawerAppId}
             onEdit={() => {
-              const app = items?.find(a => a.id === drawerAppId);
-              if (app) { openEdit(app); }
+              // Recharger la liste après édition depuis le drawer
+              load();
             }}
             onClose={() => setDrawerAppId(null)}
           />

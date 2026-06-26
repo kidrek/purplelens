@@ -8,6 +8,7 @@
  */
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import { AppEditForm } from "./AppEditForm";
 
 // ── Tokens de style ───────────────────────────────────────────────────────────
 
@@ -101,6 +102,8 @@ export function AppDrawerContent({ appId, onEdit }) {
   const [audits,   setAudits]   = useState([]);
   const [findings, setFindings] = useState([]);
   const [loading,  setLoading]  = useState(true);
+  const [editing,  setEditing]  = useState(false);  // mode édition inline
+  const [appForm,  setAppForm]  = useState(null);   // données app pour le formulaire
 
   // Filtres audits
   const [auditFilter, setAuditFilter] = useState("all");
@@ -115,6 +118,8 @@ export function AppDrawerContent({ appId, onEdit }) {
     setAuditFilter("all");
     setSevFilter(null);
     setStFilter(null);
+    setEditing(false);
+    setAppForm(null);
     Promise.all([
       api.applicationDashboard(appId),
       api.getApplication ? api.getApplication(appId) : Promise.resolve(null),
@@ -123,6 +128,7 @@ export function AppDrawerContent({ appId, onEdit }) {
     ]).then(([d, a, allAudits, f]) => {
       setDash(d);
       setApp(a);
+      setAppForm(a || {});
       setAudits((allAudits || []).filter(au => au.application_id === appId));
       setFindings([...(f || [])].sort((a, b) => SEV_ORDER.indexOf(a.severity) - SEV_ORDER.indexOf(b.severity)));
     }).finally(() => setLoading(false));
@@ -185,14 +191,65 @@ export function AppDrawerContent({ appId, onEdit }) {
           </div>
         </div>
 
-        <button className="btn btn-ghost btn-sm" onClick={onEdit} style={{ flexShrink: 0 }}>
+        <button className="btn btn-ghost btn-sm" onClick={() => setEditing(true)} style={{ flexShrink: 0 }}>
           <i className="ti ti-edit" style={{ fontSize: 13, marginRight: 4 }} aria-hidden="true" />
           Éditer
         </button>
       </div>
 
-      {/* ── Corps ── */}
-      <div style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 18 }}>
+      {/* ── Mode édition inline ── */}
+      {editing && appForm != null && (
+        <div style={{ padding: "18px 20px" }}>
+          {/* Sous-en-tête mode édition */}
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            marginBottom: 16, paddingBottom: 12, borderBottom: "0.5px solid var(--line)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button
+                onClick={() => setEditing(false)}
+                style={{
+                  all: "unset", cursor: "pointer", display: "flex", alignItems: "center",
+                  gap: 5, fontSize: 12, color: "var(--text-faint)",
+                }}
+              >
+                <i className="ti ti-arrow-left" style={{ fontSize: 14 }} aria-hidden="true" />
+                Retour
+              </button>
+              <span style={{ fontSize: 12, color: "var(--text-faint)" }}>·</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>
+                Modifier {dash.application_name}
+              </span>
+            </div>
+          </div>
+          <AppEditForm
+            appId={appId}
+            initial={appForm}
+            onSaved={(updated) => {
+              setEditing(false);
+              // Recharger les données du drawer
+              setLoading(true);
+              Promise.all([
+                api.applicationDashboard(appId),
+                api.getApplication ? api.getApplication(appId) : Promise.resolve(null),
+                api.audits(),
+                api.findings(appId),
+              ]).then(([d, a, allAudits, f]) => {
+                setDash(d);
+                setApp(a);
+                setAppForm(a || {});
+                setAudits((allAudits || []).filter(au => au.application_id === appId));
+                setFindings([...(f || [])].sort((x, y) => SEV_ORDER.indexOf(x.severity) - SEV_ORDER.indexOf(y.severity)));
+              }).finally(() => setLoading(false));
+              onEdit?.();
+            }}
+            onCancel={() => setEditing(false)}
+          />
+        </div>
+      )}
+
+      {/* ── Corps (vue détail) ── */}
+      {!editing && <div style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 18 }}>
 
         {/* Informations */}
         <div>
@@ -499,7 +556,7 @@ export function AppDrawerContent({ appId, onEdit }) {
           </div>
         </div>
 
-      </div>
+      </div>}
     </div>
   );
 }
