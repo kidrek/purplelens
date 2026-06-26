@@ -110,6 +110,8 @@ const TACTIC_ORDER = [
 function ScenarioMatrix({ items }) {
   if (!items || items.length === 0) return null;
 
+  const COLLAPSE_THRESHOLD = 2;
+
   // Collecte toutes les techniques depuis les steps
   const byTactic = {};
   for (const s of items) {
@@ -134,6 +136,13 @@ function ScenarioMatrix({ items }) {
     ...Object.keys(byTactic).filter(t => !TACTIC_ORDER.includes(t)),
   ];
 
+  // Seuil de repli automatique
+  const maxRows = tactics.length > 0
+    ? Math.max(...tactics.map(t => byTactic[t].size))
+    : 0;
+
+  const [collapsed, setCollapsed] = useState(true);
+
   if (tactics.length === 0) return (
     <div className="card faint" style={{ fontSize: 13, marginBottom: 20 }}>
       Aucune technique mappée. Ajoutez des étapes à vos scénarios.
@@ -141,37 +150,70 @@ function ScenarioMatrix({ items }) {
   );
 
   return (
-    <div className="matrix-wrap" style={{ marginBottom: 20 }}>
-      <div className="matrix-grid">
-        {tactics.map(tactic => {
-          const techs = [...byTactic[tactic].values()];
-          return (
-            <div className="matrix-col" key={tactic}>
-              <div className="matrix-col-head" title={tactic}>{tactic}</div>
-              <div className="matrix-cells">
-                {techs.map(t => (
-                  <div
-                    key={t.mitre_id}
-                    className="matrix-cell scen-matrix-cell"
-                    title={`${t.mitre_id} — ${t.name}\nScénarios : ${t.scenarios.join(", ")}`}
-                  >
-                    <span className="matrix-ttp">{t.mitre_id}</span>
-                    <span className="matrix-tname">{t.name}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
+    <div style={{ marginBottom: 20 }}>
+      {/* Header avec titre + bouton repli */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+        <h2 className="section-title" style={{ margin: 0, flex: 1 }}>
+          Matrice MITRE ATT&amp;CK — couverture des scénarios
+        </h2>
+        <button
+          className="matrix-collapse-btn"
+          onClick={() => setCollapsed(c => !c)}
+        >
+          <span className={`matrix-chv${collapsed ? "" : " up"}`}>▾</span>
+          {collapsed ? "Déplier" : "Replier"}
+        </button>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12 }}>
-        <span style={{
-          width: 13, height: 13, borderRadius: 4, display: "inline-block", flexShrink: 0,
-          background: "rgba(83,74,183,.18)", border: "1px solid rgba(83,74,183,.55)",
-        }} />
-        <span style={{ fontSize: 12, color: "var(--text-dim)" }}>
-          Technique présente dans au moins un scénario — survolez une cellule pour voir les scénarios associés
-        </span>
+
+      {/* Corps de la matrice avec repli */}
+      <div style={{ position: "relative" }}>
+        <div
+          className="matrix-wrap"
+          style={{
+            maxHeight: collapsed ? 130 : "none",
+            overflow: collapsed ? "hidden" : "visible",
+          }}
+        >
+          <div className="matrix-grid">
+            {tactics.map(tactic => {
+              const techs = [...byTactic[tactic].values()];
+              return (
+                <div className="matrix-col" key={tactic}>
+                  <div className="matrix-col-head" title={tactic}>{tactic}</div>
+                  <div className="matrix-cells">
+                    {techs.map(t => (
+                      <div
+                        key={t.mitre_id}
+                        className="matrix-cell scen-matrix-cell"
+                        title={`${t.mitre_id} — ${t.name}\nScénarios : ${t.scenarios.join(", ")}`}
+                      >
+                        <span className="matrix-ttp">{t.mitre_id}</span>
+                        <span className="matrix-tname">{t.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12 }}>
+            <span style={{
+              width: 13, height: 13, borderRadius: 4, display: "inline-block", flexShrink: 0,
+              background: "rgba(83,74,183,.18)", border: "1px solid rgba(83,74,183,.55)",
+            }} />
+            <span style={{ fontSize: 12, color: "var(--text-dim)" }}>
+              Technique présente dans au moins un scénario — survolez une cellule pour voir les scénarios associés
+            </span>
+          </div>
+        </div>
+        {/* Fondu de repli */}
+        {collapsed && (
+          <div style={{
+            position: "absolute", bottom: 0, left: 0, right: 0, height: 56,
+            background: "linear-gradient(transparent, var(--bg))",
+            pointerEvents: "none",
+          }} />
+        )}
       </div>
     </div>
   );
@@ -215,10 +257,7 @@ export default function ManageScenarios() {
 
       {/* Matrice MITRE */}
       {items && items.length > 0 && (
-        <>
-          <h2 className="section-title">Matrice MITRE ATT&CK — couverture des scénarios</h2>
-          <ScenarioMatrix items={items} />
-        </>
+        <ScenarioMatrix items={items} />
       )}
 
       {/* Liste des scénarios */}

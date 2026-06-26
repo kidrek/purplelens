@@ -40,7 +40,7 @@ export function MitreMatrix({ steps }) {
 
   // Calcul du seuil de repli
   const maxRows = Math.max(...columns.map(c => c.steps.length));
-  const [collapsed, setCollapsed] = useState(maxRows > COLLAPSE_THRESHOLD);
+  const [collapsed, setCollapsed] = useState(true);
 
   const totalTech  = validSteps.length;
   const totalTactics = columns.length;
