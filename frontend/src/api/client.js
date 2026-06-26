@@ -27,6 +27,8 @@ export const api = {
   applications: () => req("GET", "/applications"),
   applicationsKpis: () => req("GET", "/applications/kpis"),
   applicationsCoverage: () => req("GET", "/applications/coverage"),
+  mitreTechniqueSearch: (q, subtechniques = false) =>
+    req("GET", `/referentials/mitre/search?q=${encodeURIComponent(q)}&subtechniques=${subtechniques}`),
   getApplication: (id) => req("GET", `/applications/${id}`),
   createApplication: (b) => req("POST", "/applications", b),
   updateApplication: (id, b) => req("PUT", `/applications/${id}`, b),

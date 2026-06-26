@@ -2,7 +2,9 @@ import { useState } from "react";
 import { ENUMS } from "../api/client";
 import { Drawer } from "./Drawer";
 import { ScenarioForm } from "./ScenarioForm";
+import { D3fendAccordion } from "./D3fendAccordion";
 import { useToast } from "../lib/useToast";
+import { attackUrl } from "../lib/d3fendData";
 
 const ENGAGEMENT_COLORS = {
   "BAS":         { bg: "rgba(55,138,221,.1)",  border: "rgba(55,138,221,.4)",  text: "#185FA5" },
@@ -10,8 +12,6 @@ const ENGAGEMENT_COLORS = {
   "Red Team":    { bg: "rgba(226,75,74,.1)",   border: "rgba(226,75,74,.4)",   text: "#A32D2D" },
   "Purple Team": { bg: "rgba(83,74,183,.1)",   border: "rgba(83,74,183,.4)",   text: "#534AB7" },
 };
-
-const EMPTY_STEP = { tactic: "Initial Access", mitre_id: "", technique_name: "", action: "", description: "" };
 
 /**
  * ScenarioDrawerContent — contenu complet d'un scénario, utilisable dans un Drawer.
@@ -39,6 +39,8 @@ export function ScenarioDrawerContent({ scenario: initialScenario, onClose, onUp
       action: st.action, description: st.description,
     })),
   };
+
+  const sortedSteps = [...scenario.steps].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   return (
     <>
@@ -91,7 +93,7 @@ export function ScenarioDrawerContent({ scenario: initialScenario, onClose, onUp
         </div>
       )}
 
-      {/* Kill-chain */}
+      {/* Kill-chain + D3FEND dans la même card */}
       <h3 className="section-title" style={{ marginBottom: 10 }}>
         Kill-chain · {scenario.steps.length} étape{scenario.steps.length > 1 ? "s" : ""}
       </h3>
@@ -100,35 +102,52 @@ export function ScenarioDrawerContent({ scenario: initialScenario, onClose, onUp
           Aucune étape définie pour ce scénario.
         </div>
       ) : (
-        <div className="card" style={{ marginBottom: 16 }}>
-          <div className="killchain">
-            {[...scenario.steps].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((st, i) => (
-              <div className="kc-step" key={st.id ?? i}>
-                <div className="kc-num kc-none" style={{
-                  background: "rgba(83,74,183,.15)",
-                  border: "1px solid rgba(83,74,183,.4)",
-                  color: "var(--violet-bright)",
-                }}>
-                  {st.order ?? i + 1}
-                </div>
-                <div className="kc-body">
-                  <div className="kc-line1">
-                    <span className="kc-tactic">{tacticLabel(st.tactic) || st.tactic}</span>
-                    {st.mitre_id && <span className="ttp">{st.mitre_id}</span>}
-                    {st.technique_name && (
-                      <span className="kc-name">{st.technique_name}</span>
+        <div className="card" style={{ marginBottom: 16, padding: 0, overflow: "hidden" }}>
+          {/* Kill-chain */}
+          <div style={{ padding: "16px 18px" }}>
+            <div className="killchain">
+              {sortedSteps.map((st, i) => (
+                <div className="kc-step" key={st.id ?? i}>
+                  <div className="kc-num kc-none" style={{
+                    background: "rgba(83,74,183,.15)",
+                    border: "1px solid rgba(83,74,183,.4)",
+                    color: "var(--violet-bright)",
+                  }}>
+                    {st.order ?? i + 1}
+                  </div>
+                  <div className="kc-body">
+                    <div className="kc-line1">
+                      <span className="kc-tactic">{tacticLabel(st.tactic) || st.tactic}</span>
+                      {st.mitre_id && (
+                        <a
+                          href={attackUrl(st.mitre_id)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ttp"
+                          style={{ textDecoration: "none" }}
+                          title={`Voir ${st.mitre_id} sur ATT&CK`}
+                        >
+                          {st.mitre_id}
+                        </a>
+                      )}
+                      {st.technique_name && (
+                        <span className="kc-name">{st.technique_name}</span>
+                      )}
+                    </div>
+                    {st.description && <div className="kc-desc">{st.description}</div>}
+                    {st.action && (
+                      <div className="kc-cmd">
+                        <span className="kc-prompt">$</span> {st.action}
+                      </div>
                     )}
                   </div>
-                  {st.description && <div className="kc-desc">{st.description}</div>}
-                  {st.action && (
-                    <div className="kc-cmd">
-                      <span className="kc-prompt">$</span> {st.action}
-                    </div>
-                  )}
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
+
+          {/* Section D3FEND accordéon — dans la même card */}
+          <D3fendAccordion steps={sortedSteps} />
         </div>
       )}
 
@@ -164,7 +183,7 @@ export function ScenarioDrawerContent({ scenario: initialScenario, onClose, onUp
         </div>
       )}
 
-      {/* Drawer d'édition — s'ouvre par-dessus le drawer de détail */}
+      {/* Drawer d'édition */}
       <Drawer
         open={editDrawer}
         onClose={() => setEditDrawer(false)}
@@ -173,8 +192,7 @@ export function ScenarioDrawerContent({ scenario: initialScenario, onClose, onUp
         <ScenarioForm
           initial={initialForm}
           scenarioId={scenario.id}
-          onSaved={(updated) => {
-            setScenario(s => ({ ...s, ...initialForm }));
+          onSaved={() => {
             setEditDrawer(false);
             onUpdated?.();
           }}

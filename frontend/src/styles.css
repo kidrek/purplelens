@@ -1118,3 +1118,361 @@ label.lbl { display: block; font-size: 11px; text-transform: uppercase; letter-s
 }
 .scen-matrix-cell .matrix-ttp { color: var(--violet-bright) !important; }
 .scen-matrix-cell:hover { filter: brightness(1.15); transform: translateY(-1px); }
+
+/* ── MitreTechniquePicker ─────────────────────────────────────────────────── */
+.mtp-wrap { position: relative; }
+
+.mtp-search-wrap { position: relative; }
+.mtp-search-icon {
+  position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+  font-size: 16px; color: var(--text-faint); pointer-events: none; line-height: 1;
+}
+.mtp-input { padding-left: 34px !important; }
+
+.mtp-dropdown {
+  position: absolute; left: 0; right: 0; top: calc(100% + 4px);
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 8px; z-index: 300;
+  max-height: 240px; overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0,0,0,.4);
+}
+.mtp-dd-head {
+  padding: 5px 11px; font-size: 10px; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--text-faint);
+  background: var(--surface-2); border-bottom: 1px solid var(--line);
+}
+.mtp-dd-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 11px; cursor: pointer;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+  transition: background .1s;
+}
+.mtp-dd-item:last-child { border-bottom: none; }
+.mtp-dd-item:hover { background: var(--surface-2); }
+.mtp-dd-id {
+  font-family: var(--mono); font-size: 12px; font-weight: 700;
+  color: var(--violet-bright); min-width: 78px; padding-top: 1px; flex-shrink: 0;
+}
+.mtp-dd-body { flex: 1; }
+.mtp-dd-name { display: block; font-size: 13px; color: var(--text); font-weight: 500; }
+.mtp-dd-tactic { display: block; font-size: 11px; color: var(--text-faint); margin-top: 2px; }
+
+/* Technique sélectionnée */
+.mtp-selected {
+  display: flex; align-items: center; gap: 12px;
+  background: rgba(139,92,246,.08);
+  border: 1px solid rgba(139,92,246,.4);
+  border-radius: 8px; padding: 10px 12px;
+}
+.mtp-selected-info { flex: 1; min-width: 0; }
+.mtp-selected-id {
+  font-family: var(--mono); font-size: 14px; font-weight: 700;
+  color: var(--violet-bright);
+}
+.mtp-selected-name { font-size: 13px; font-weight: 500; color: var(--text); margin-top: 2px; }
+.mtp-selected-tactic {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; color: var(--text-faint); margin-top: 5px;
+}
+.mtp-tactic-pill {
+  font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px;
+  background: rgba(139,92,246,.1); border: 1px solid rgba(139,92,246,.3);
+  color: var(--violet-bright);
+}
+.mtp-clear {
+  background: none; border: none; cursor: pointer;
+  font-size: 18px; color: var(--text-faint); padding: 0; line-height: 1; flex-shrink: 0;
+}
+.mtp-clear:hover { color: var(--text); }
+
+/* ── ScenarioForm — sections ATT&CK / D3FEND ─────────────────────────────── */
+/* ── Scen section (ATT&CK steps list in form) ── */
+.scen-section {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: visible;
+  margin-bottom: 4px;
+}
+.scen-section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+  border-radius: 11px 11px 0 0;
+}
+.scen-badge {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 5px;
+}
+.scen-badge-atk {
+  background: rgba(226,75,74,.1);
+  color: #A32D2D;
+  border: 0.5px solid rgba(226,75,74,.35);
+}
+.scen-badge-d3f {
+  background: rgba(29,158,117,.1);
+  color: #0F6E56;
+  border: 0.5px solid rgba(29,158,117,.35);
+}
+.scen-section-title { font-size: 13px; font-weight: 500; color: var(--text); }
+.scen-section-count { font-size: 12px; color: var(--text-faint); margin-left: auto; }
+
+.scen-items {
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  border-bottom: 1px solid var(--line);
+}
+.scen-item-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--surface-2);
+  border: 0.5px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 11px;
+  animation: scen-pop .2s cubic-bezier(.175,.885,.32,1.275);
+}
+@keyframes scen-pop {
+  from { opacity: 0; transform: scale(.97) translateY(-3px); }
+  to   { opacity: 1; transform: scale(1)   translateY(0); }
+}
+.scen-num {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.scen-num-atk {
+  border-radius: 50%;
+  background: rgba(83,74,183,.15);
+  border: 1px solid rgba(83,74,183,.4);
+  color: var(--violet-bright);
+}
+.scen-item-body { flex: 1; min-width: 0; }
+.scen-item-line1 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 2px;
+}
+.scen-item-name  { font-size: 13px; font-weight: 500; color: var(--text); }
+.scen-item-ref   {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.scen-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ── Bouton ⓘ MITRE ── */
+.mitre-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  background: none;
+  border: 0.5px solid var(--line);
+  color: var(--text-faint);
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all .1s;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.mitre-info-btn-atk:hover {
+  background: rgba(226,75,74,.08);
+  border-color: rgba(226,75,74,.4);
+  color: #A32D2D;
+}
+.mitre-info-btn-d3f:hover {
+  background: rgba(29,158,117,.08);
+  border-color: rgba(29,158,117,.4);
+  color: #0F6E56;
+}
+
+/* Zone d'ajout */
+.scen-add-zone  { padding: 12px 14px; }
+.scen-add-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-faint);
+  margin-bottom: 8px;
+}
+.scen-add-fields { margin-top: 8px; }
+
+/* ── D3FEND accordéon ── */
+.d3f-section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border-top: 1px solid var(--line);
+}
+.d3f-section-body {
+  padding: 10px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.d3f-acc-item {
+  display: flex;
+  gap: 14px;
+  position: relative;
+}
+.d3f-acc-item:not(:last-child) { padding-bottom: 0; }
+.d3f-acc-connector {
+  position: absolute;
+  left: 14px;
+  top: 30px;
+  bottom: -6px;
+  width: 2px;
+  background: rgba(29,158,117,.22);
+}
+.d3f-acc-circle {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  z-index: 1;
+  background: rgba(29,158,117,.08);
+  border: 1.5px solid rgba(29,158,117,.5);
+  color: #0F6E56;
+}
+.d3f-acc-header {
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+  user-select: none;
+}
+.d3f-acc-header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 4px 0 5px;
+}
+.d3f-acc-name { font-size: 13px; font-weight: 500; color: var(--text); }
+.d3f-acc-pill {
+  font-size: 10px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: rgba(29,158,117,.1);
+  border: 0.5px solid rgba(29,158,117,.3);
+  color: #0F6E56;
+  white-space: nowrap;
+}
+.d3f-acc-toggle {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-faint);
+  padding: 2px 7px;
+  border-radius: 5px;
+  border: 0.5px solid var(--line);
+  background: var(--surface-2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  transition: background .12s;
+  font-family: var(--mono);
+}
+.d3f-acc-toggle:hover { background: var(--surface); }
+.d3f-acc-chevron {
+  display: inline-block;
+  transition: transform .2s;
+  font-size: 12px;
+  line-height: 1;
+}
+.d3f-acc-chevron.closed { transform: rotate(-90deg); }
+.d3f-acc-measures {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 5px 0 4px;
+}
+.d3f-measure-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--surface-2);
+  border: 0.5px solid var(--line);
+  border-radius: 7px;
+}
+.d3f-measure-name { font-size: 12px; font-weight: 500; color: var(--text); flex: 1; min-width: 0; }
+.d3f-measure-link {
+  font-size: 10px;
+  font-family: var(--mono);
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(29,158,117,.08);
+  border: 0.5px solid rgba(29,158,117,.3);
+  color: #0F6E56;
+  text-decoration: none;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  transition: background .1s;
+}
+.d3f-measure-link:hover { background: rgba(29,158,117,.16); }
+.d3f-sep {
+  height: 0.5px;
+  background: var(--line);
+  margin: 2px 0;
+}
+
+/* D3FEND catégories */
+.d3cat {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.d3cat-detect  { background: rgba(59,130,246,.1);  color: #185FA5; border: 0.5px solid rgba(59,130,246,.3); }
+.d3cat-harden  { background: rgba(29,158,117,.1);  color: #0F6E56; border: 0.5px solid rgba(29,158,117,.3); }
+.d3cat-isolate { background: rgba(239,159,39,.1);  color: #854F0B; border: 0.5px solid rgba(239,159,39,.3); }
+.d3cat-deceive { background: rgba(139,92,246,.1);  color: var(--violet-bright); border: 0.5px solid rgba(139,92,246,.3); }
+.d3cat-evict   { background: rgba(226,75,74,.1);   color: #A32D2D; border: 0.5px solid rgba(226,75,74,.3); }
+.d3cat-restore { background: rgba(55,138,221,.1);  color: #185FA5; border: 0.5px solid rgba(55,138,221,.3); }
