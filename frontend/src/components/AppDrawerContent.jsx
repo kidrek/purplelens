@@ -13,39 +13,39 @@ import { AppEditForm } from "./AppEditForm";
 // ── Tokens de style ───────────────────────────────────────────────────────────
 
 const AUDIT_TYPE_STYLE = {
-  "BAS":         { bg: "rgba(55,138,221,.1)",  border: "rgba(55,138,221,.3)",  text: "#185FA5" },
-  "Pentest":     { bg: "rgba(239,159,39,.1)",  border: "rgba(239,159,39,.3)",  text: "#854F0B" },
-  "Red Team":    { bg: "rgba(226,75,74,.1)",   border: "rgba(226,75,74,.3)",   text: "#A32D2D" },
-  "Purple Team": { bg: "rgba(83,74,183,.1)",   border: "rgba(83,74,183,.3)",   text: "#534AB7" },
+  "BAS":         { bg: "rgba(55,138,221,.15)", border: "0.5px solid #185FA5", text: "#85B7EB" },
+  "Pentest":     { bg: "rgba(239,159,39,.15)", border: "0.5px solid #854F0B", text: "#FAC775" },
+  "Red Team":    { bg: "rgba(226,75,74,.15)",  border: "0.5px solid #993C1D", text: "#F09595" },
+  "Purple Team": { bg: "rgba(83,74,183,.15)",  border: "0.5px solid #534AB7", text: "#AFA9EC" },
 };
 
 const AUDIT_STATUS_STYLE = {
-  "Draft":       { bg: "#2C2C2A", border: "#444441", text: "#B4B2A9", dot: "#B4B2A9", label: "Brouillon"  },
-  "Scoping":     { bg: "#042C53", border: "#0C447C", text: "#85B7EB", dot: "#85B7EB", label: "Scoping"    },
-  "In Progress": { bg: "#412402", border: "#633806", text: "#FAC775", dot: "#FAC775", label: "En cours"   },
-  "Review":      { bg: "#26215C", border: "#3C3489", text: "#AFA9EC", dot: "#AFA9EC", label: "Review"     },
-  "Completed":   { bg: "#04342C", border: "#085041", text: "#5DCAA5", dot: "#5DCAA5", label: "Terminé"    },
-  "Closed":      { bg: "#501313", border: "#791F1F", text: "#F09595", dot: "#F09595", label: "Clôturé"    },
+  "Draft":       { bg: "rgba(136,135,128,.15)", border: "0.5px solid #5F5E5A", text: "#B4B2A9", dot: "#B4B2A9", label: "Brouillon"  },
+  "Scoping":     { bg: "rgba(55,138,221,.15)", border: "0.5px solid #185FA5", text: "#85B7EB", dot: "#85B7EB", label: "Scoping"    },
+  "In Progress": { bg: "rgba(239,159,39,.15)", border: "0.5px solid #854F0B", text: "#FAC775", dot: "#FAC775", label: "En cours"   },
+  "Review":      { bg: "rgba(83,74,183,.15)", border: "0.5px solid #534AB7", text: "#AFA9EC", dot: "#AFA9EC", label: "Review"     },
+  "Completed":   { bg: "rgba(29,158,117,.15)", border: "0.5px solid #0F6E56", text: "#5DCAA5", dot: "#5DCAA5", label: "Terminé"    },
+  "Closed":      { bg: "rgba(226,75,74,.15)", border: "0.5px solid #993C1D", text: "#F09595", dot: "#F09595", label: "Clôturé"    },
 };
 const AUDIT_FILTER_ORDER = ["Draft", "Scoping", "In Progress", "Review", "Completed", "Closed"];
 
 const SEV_ORDER = ["Critical", "High", "Medium", "Low", "Info"];
 const SEVERITY_STYLE = {
-  "Critical": { bg: "#501313", border: "#791F1F", text: "#F09595", dot: "#F09595", bar: "#E24B4A", label: "Critique" },
-  "High":     { bg: "#412402", border: "#633806", text: "#FAC775", dot: "#FAC775", bar: "#EF9F27", label: "Haute"    },
-  "Medium":   { bg: "#26215C", border: "#3C3489", text: "#AFA9EC", dot: "#AFA9EC", bar: "#7F77DD", label: "Moyenne"  },
-  "Low":      { bg: "#04342C", border: "#085041", text: "#5DCAA5", dot: "#5DCAA5", bar: "#1D9E75", label: "Basse"    },
-  "Info":     { bg: "#2C2C2A", border: "#444441", text: "#B4B2A9", dot: "#B4B2A9", bar: "#444441", label: "Info" },
+  "Critical": { bg: "rgba(226,75,74,.15)", border: "0.5px solid #993C1D", text: "#F09595", dot: "#F09595", bar: "#E24B4A", label: "Critique" },
+  "High":     { bg: "rgba(239,159,39,.15)", border: "0.5px solid #854F0B", text: "#FAC775", dot: "#FAC775", bar: "#EF9F27", label: "Haute"    },
+  "Medium":   { bg: "rgba(83,74,183,.15)", border: "0.5px solid #534AB7", text: "#AFA9EC", dot: "#AFA9EC", bar: "#7F77DD", label: "Moyenne"  },
+  "Low":      { bg: "rgba(29,158,117,.15)", border: "0.5px solid #0F6E56", text: "#5DCAA5", dot: "#5DCAA5", bar: "#1D9E75", label: "Basse"    },
+  "Info":     { bg: "rgba(136,135,128,.15)", border: "0.5px solid #5F5E5A", text: "#B4B2A9", dot: "#B4B2A9", bar: "#888780", label: "Info" },
 };
 
 const FINDING_STATUS_STYLE = {
-  "Open":        { bg: "#501313", border: "#791F1F", text: "#F09595", dot: "#F09595", label: "Open"       },
-  "Validated":   { bg: "#412402", border: "#633806", text: "#FAC775", dot: "#FAC775", label: "Validé"     },
-  "Assigned":    { bg: "#26215C", border: "#3C3489", text: "#AFA9EC", dot: "#AFA9EC", label: "Assigné"    },
-  "In Progress": { bg: "#042C53", border: "#0C447C", text: "#85B7EB", dot: "#85B7EB", label: "En cours"   },
-  "Fixed":       { bg: "#04342C", border: "#085041", text: "#5DCAA5", dot: "#5DCAA5", label: "Corrigé"    },
-  "Retested":    { bg: "#04342C", border: "#085041", text: "#5DCAA5", dot: "#5DCAA5", label: "Retesté"    },
-  "Closed":      { bg: "#2C2C2A", border: "#444441", text: "#B4B2A9", dot: "#B4B2A9", label: "Clôturé" },
+  "Open":        { bg: "rgba(226,75,74,.15)", border: "0.5px solid #993C1D", text: "#F09595", dot: "#F09595", label: "Open"       },
+  "Validated":   { bg: "rgba(239,159,39,.15)", border: "0.5px solid #854F0B", text: "#FAC775", dot: "#FAC775", label: "Validé"     },
+  "Assigned":    { bg: "rgba(83,74,183,.15)", border: "0.5px solid #534AB7", text: "#AFA9EC", dot: "#AFA9EC", label: "Assigné"    },
+  "In Progress": { bg: "rgba(55,138,221,.15)", border: "0.5px solid #185FA5", text: "#85B7EB", dot: "#85B7EB", label: "En cours"   },
+  "Fixed":       { bg: "rgba(29,158,117,.15)", border: "0.5px solid #0F6E56", text: "#5DCAA5", dot: "#5DCAA5", label: "Corrigé"    },
+  "Retested":    { bg: "rgba(29,158,117,.15)", border: "0.5px solid #0F6E56", text: "#5DCAA5", dot: "#5DCAA5", label: "Retesté"    },
+  "Closed":      { bg: "rgba(136,135,128,.15)", border: "0.5px solid #5F5E5A", text: "#B4B2A9", dot: "#B4B2A9", label: "Clôturé" },
 };
 const FINDING_STATUS_ORDER = ["Open", "Validated", "Assigned", "In Progress", "Fixed", "Retested", "Closed"];
 
@@ -58,22 +58,30 @@ const fmtDate = (d) =>
   d ? new Date(d).toLocaleDateString("fr-FR", { month: "short", year: "numeric" }) : "—";
 
 // Badge partagé filtre + ligne (all:unset pour les boutons)
-function Badge({ as: Tag = "span", style: extraStyle, dot, children, ...rest }) {
+// Badge filtre (bouton) — fond coloré + border
+// Badge statut inline — fond transparent, juste dot vif + texte couleur
+function Badge({ as: Tag = "span", style: extraStyle, dot, dotSize = 7, inline = false, children, ...rest }) {
+  const inlineStyle = inline ? {
+    background: "transparent",
+    border: "none",
+    padding: "0",
+  } : {};
   return (
     <Tag
       style={{
         all: Tag === "button" ? "unset" : undefined,
         boxSizing: "border-box", fontFamily: "inherit",
-        display: "inline-flex", alignItems: "center", gap: 4,
+        display: "inline-flex", alignItems: "center", gap: 5,
         fontSize: 10, fontWeight: 500, padding: "3px 9px",
         borderRadius: 10, whiteSpace: "nowrap",
         cursor: Tag === "button" ? "pointer" : "default",
         transition: "opacity .12s",
+        ...inlineStyle,
         ...extraStyle,
       }}
       {...rest}
     >
-      {dot && <span style={{ width: 5, height: 5, borderRadius: "50%", background: dot, flexShrink: 0 }} />}
+      {dot && <span style={{ width: dotSize, height: dotSize, borderRadius: "50%", background: dot, flexShrink: 0 }} />}
       {children}
     </Tag>
   );
@@ -181,7 +189,7 @@ export function AppDrawerContent({ appId, onEdit }) {
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{
               fontSize: 10, fontWeight: 500, padding: "2px 9px", borderRadius: 10,
-              background: "rgba(239,159,39,.1)", border: "0.5px solid rgba(239,159,39,.35)", color: "#854F0B",
+              background: "rgba(239,159,39,.15)", border: "0.5px solid #854F0B", color: "#FAC775",
             }}>{dash.exposure}</span>
             {dash.business_criticality?.label && (
               <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
@@ -430,7 +438,7 @@ export function AppDrawerContent({ appId, onEdit }) {
                     fontSize: 13, fontWeight: 500, color: "var(--text)",
                     flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                   }}>{audit.name}</span>
-                  <Badge dot={st.dot} extraStyle={{ background: st.bg, border: `0.5px solid ${st.border}`, color: st.text }}>
+                  <Badge inline dot={st.dot} extraStyle={{ color: st.text }}>
                     {st.label}
                   </Badge>
                   <span style={{ fontSize: 11, color: "var(--text-faint)", flexShrink: 0 }}>
@@ -547,7 +555,7 @@ export function AppDrawerContent({ appId, onEdit }) {
                     fontSize: 13, fontWeight: 500, color: "var(--text)",
                     flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                   }}>{f.title}</span>
-                  <Badge dot={fs.dot} extraStyle={{ background: fs.bg, border: `0.5px solid ${fs.border}`, color: fs.text }}>
+                  <Badge inline dot={fs.dot} extraStyle={{ color: fs.text }}>
                     {fs.label}
                   </Badge>
                 </div>

@@ -7,6 +7,7 @@ from app.models.enums import (
     AuditStatus,
     AuditType,
     Exposure,
+    FindingEventType,
     FindingStatus,
     Severity,
 )
@@ -115,6 +116,8 @@ class AuditCreate(AuditBase):
 class AuditOut(AuditBase):
     id: int
     scenarios: list[ScenarioOut] = []
+    assessments: list["AssessmentOut"] = []
+    findings: list["FindingOut"] = []
 
     class Config:
         from_attributes = True
@@ -171,6 +174,30 @@ class FindingCreate(FindingBase):
 class FindingOut(FindingBase):
     id: int
     created_at: datetime
+    updated_at: Optional[datetime] = None
+    events: list["FindingEventOut"] = []
 
     class Config:
         from_attributes = True
+
+
+# --- Journal des événements de vulnérabilité ---
+class FindingEventCreate(BaseModel):
+    event_type: FindingEventType
+    old_status: Optional[FindingStatus] = None
+    new_status: Optional[FindingStatus] = None
+    note: str = ""
+
+
+class FindingEventOut(FindingEventCreate):
+    id: int
+    finding_id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Résolution des forward references (nécessaire pour les champs list["X"])
+AuditOut.model_rebuild()
+FindingOut.model_rebuild()

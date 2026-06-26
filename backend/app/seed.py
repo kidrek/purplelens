@@ -19,9 +19,11 @@ from app.models.models import (
     DetectionAssessment,
     Evidence,
     Finding,
+    FindingEvent,
     Scenario,
     Technique,
 )
+from app.models.enums import FindingEventType
 
 # Catalogue minimal de techniques ATT&CK utilisées par les scénarios.
 TECHNIQUES = {
@@ -287,6 +289,19 @@ def run():
         Finding(title="Snapshots non protégés", cvss=7.0, severity=Severity.high,
                 status=FindingStatus.open, application_id=vmware.id, audit_id=a3.id),
     ])
+
+    db.flush()  # pour avoir les IDs des findings
+
+    # --- Événements initiaux (journal) ---
+    # On crée un événement "created" pour chaque finding du seed
+    for f in db.query(Finding).all():
+        db.add(FindingEvent(
+            finding_id=f.id,
+            event_type=FindingEventType.created,
+            new_status=f.status,
+            note="Imported from seed",
+            created_at=f.created_at,
+        ))
 
     # --- Evidence (métadonnées) ---
     db.add_all([

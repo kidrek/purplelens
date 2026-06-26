@@ -40,3 +40,11 @@ class Severity(str, enum.Enum):
     medium = "Medium"
     low = "Low"
     info = "Info"
+
+
+class FindingEventType(str, enum.Enum):
+    created        = "created"
+    status_changed = "status_changed"
+    closed         = "closed"
+    reopened       = "reopened"
+    commented      = "commented"

@@ -13,7 +13,7 @@ import time
 from sqlalchemy import inspect, text
 
 from app.core.database import Base, SessionLocal, engine
-from app.models.models import Application  # noqa: F401
+from app.models.models import Application, FindingEvent  # noqa: F401
 from app.models.referentials import ReferentialEntry, ReferentialMeta  # noqa: F401
 from app.models.mitre_catalog import MitreTechnique  # noqa: F401
 from app.models.d3fend import D3fendMapping  # noqa: F401

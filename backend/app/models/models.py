@@ -18,6 +18,7 @@ from app.models.enums import (
     AuditStatus,
     AuditType,
     Exposure,
+    FindingEventType,
     FindingStatus,
     Severity,
 )
@@ -228,8 +229,12 @@ class Finding(Base):
     audit_id = Column(ForeignKey("audits.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    updated_at = Column(DateTime, nullable=True)
+
     application = relationship("Application", back_populates="findings")
     audit = relationship("Audit", back_populates="findings")
+    events = relationship("FindingEvent", back_populates="finding",
+                          cascade="all, delete-orphan", order_by="FindingEvent.created_at")
 
 
 # ---------------------------------------------------------------------------
@@ -249,3 +254,23 @@ class Evidence(Base):
     uploaded_at = Column(DateTime, default=datetime.utcnow)
 
     audit = relationship("Audit", back_populates="evidence")
+
+
+# ---------------------------------------------------------------------------
+# Module 5b — Journal des événements de vulnérabilité
+# ---------------------------------------------------------------------------
+class FindingEvent(Base):
+    """Trace chaque changement d'état d'un finding : création, changement de
+    statut, fermeture, réouverture, commentaire libre."""
+
+    __tablename__ = "finding_events"
+
+    id         = Column(Integer, primary_key=True)
+    finding_id = Column(ForeignKey("findings.id"), nullable=False)
+    event_type = Column(Enum(FindingEventType), nullable=False)
+    old_status = Column(Enum(FindingStatus), nullable=True)
+    new_status = Column(Enum(FindingStatus), nullable=True)
+    note       = Column(Text, default="")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    finding = relationship("Finding", back_populates="events")
