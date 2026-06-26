@@ -3,6 +3,7 @@ import { ENUMS } from "../api/client";
 import { Drawer } from "./Drawer";
 import { ScenarioForm } from "./ScenarioForm";
 import { D3fendAccordion } from "./D3fendAccordion";
+import { MitreMatrix } from "./MitreMatrix";
 import { useToast } from "../lib/useToast";
 import { attackUrl } from "../lib/d3fendData";
 
@@ -93,7 +94,13 @@ export function ScenarioDrawerContent({ scenario: initialScenario, onClose, onUp
         </div>
       )}
 
-      {/* Kill-chain + D3FEND dans la même card */}
+      {/* Matrice MITRE + Kill-chain + D3FEND */}
+      {scenario.steps.length > 0 && (
+        <MitreMatrix
+          steps={sortedSteps.map((st, i) => ({ ...st, order: st.order ?? i + 1 }))}
+        />
+      )}
+
       <h3 className="section-title" style={{ marginBottom: 10 }}>
         Kill-chain · {scenario.steps.length} étape{scenario.steps.length > 1 ? "s" : ""}
       </h3>

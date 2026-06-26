@@ -3,6 +3,7 @@ import { api, ENUMS } from "../api/client";
 import { Field, Input, Textarea, SegmentedControl } from "./Form";
 import { MitreTechniquePicker } from "./MitreTechniquePicker";
 import { D3fendAccordion } from "./D3fendAccordion";
+import { MitreMatrix } from "./MitreMatrix";
 import { useToast } from "../lib/useToast";
 import { attackUrl } from "../lib/d3fendData";
 
@@ -150,6 +151,15 @@ export function ScenarioForm({ initial = null, scenarioId = null, onSaved, onCan
             onChange={v => set("sophistication", v)} options={ENUMS.sophistication} />
         </Field>
       </div>
+
+      {/* ── Matrice MITRE (aperçu dynamique) ── */}
+      {form.steps.some(s => s.mitre_id) && (
+        <MitreMatrix
+          steps={form.steps
+            .filter(s => s.mitre_id)
+            .map((s, i) => ({ ...s, order: i + 1 }))}
+        />
+      )}
 
       {/* ── Section ATT&CK ── */}
       <div className="scen-section">

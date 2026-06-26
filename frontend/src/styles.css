@@ -1476,3 +1476,157 @@ label.lbl { display: block; font-size: 11px; text-transform: uppercase; letter-s
 .d3cat-deceive { background: rgba(139,92,246,.1);  color: var(--violet-bright); border: 0.5px solid rgba(139,92,246,.3); }
 .d3cat-evict   { background: rgba(226,75,74,.1);   color: #A32D2D; border: 0.5px solid rgba(226,75,74,.3); }
 .d3cat-restore { background: rgba(55,138,221,.1);  color: #185FA5; border: 0.5px solid rgba(55,138,221,.3); }
+
+/* ── Matrice MITRE ── */
+.matrix-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.matrix-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+}
+.matrix-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 5px;
+  background: rgba(226,75,74,.1);
+  color: #A32D2D;
+  border: 0.5px solid rgba(226,75,74,.35);
+}
+.matrix-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+}
+.matrix-meta {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-left: auto;
+  margin-right: 8px;
+}
+.matrix-collapse-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text-faint);
+  padding: 3px 8px;
+  border-radius: 5px;
+  border: 0.5px solid var(--line);
+  background: var(--surface);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .12s;
+  flex-shrink: 0;
+}
+.matrix-collapse-btn:hover { background: var(--surface-2); }
+
+.matrix-chv {
+  display: inline-block;
+  transition: transform .2s;
+  font-size: 11px;
+  line-height: 1;
+}
+.matrix-chv.up { transform: rotate(180deg); }
+
+.matrix-body {
+  padding: 12px 14px 14px;
+  overflow-x: auto;
+}
+.matrix-body.collapsed {
+  max-height: 108px;
+  overflow: hidden;
+  position: relative;
+}
+.matrix-body.collapsed::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 48px;
+  background: linear-gradient(transparent, var(--surface));
+  pointer-events: none;
+}
+
+.matrix-grid {
+  display: flex;
+  gap: 6px;
+  min-width: max-content;
+}
+.matrix-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 130px;
+}
+.matrix-tactic-header {
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 500;
+  text-align: center;
+  background: rgba(83,74,183,.1);
+  border: 0.5px solid rgba(83,74,183,.25);
+  color: var(--violet-bright);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.matrix-tech-cell {
+  display: block;
+  padding: 7px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(83,74,183,.4);
+  background: rgba(83,74,183,.1);
+  position: relative;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background .1s, border-color .1s;
+}
+.matrix-tech-cell:hover {
+  background: rgba(83,74,183,.18);
+  border-color: rgba(83,74,183,.65);
+}
+.matrix-step-num {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: rgba(83,74,183,.8);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  font-family: var(--mono);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.matrix-tech-id {
+  font-size: 9px;
+  font-family: var(--mono);
+  color: var(--violet-bright);
+  opacity: .85;
+  margin-bottom: 3px;
+  padding-right: 20px;
+}
+.matrix-tech-name {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.3;
+  padding-right: 4px;
+}
