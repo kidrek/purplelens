@@ -1,85 +1,64 @@
-const BASE = "/api";
+// Client HTTP unique vers le BFF (/api).
+//
+// PRINCIPE DE SÉCURITÉ (cahier §3, spec v2) : le client ne prend AUCUNE décision
+// d'autorisation. Il envoie les cookies de session (HttpOnly, posés par /auth),
+// affiche ce que le serveur renvoie, et réagit aux refus :
+//   401 step_up_required  -> l'action exige une ré-authentification récente ;
+//   403 forbidden         -> l'action est refusée (matrice / cloisonnement / TLP).
+// Aucun jeton n'est lu ni stocké en JS (défense contre le vol de jeton via XSS).
 
-async function req(method, path, body) {
-  const opts = { method, headers: {} };
+const BASE = '/api'
+
+export class ApiError extends Error {
+  constructor(status, code, detail) {
+    super(detail || code || `HTTP ${status}`)
+    this.status = status
+    this.code = code
+    this.detail = detail
+  }
+}
+
+async function request(method, path, body) {
+  const opts = {
+    method,
+    credentials: 'include', // cookies de session HttpOnly
+    headers: { 'Accept': 'application/json' },
+  }
   if (body !== undefined) {
-    opts.headers["Content-Type"] = "application/json";
-    opts.body = JSON.stringify(body);
+    opts.headers['Content-Type'] = 'application/json'
+    opts.body = JSON.stringify(body)
   }
-  const res = await fetch(`${BASE}${path}`, opts);
-  if (!res.ok) {
-    let detail = `${res.status}`;
-    try {
-      const j = await res.json();
-      detail = j.detail || detail;
-    } catch (_) {}
-    throw new Error(detail);
+  const resp = await fetch(BASE + path, opts)
+  if (resp.status === 204) return null
+  let data = null
+  const ct = resp.headers.get('content-type') || ''
+  if (ct.includes('application/json')) data = await resp.json()
+  if (!resp.ok) {
+    const code = data?.detail?.code || data?.detail || data?.code
+    throw new ApiError(resp.status, code, data?.detail?.message || data?.detail)
   }
-  if (res.status === 204) return null;
-  return res.json();
+  return data
 }
 
 export const api = {
-  portfolio: () => req("GET", "/dashboard/portfolio"),
-  applicationDashboard: (id) => req("GET", `/dashboard/application/${id}`),
-  applicationMatrix: (id) => req("GET", `/dashboard/application/${id}/matrix`),
+  get: (p) => request('GET', p),
+  post: (p, b) => request('POST', p, b),
+  put: (p, b) => request('PUT', p, b),
+  del: (p) => request('DELETE', p),
 
-  applications: () => req("GET", "/applications"),
-  applicationsKpis: () => req("GET", "/applications/kpis"),
-  applicationsCoverage: () => req("GET", "/applications/coverage"),
-  mitreTechniqueSearch: (q, subtechniques = false) =>
-    req("GET", `/referentials/mitre/search?q=${encodeURIComponent(q)}&subtechniques=${subtechniques}`),
-  getApplication: (id) => req("GET", `/applications/${id}`),
-  createApplication: (b) => req("POST", "/applications", b),
-  updateApplication: (id, b) => req("PUT", `/applications/${id}`, b),
-  deleteApplication: (id) => req("DELETE", `/applications/${id}`),
+  // Raccourcis métier
+  whoami: () => request('GET', '/auth/whoami'),
+  login: (email, password, otp) =>
+    request('POST', '/auth/login', { email, password, totp: otp }),
+  logout: () => request('POST', '/auth/logout'),
+  stepUp: (otp) => request('POST', '/auth/step-up', { totp: otp }),
+  oidcStart: () => request('GET', '/auth/oidc/start'),
 
-  scenarios: () => req("GET", "/cti/scenarios"),
-  techniques: () => req("GET", "/cti/techniques"),
-  createScenario: (b) => req("POST", "/cti/scenarios", b),
-  updateScenario: (id, b) => req("PUT", `/cti/scenarios/${id}`, b),
-  deleteScenario: (id) => req("DELETE", `/cti/scenarios/${id}`),
+  list: (entity, params = '') => request('GET', `/${entity}${params}`),
+  create: (entity, payload) => request('POST', `/${entity}`, payload),
+  update: (entity, id, payload) => request('PUT', `/${entity}/${id}`, payload),
+  remove: (entity, id) => request('DELETE', `/${entity}/${id}`),
 
-  audits: () => req("GET", "/audits"),
-  getAudit: (id) => req("GET", `/audits/${id}`),
-  createAudit: (b) => req("POST", "/audits", b),
-  updateAudit: (id, b) => req("PUT", `/audits/${id}`, b),
-  deleteAudit: (id) => req("DELETE", `/audits/${id}`),
-  populateAudit: (id) => req("POST", `/audits/${id}/populate`),
-  assessments: (auditId) => req("GET", `/audits/${auditId}/assessments`),
-  upsertAssessment: (auditId, b) => req("POST", `/audits/${auditId}/assessments`, b),
-
-  findings: (appId, auditId) => {
-    const params = [];
-    if (appId) params.push(`application_id=${appId}`);
-    if (auditId) params.push(`audit_id=${auditId}`);
-    return req("GET", `/findings${params.length ? "?" + params.join("&") : ""}`);
-  },
-  createFinding: (b) => req("POST", "/findings", b),
-  updateFinding: (id, b) => req("PUT", `/findings/${id}`, b),
-  deleteFinding: (id) => req("DELETE", `/findings/${id}`),
-};
-
-export const ENUMS = {
-  exposure: ["Internet", "Interne", "Partenaire", "Cloud"],
-  auditType: ["BAS", "Pentest", "Red Team", "Purple Team"],
-  auditStatus: ["Draft", "Scoping", "In Progress", "Review", "Completed", "Closed"],
-  findingStatus: ["Open", "Validated", "Assigned", "In Progress", "Fixed", "Retested", "Closed"],
-  severity: ["Critical", "High", "Medium", "Low", "Info"],
-  sophistication: ["Fondamental", "Intermédiaire", "Avancé"],
-  // tactiques ATT&CK avec libellé court pour les boutons de la kill-chain
-  tactics: [
-    ["Initial Access", "Accès init."],
-    ["Execution", "Exécution"],
-    ["Persistence", "Persistance"],
-    ["Privilege Escalation", "Élév. priv."],
-    ["Defense Evasion", "Évasion"],
-    ["Credential Access", "Identifiants"],
-    ["Discovery", "Découverte"],
-    ["Lateral Movement", "Mvt latéral"],
-    ["Collection", "Collecte"],
-    ["Command and Control", "C2"],
-    ["Exfiltration", "Exfiltration"],
-    ["Impact", "Impact"],
-  ],
-};
+  journal: () => request('GET', '/journal'),
+  journalVerify: () => request('GET', '/journal/verify'),
+}

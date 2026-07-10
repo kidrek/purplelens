@@ -1,0 +1,74 @@
+/* =============================================================================
+   Tokens de la Direction Artistique v2.7 — repris VERBATIM de la maquette
+   normative (audit-tracker_phase_45_corpus.html, §2 TOKENS).
+   Thème A = Material clair / violet ; Thème B = SOC sombre / ops.
+   Le thème est piloté par l'attribut body[data-theme="light"|"dark"].
+   ============================================================================= */
+:root{
+  --r-panel:14px; --r-card:9px; --r-pill:7px; --r-mini:6px;
+  --gap:12px; --gap-lg:16px; --pad-panel:18px;
+  --topbar-h:56px; --sidebar-w:188px;
+  --t-fast:120ms; --t:200ms; --ease:cubic-bezier(.4,0,.2,1);
+}
+
+/* ---- THÈME A — Material clair / violet ---- */
+body[data-theme="light"]{
+  --bg:#F4F2F9; --surface:#FFFFFF; --surface-2:#FBFAFD; --surface-3:#FBFAFD;
+  --field:#FBFAFD;
+  --border:#E8E4F0; --border-2:#ECE8F4; --border-field:#E8E4F0;
+  --heading:#211C32; --text:#211C32; --muted:#6B6480; --faint:#9A93AC;
+  --violet:#7C3AED; --violet-cta:#A855F7; --violet-soft:#EDE7FB; --violet-accent:#6D28D9;
+  --green:#2FA84F; --green-bar:#46B863;
+  --amber:#F5A623; --cyan:#0E9BB5; --red:#E5484D; --blue:#3B82F6;
+  --nav-active-bg:#EDE7FB; --nav-active-text:#6D28D9; --nav-active-border:#7C3AED;
+  --shadow:0 2px 14px rgba(60,40,100,.08);
+  --font-display:'Poppins',var(--sys-sans);
+  --font-body:'Inter',var(--sys-sans);
+  --font-data:'Inter',var(--sys-sans);
+  --font-eyebrow:'Inter',var(--sys-sans);
+  --eyebrow-tracking:.05em; --eyebrow-weight:600;
+  --scrim:rgba(36,24,64,.42); --modal:#FFFFFF; --modal-border:#ECE8F4;
+  --caret:#7C3AED; --row-active-bg:#F4F0FC; --row-active-border:#7C3AED; --enter-glyph:#B7AECB;
+  /* puces douces — jeux (fond / bordure / texte) */
+  --c-violet-bg:#EDE7FB; --c-violet-bd:rgba(124,58,237,.45); --c-violet-tx:#6D28D9;
+  --c-red-bg:#FBE3E4;    --c-red-bd:rgba(229,72,77,.45);   --c-red-tx:#C42B30;
+  --c-amber-bg:#FCEEDA;  --c-amber-bd:rgba(245,166,35,.55);--c-amber-tx:#B5740F;
+  --c-green-bg:#E4F4E8;  --c-green-bd:rgba(47,168,79,.45); --c-green-tx:#1E7D38;
+  --c-cyan-bg:#DEF3F6;   --c-cyan-bd:rgba(14,155,181,.45); --c-cyan-tx:#0B6E81;
+  --c-blue-bg:#E3EDFD;   --c-blue-bd:rgba(59,130,246,.45); --c-blue-tx:#1D4ED8;
+  --c-gray-bg:#EEEBF3;   --c-gray-bd:rgba(154,147,172,.50);--c-gray-tx:#6B6480;
+  /* TLP — pastilles colorées texte sombre */
+  --tlp-red:#F4A7A9; --tlp-amber:#F6CE8E; --tlp-green:#9FD8AC; --tlp-clear:#E3DEEC; --tlp-ink:#2A2030;
+}
+
+/* ---- THÈME B — SOC sombre / ops ---- */
+body[data-theme="dark"]{
+  --bg:#0E0B16; --surface:#17131F; --surface-2:#15111E; --surface-3:#181322;
+  --field:#1A1526;
+  --border:#271F38; --border-2:#241E33; --border-field:#2E2742;
+  --heading:#F1EEFA; --text:#C9C2DE; --muted:#8B82A0; --faint:#6A6280;
+  --violet:#8B5CF6; --violet-cta:#7C3AED; --violet-soft:rgba(139,92,246,.14); --violet-accent:#A78BFA; --violet-accent-2:#C0A8FF;
+  --green:#34C759; --green-bar:#34C759;
+  --amber:#FFB020; --amber-crit:#E0C84A; --cyan:#22D3EE; --red:#FF5A60; --red-2:#FF6B70; --blue:#5B8DEF;
+  --nav-active-bg:rgba(139,92,246,.12); --nav-active-text:#F1EEFA; --nav-active-border:#A78BFA;
+  --shadow:0 2px 14px rgba(0,0,0,.45);
+  --font-display:'Space Grotesk',var(--sys-sans);
+  --font-body:'Inter',var(--sys-sans);
+  --font-data:'IBM Plex Mono',var(--sys-mono);
+  --font-eyebrow:'IBM Plex Mono',var(--sys-mono);
+  --eyebrow-tracking:.06em; --eyebrow-weight:500;
+  --scrim:rgba(6,4,12,.62); --modal:#17131F; --modal-border:#2A2238;
+  --caret:#A78BFA; --row-active-bg:rgba(139,92,246,.12); --row-active-border:#A78BFA; --enter-glyph:#5A5370;
+  --c-violet-bg:rgba(139,92,246,.15); --c-violet-bd:rgba(139,92,246,.55); --c-violet-tx:#C7B2FF;
+  --c-red-bg:rgba(255,90,96,.13);     --c-red-bd:rgba(255,90,96,.55);     --c-red-tx:#FF9498;
+  --c-amber-bg:rgba(255,176,32,.14);  --c-amber-bd:rgba(255,176,32,.50);  --c-amber-tx:#FFD37A;
+  --c-green-bg:rgba(52,199,89,.13);   --c-green-bd:rgba(52,199,89,.50);   --c-green-tx:#74E08D;
+  --c-cyan-bg:rgba(34,211,238,.12);   --c-cyan-bd:rgba(34,211,238,.50);   --c-cyan-tx:#7DE3F4;
+  --c-blue-bg:rgba(91,141,239,.14);   --c-blue-bd:rgba(91,141,239,.50);   --c-blue-tx:#9DBBFF;
+  --c-gray-bg:rgba(138,130,160,.12);  --c-gray-bd:rgba(138,130,160,.40);  --c-gray-tx:#B7B0C8;
+  --tlp-red:#FF6B70; --tlp-amber:#FFB020; --tlp-green:#34C759; --tlp-clear:#3A3350; --tlp-ink:#0E0B16;
+}
+:root{
+  --sys-sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --sys-mono:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace;
+}

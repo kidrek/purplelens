@@ -1,0 +1,103 @@
+/* Styles de base — s'appuient exclusivement sur les tokens DA (tokens.css). */
+*{box-sizing:border-box}
+html,body,#app{height:100%;margin:0}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:var(--font-body); font-size:14px; line-height:1.5;
+}
+h1,h2,h3{font-family:var(--font-display); color:var(--heading); font-weight:600; margin:0 0 .4em}
+.eyebrow{
+  font-family:var(--font-eyebrow); text-transform:uppercase;
+  letter-spacing:var(--eyebrow-tracking); font-weight:var(--eyebrow-weight);
+  font-size:11px; color:var(--muted);
+}
+/* Utilitaires de texte (repris de la maquette, TYPE UTILITIES §3) */
+.muted{color:var(--muted)}
+.faint{color:var(--faint)}
+.err{color:var(--red)}
+.panel{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r-panel); padding:var(--pad-panel); box-shadow:var(--shadow);
+}
+.card{
+  background:var(--surface-2); border:1px solid var(--border-2);
+  border-radius:var(--r-card); padding:14px;
+}
+.btn{
+  font-family:var(--font-body); font-weight:600; font-size:13px;
+  padding:8px 14px; border-radius:var(--r-pill); border:1px solid var(--border);
+  background:var(--surface); color:var(--text); cursor:pointer;
+  transition:background var(--t) var(--ease), border-color var(--t) var(--ease);
+}
+.btn:hover{border-color:var(--violet)}
+.btn-primary{color:#fff; border:0}
+/* Dégradé + halo violet, comme la maquette (par thème). */
+/* Correctif : la maquette utilisait data-theme="A"/"B" ; l'app pose "light"/"dark"
+   (cf. stores/ui.js) — ces sélecteurs ne matchaient jamais et .btn-primary retombait
+   sur le fond de .btn (illisible). */
+body[data-theme="light"] .btn-primary{background:linear-gradient(180deg,#8B49F0,#7C3AED)}
+body[data-theme="light"] .btn-primary:hover{background:linear-gradient(180deg,#A855F7,#8B49F0)}
+body[data-theme="dark"] .btn-primary{
+  background:linear-gradient(180deg,#8B5CF6,#7C3AED);
+  box-shadow:0 0 0 1px rgba(167,139,250,.25),0 2px 16px rgba(124,58,237,.35);
+}
+body[data-theme="dark"] .btn-primary:hover{background:linear-gradient(180deg,#9B6CFF,#8B5CF6)}
+.field{
+  width:100%; padding:9px 12px; border-radius:var(--r-mini);
+  border:1px solid var(--border-field); background:var(--field); color:var(--text);
+  font-family:var(--font-body); font-size:14px;
+}
+.field:focus{outline:none; border-color:var(--violet); caret-color:var(--caret)}
+table{width:100%; border-collapse:collapse; font-family:var(--font-data)}
+th{
+  text-align:left; font-size:11px; text-transform:uppercase;
+  letter-spacing:.04em; color:var(--muted); padding:8px 10px;
+  border-bottom:1px solid var(--border);
+}
+td{padding:9px 10px; border-bottom:1px solid var(--border-2)}
+tr:hover td{background:var(--row-active-bg)}
+.pill{
+  display:inline-block; padding:2px 9px; border-radius:var(--r-pill);
+  font-size:11px; font-weight:600; border:1px solid transparent;
+}
+.pill-violet{background:var(--c-violet-bg); border-color:var(--c-violet-bd); color:var(--c-violet-tx)}
+.pill-red{background:var(--c-red-bg); border-color:var(--c-red-bd); color:var(--c-red-tx)}
+.pill-amber{background:var(--c-amber-bg); border-color:var(--c-amber-bd); color:var(--c-amber-tx)}
+.pill-green{background:var(--c-green-bg); border-color:var(--c-green-bd); color:var(--c-green-tx)}
+.pill-cyan{background:var(--c-cyan-bg); border-color:var(--c-cyan-bd); color:var(--c-cyan-tx)}
+.pill-gray{background:var(--c-gray-bg); border-color:var(--c-gray-bd); color:var(--c-gray-tx)}
+/* Chips — puces douces génériques (DA §0.3), variante plus grande que .pill */
+.chip{
+  display:inline-flex; align-items:center; gap:6px; height:22px; padding:0 9px;
+  border-radius:var(--r-pill); font-family:var(--font-data); font-size:11px; font-weight:500;
+  line-height:1; white-space:nowrap; background:var(--c-bg); border:1px solid var(--c-bd); color:var(--c-tx);
+}
+.chip .dot{width:7px; height:7px; border-radius:50%; background:currentColor; flex:0 0 auto}
+.chip.violet{--c-bg:var(--c-violet-bg); --c-bd:var(--c-violet-bd); --c-tx:var(--c-violet-tx)}
+.chip.red{--c-bg:var(--c-red-bg); --c-bd:var(--c-red-bd); --c-tx:var(--c-red-tx)}
+.chip.amber{--c-bg:var(--c-amber-bg); --c-bd:var(--c-amber-bd); --c-tx:var(--c-amber-tx)}
+.chip.green{--c-bg:var(--c-green-bg); --c-bd:var(--c-green-bd); --c-tx:var(--c-green-tx)}
+.chip.cyan{--c-bg:var(--c-cyan-bg); --c-bd:var(--c-cyan-bd); --c-tx:var(--c-cyan-tx)}
+.chip.blue{--c-bg:var(--c-blue-bg); --c-bd:var(--c-blue-bd); --c-tx:var(--c-blue-tx)}
+.chip.gray{--c-bg:var(--c-gray-bg); --c-bd:var(--c-gray-bd); --c-tx:var(--c-gray-tx)}
+.chip.sm{height:19px; font-size:10px; padding:0 7px}
+/* TLP — pastilles normatives (DA §5) */
+.tlp{display:inline-block; padding:1px 8px; border-radius:var(--r-mini); font-size:11px; font-weight:700; color:var(--tlp-ink)}
+.tlp-RED{background:var(--tlp-red)} .tlp-AMBER{background:var(--tlp-amber)}
+/* =========================================================================
+   ACCESSIBILITÉ (DA §6 — WCAG AA) — repris de la maquette, absent jusqu'ici.
+   ========================================================================= */
+:where(button,a,input,select,[tabindex]):focus-visible{
+  outline:2px solid var(--violet); outline-offset:2px; border-radius:6px;
+}
+.sr-only{
+  position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0,0,0,0); border:0;
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms!important; animation-iteration-count:1!important;
+    transition-duration:.01ms!important; scroll-behavior:auto!important;
+  }
+}
+.tlp-GREEN{background:var(--tlp-green)} .tlp-CLEAR{background:var(--tlp-clear)}

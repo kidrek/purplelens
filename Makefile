@@ -1,112 +1,136 @@
-# PurpleLens — pilotage du déploiement Docker
-# Usage : make <cible>. Lancez `make help` pour la liste.
+# Cockpit de Pilotage Purple Team — contrat d'exploitation (DAT §4.2)
+# Toutes les cibles sont idempotentes autant que possible.
 
-# Détecte `docker compose` (v2) ou `docker-compose` (v1)
-COMPOSE := $(shell if docker compose version >/dev/null 2>&1; then echo "docker compose"; else echo "docker-compose"; fi)
-
-WEB_PORT ?= 8080
+SHELL := /bin/bash
+COMPOSE := docker compose
+ENV_FILE := .env
 
 .DEFAULT_GOAL := help
-# En production, on n'utilise QUE le compose de base (pas l'override dev),
-# donc seul le frontend est exposé.
-COMPOSE_PROD := $(COMPOSE) -f docker-compose.yml
+.PHONY: help bootstrap init init-vault tls up down logs config migrate seed import-maquette \
+        test test-e2e test-security backup restore unseal fmt lint frontend-build
 
-.PHONY: help init build up up-prod down restart logs logs-backend ps status \
-        seed reset-db shell-backend shell-db psql clean prune health open
+help: ## Affiche cette aide
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+	  awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
 
-## help: Affiche cette aide
-help:
-	@echo "PurpleLens — cibles disponibles :"
-	@echo ""
-	@grep -E '^## ' $(MAKEFILE_LIST) | sed -e 's/## //' | awk -F': ' '{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
-	@echo ""
-	@echo "Orchestrateur détecté : $(COMPOSE)"
+$(ENV_FILE):
+	@test -f $(ENV_FILE) || (cp .env.example $(ENV_FILE) && \
+	  echo ">> .env créé depuis .env.example — RENSEIGNER LES SECRETS avant la prod")
 
-## init: Crée le fichier .env depuis .env.example s'il n'existe pas
-init:
-	@if [ ! -f .env ]; then cp .env.example .env && echo ".env créé depuis .env.example — pensez à changer les secrets."; else echo ".env existe déjà."; fi
+# ── Certificat TLS de développement ─────────────────────────────────────────
+# Génère un certificat auto-signé pour le reverse proxy si absent (idempotent).
+# En production, monter un vrai certificat dans deploy/nginx/tls/.
+tls: ## Génère un certificat TLS auto-signé (dev) si absent
+	@mkdir -p deploy/nginx/tls
+	@if [ ! -f deploy/nginx/tls/fullchain.pem ]; then \
+	  echo ">> Génération d'un certificat auto-signé (dev) pour localhost..." ; \
+	  openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
+	    -keyout deploy/nginx/tls/privkey.pem \
+	    -out deploy/nginx/tls/fullchain.pem \
+	    -subj "/CN=localhost/O=Purple Cockpit (dev)" \
+	    -addext "subjectAltName=DNS:localhost,IP:127.0.0.1" 2>/dev/null ; \
+	  echo ">> Certificat écrit dans deploy/nginx/tls/ (auto-signé — avertissement navigateur attendu)." ; \
+	else \
+	  echo ">> Certificat déjà présent (deploy/nginx/tls/fullchain.pem) — rien à faire." ; \
+	fi
 
-## build: Construit les images backend et frontend
-build:
-	$(COMPOSE) build
+# ── Cycle de vie ────────────────────────────────────────────────────────────
+up: $(ENV_FILE) tls ## Démarre la stack (génère le certificat TLS dev au besoin)
+	$(COMPOSE) up -d --build
 
-## up: Démarre la stack en mode DEV (ports d'admin ouverts sur 127.0.0.1)
-up: init
-	$(COMPOSE) up -d
-	@echo ""
-	@echo "  Frontend  : http://localhost:$(WEB_PORT)"
-	@echo "  API (dev) : http://localhost:8000/docs   ·  via proxy : http://localhost:$(WEB_PORT)/docs"
-	@echo "  MinIO     : http://localhost:9001"
-	@echo ""
-	@echo "Mode dev : db, API et MinIO joignables depuis cette machine uniquement."
-	@echo "Suivez le démarrage avec : make logs"
-
-## up-prod: Démarre la stack CLOISONNÉE (seul le frontend est exposé)
-up-prod: init
-	$(COMPOSE_PROD) up -d
-	@echo ""
-	@echo "  Frontend  : http://localhost:$(WEB_PORT)"
-	@echo "  API docs  : http://localhost:$(WEB_PORT)/docs   (via le proxy)"
-	@echo ""
-	@echo "Mode cloisonné : db, API et MinIO ne sont PAS exposés sur l'hôte."
-
-## down: Arrête et supprime les conteneurs (conserve les données)
-down:
+down: ## Arrête la stack
 	$(COMPOSE) down
 
-## restart: Redémarre la stack
-restart: down up
+logs: ## Suit les logs
+	$(COMPOSE) logs -f --tail=100
 
-## logs: Suit les logs de tous les services
-logs:
-	$(COMPOSE) logs -f
+config: $(ENV_FILE) ## Affiche la config résolue ET vérifie qu'un seul service publie des ports
+	@$(COMPOSE) config >/tmp/compose.resolved.yml
+	@python3 scripts/check_ports.py /tmp/compose.resolved.yml
+	@echo ">> Exposition réseau conforme (DAT §4.1bis)"
 
-## logs-backend: Suit uniquement les logs du backend
-logs-backend:
-	$(COMPOSE) logs -f backend
+# ── Première installation ───────────────────────────────────────────────────
+bootstrap: up ## Premier démarrage complet : stack + schéma + comptes de démo
+	@echo ">> Attente de PostgreSQL..."
+	@for i in $$(seq 1 30); do \
+	  if $(COMPOSE) exec -T postgres pg_isready -q -U "$${POSTGRES_SUPERUSER:-postgres}" -d "$${POSTGRES_DB:-purple}" 2>/dev/null; then \
+	    echo ">> PostgreSQL prêt." ; break ; fi ; \
+	  if [ $$i -eq 30 ]; then echo "!! PostgreSQL indisponible après 60 s — voir '$(COMPOSE) logs postgres'" ; exit 1 ; fi ; \
+	  sleep 2 ; \
+	done
+	@$(MAKE) migrate
+	@$(MAKE) seed
+	@echo ""
+	@echo ">> Bootstrap terminé."
+	@echo ">> Connexion : https://localhost:$${EDGE_HTTPS_PORT:-443}/  —  admin@purple.local"
+	@echo ">> Mot de passe : valeur de SEED_DEFAULT_PASSWORD dans .env (champ TOTP vide)."
+	@echo ">> Étape suivante (avant le dépôt de preuves) : make init-vault (descellement + KEK)."
 
-## ps: Liste les conteneurs de la stack
-ps:
-	$(COMPOSE) ps
+init: $(ENV_FILE) ## Réseaux, buckets MinIO (Object Lock), realm Keycloak, rôles SQL
+	$(COMPOSE) up -d postgres redis minio vault keycloak clamav
+	@echo ">> Attente de la disponibilité des dépendances..."
+	@sleep 8
+	$(COMPOSE) run --rm api python -m app.storage.bootstrap   # crée buckets + Object Lock
+	@echo ">> Rôles SQL initialisés par l'entrypoint Postgres (00-roles.sh)"
 
-## status: Alias de ps avec état de santé
-status: ps
+init-vault: ## Init Vault + unseal interactif + transit engine + politiques API (wrap/unwrap)
+	$(COMPOSE) exec vault sh -c 'vault operator init -key-shares=5 -key-threshold=3 || true'
+	@echo ">> Notez les clés de descellement et le root token (docs/runbook-vault.md)"
+	$(COMPOSE) run --rm api python -m app.storage.bootstrap   # active transit + KEK clients
 
-## health: Teste les endpoints clés à travers le frontend (dev et prod)
-health:
-	@echo "Frontend : $$(curl -s -o /dev/null -w '%{http_code}' http://localhost:$(WEB_PORT)/ || echo KO)"
-	@echo "API      : $$(curl -s -o /dev/null -w '%{http_code}' http://localhost:$(WEB_PORT)/api/dashboard/portfolio || echo KO)"
-	@echo "API docs : $$(curl -s -o /dev/null -w '%{http_code}' http://localhost:$(WEB_PORT)/docs || echo KO)"
+# ── Base de données ─────────────────────────────────────────────────────────
+migrate: ## alembic upgrade head (rôle app_migrator)
+	$(COMPOSE) run --rm api alembic upgrade head
 
-## seed: Force le (re)peuplement des données de démo
-seed:
-	$(COMPOSE) exec backend python -c "from app.seed import run; run()"
+seed: ## Référentiels ATT&CK/D3FEND/OWASP/CWE/CAPEC + données de démo
+	$(COMPOSE) run --rm api python -m app.seed
 
-## reset-db: ATTENTION — détruit la base et la repeuple à neuf
-reset-db:
-	$(COMPOSE) exec backend python -c "from app.startup import init_schema; from app.seed import run; run()"
-	@echo "Base réinitialisée."
+import-maquette: $(ENV_FILE) ## migration §5 : export JSON maquette → API + sas.  FILE=chemin.json
+	@test -n "$(FILE)" || (echo "Usage: make import-maquette FILE=export.json" && exit 1)
+	$(COMPOSE) run --rm -v $(abspath $(FILE)):/import.json api python -m app.import_maquette /import.json
 
-## shell-backend: Ouvre un shell dans le conteneur backend
-shell-backend:
-	$(COMPOSE) exec backend /bin/bash
+# ── Tests (la sécurité comme code testé — DAT §6) ───────────────────────────
+test: ## pytest complet (isolation RLS, sas, matrice, custody, crypto, auth, réseau)
+	$(COMPOSE) --profile test build api-test
+	$(COMPOSE) --profile test run --rm api-test
+	@echo ">> NB : les tests RLS exigent une base migrée (make migrate au préalable)."
 
-## shell-db: Ouvre une session psql sur la base
-psql:
-	$(COMPOSE) exec db psql -U $${POSTGRES_USER:-purplelens} -d $${POSTGRES_DB:-purplelens}
+test-e2e: ## recette bout-en-bout HTTP (login, CRUD, RLS, STIX via l'API réelle)
+	$(COMPOSE) --profile test build api-test
+	$(COMPOSE) --profile test run --rm api-test pytest -q tests/test_e2e_http.py
 
-## open: Ouvre le frontend dans le navigateur (macOS/Linux)
-open:
-	@(command -v xdg-open >/dev/null && xdg-open http://localhost:$(WEB_PORT)) || \
-	 (command -v open >/dev/null && open http://localhost:$(WEB_PORT)) || \
-	 echo "Ouvrez http://localhost:$(WEB_PORT)"
+test-security: ## familles de sécurité bloquantes (DAT §6) — rapide, pré-commit
+	$(COMPOSE) --profile test build api-test
+	$(COMPOSE) --profile test run --rm api-test pytest -q \
+	  tests/test_rls_isolation.py tests/test_matrix.py tests/test_rbac_gates.py \
+	  tests/test_journal_chain.py tests/test_crypto.py tests/test_ingest_detection.py \
+	  tests/test_network_exposure.py
 
-## clean: Arrête tout et SUPPRIME les volumes (données perdues)
-clean:
-	$(COMPOSE) down -v
-	@echo "Conteneurs et volumes supprimés."
+# ── Sauvegarde / restauration ───────────────────────────────────────────────
+backup: ## pg_dump + snapshot MinIO + export scellé Vault
+	@bash scripts/backup.sh
 
-## prune: Nettoie aussi les images du projet
-prune: clean
-	$(COMPOSE) down --rmi local 2>/dev/null || true
-	@echo "Images locales du projet supprimées."
+restore: ## restauration depuis une sauvegarde.  DIR=chemin
+	@test -n "$(DIR)" || (echo "Usage: make restore DIR=backups/2026-07-04" && exit 1)
+	@bash scripts/restore.sh "$(DIR)"
+
+unseal: ## Descellement Vault après redémarrage (quorum)
+	$(COMPOSE) exec vault vault operator unseal
+
+# ── Qualité ─────────────────────────────────────────────────────────────────
+fmt: ## Formatage (ruff + prettier)
+	$(COMPOSE) run --rm api ruff format app tests
+	cd frontend && npm run format || true
+
+lint: ## Lint (ruff + eslint)
+	$(COMPOSE) run --rm api ruff check app tests
+	cd frontend && npm run lint || true
+
+frontend-build: ## Build de production du frontend
+	cd frontend && npm ci && npm run build
+
+verify-journal: ## Vérifie l'intégrité de la chaîne du journal d'audit
+	$(COMPOSE) run --rm api python -m scripts.verify_journal
+
+sync-reference: ## Synchronise les référentiels ATT&CK/D3FEND depuis MITRE
+	$(COMPOSE) run --rm api python -m scripts.sync_reference

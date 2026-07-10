@@ -1,0 +1,68 @@
+{
+  "realm": "purple",
+  "enabled": true,
+  "displayName": "Cockpit Purple Team",
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "failureFactor": 5,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA1",
+  "otpPolicyDigits": 6,
+  "otpPolicyPeriod": 30,
+  "requiredCredentials": ["password"],
+  "clients": [
+    {
+      "clientId": "purple-cockpit",
+      "name": "Cockpit Purple Team (BFF)",
+      "description": "Client confidentiel OIDC — flux Authorization Code + PKCE (S256). Le rôle applicatif n'est PAS porté par l'IdP (décision D4) : l'IdP authentifie, le produit autorise.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "secret": "change-me-in-production",
+      "redirectUris": [
+        "https://localhost/api/auth/callback",
+        "https://localhost/*"
+      ],
+      "webOrigins": ["https://localhost"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "https://localhost/+",
+        "access.token.lifespan": "300"
+      },
+      "defaultClientScopes": ["openid", "profile", "email"]
+    }
+  ],
+  "users": [
+    {
+      "username": "auditeur",
+      "email": "auditeur@purple.local",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Auditeur",
+      "lastName": "Démo",
+      "credentials": [
+        { "type": "password", "value": "ChangeMe!2026", "temporary": false }
+      ],
+      "requiredActions": ["CONFIGURE_TOTP"]
+    }
+  ],
+  "clientScopes": [
+    {
+      "name": "email",
+      "protocol": "openid-connect",
+      "attributes": { "include.in.token.scope": "true", "display.on.consent.screen": "false" }
+    }
+  ]
+}

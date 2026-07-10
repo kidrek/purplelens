@@ -1,0 +1,4377 @@
+[
+  {
+    "slug": "corp-aud-cadrage",
+    "nature": "procedure",
+    "profils": [
+      "aud"
+    ],
+    "titre_fr": "Cadrage d'un audit — pré-engagement PTES",
+    "titre_en": "Scoping an audit — PTES pre-engagement",
+    "gabarit": true,
+    "controles_iso": [
+      "A.8.34",
+      "A.5.31"
+    ],
+    "contenu": {
+      "type": "gabarit",
+      "resume": {
+        "fr": "Suite d'étapes à valider avant le premier test, pour cadrer le mandat et protéger auditeur comme client.",
+        "en": "Steps to validate before the first test, to frame the mandate and protect auditor and client alike."
+      },
+      "objectif": {
+        "fr": "Transformer une intention de test en mandat écrit, opposable et sans zone grise, avant qu'une seule requête ne parte.",
+        "en": "Turn a testing intent into a written, enforceable mandate with no grey areas, before a single request goes out."
+      },
+      "quand": {
+        "fr": "À l'ouverture de tout engagement, avant l'intelligence gathering. Rien ne démarre tant que la dernière étape n'est pas validée.",
+        "en": "At the start of any engagement, before intelligence gathering. Nothing begins until the last step is validated."
+      },
+      "outil": {
+        "fr": "Bloc engagement de l'audit · lettre d'engagement · NDA structuré",
+        "en": "Audit engagement block · engagement letter · structured NDA"
+      },
+      "hds": "GRC / SSI",
+      "source": {
+        "label": "pentest-standard.org",
+        "url": "http://www.pentest-standard.org/index.php/Pre-engagement"
+      },
+      "keypoints": [
+        {
+          "fr": "L'autorisation écrite protège l'auditeur autant que le client : sans elle, le test est juridiquement une intrusion.",
+          "en": "Written authorisation protects the auditor as much as the client: without it, the test is legally an intrusion."
+        },
+        {
+          "fr": "Le périmètre exclu est aussi important que le périmètre inclus — c'est lui qui borne la responsabilité.",
+          "en": "The excluded scope matters as much as the included scope — it is what bounds liability."
+        },
+        {
+          "fr": "Le contact d'urgence doit être joignable pendant toute la fenêtre de test, pas seulement au démarrage.",
+          "en": "The emergency contact must be reachable throughout the test window, not only at kick-off."
+        }
+      ],
+      "pieges": [
+        {
+          "fr": "Signataire sans autorité sur tous les actifs inclus (cas fréquent : SaaS ou infra hébergée chez un tiers).",
+          "en": "Signatory lacking authority over all included assets (common case: SaaS or third-party-hosted infra)."
+        },
+        {
+          "fr": "Fenêtres de test qui chevauchent une clôture comptable ou une opération métier critique.",
+          "en": "Test windows overlapping a financial close or a critical business operation."
+        },
+        {
+          "fr": "RoE trop vagues sur le social engineering ou le déni de service — à trancher explicitement.",
+          "en": "Rules of engagement too vague on social engineering or denial of service — decide explicitly."
+        }
+      ],
+      "etapes": [
+        {
+          "texte": {
+            "fr": "Définir avec le client les objectifs de l'engagement et la menace visée.",
+            "en": "Define engagement objectives and the target threat with the client."
+          },
+          "role": "Client + Manager",
+          "sortie": {
+            "fr": "Objectifs formalisés, menace de référence identifiée.",
+            "en": "Objectives formalised, reference threat identified."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Délimiter le périmètre : systèmes inclus, systèmes explicitement exclus.",
+            "en": "Delimit scope: included systems, explicitly excluded systems."
+          },
+          "role": "Manager",
+          "sortie": {
+            "fr": "Liste inclus/exclus validée, actifs tiers identifiés.",
+            "en": "Included/excluded list validated, third-party assets identified."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Rédiger les règles d'engagement : actions autorisées, interdites, ressources off-limits.",
+            "en": "Draft rules of engagement: allowed actions, forbidden actions, off-limits resources."
+          },
+          "role": "Manager + Auditeur",
+          "sortie": {
+            "fr": "RoE écrites (social engineering et DoS tranchés).",
+            "en": "RoE written (social engineering and DoS settled)."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Fixer les fenêtres de test autorisées et les créneaux à éviter.",
+            "en": "Set the authorised test windows and the slots to avoid."
+          },
+          "role": "Client",
+          "sortie": {
+            "fr": "Calendrier de test sans collision métier.",
+            "en": "Test schedule with no business collision."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Identifier le contact d'autorisation et le contact d'urgence, joignables pendant les tests.",
+            "en": "Identify the authorising contact and the emergency contact, reachable during testing."
+          },
+          "role": "Client",
+          "sortie": {
+            "fr": "Contacts nominatifs + canaux de joignabilité.",
+            "en": "Named contacts + reachability channels."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Faire signer l'autorisation explicite de tester (clause de mandat).",
+            "en": "Have the explicit authorisation to test signed (mandate clause)."
+          },
+          "role": "Client + Manager",
+          "sortie": {
+            "fr": "Mandat signé par une personne habilitée.",
+            "en": "Mandate signed by an authorised person."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Vérifier la présence et le contenu du NDA (objet, durée, traitement, restitution).",
+            "en": "Check the NDA's presence and content (purpose, duration, handling, return)."
+          },
+          "role": "Manager",
+          "sortie": {
+            "fr": "NDA structuré rattaché à l'engagement.",
+            "en": "Structured NDA attached to the engagement."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Verrouiller le cadrage : aucun test ne démarre avant cette étape validée.",
+            "en": "Lock the scoping: no test starts before this step is validated."
+          },
+          "role": "Manager",
+          "sortie": {
+            "fr": "Go/No-go tracé dans le journal d'audit.",
+            "en": "Go/No-go logged in the audit journal."
+          }
+        }
+      ],
+      "prose": [],
+      "table": null,
+      "loop": null,
+      "aller": [
+        {
+          "label": {
+            "fr": "PTES — Pré-engagement",
+            "en": "PTES — Pre-engagement"
+          },
+          "url": "http://www.pentest-standard.org/index.php/Pre-engagement"
+        }
+      ],
+      "lies": [
+        "corp-aud-legal",
+        "corp-aud-ptes",
+        "corp-aud-urgence"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-aud-ptes",
+    "nature": "metier",
+    "profils": [
+      "aud",
+      "mgr"
+    ],
+    "titre_fr": "Les 7 phases PTES, vue d'ensemble",
+    "titre_en": "The 7 PTES phases, an overview",
+    "gabarit": false,
+    "controles_iso": [],
+    "contenu": {
+      "type": "methodo",
+      "resume": {
+        "fr": "Le standard communautaire qui sert de vocabulaire pivot à l'outil : jalons, actions, découvertes.",
+        "en": "The community standard that serves as the tool's pivot vocabulary: milestones, actions, findings."
+      },
+      "objectif": {
+        "fr": "Donner à toute l'équipe un langage commun pour situer chaque activité de test dans un déroulé reconnu.",
+        "en": "Give the whole team a shared language to place each testing activity within a recognised flow."
+      },
+      "quand": null,
+      "outil": {
+        "fr": "Jalons PTES de l'audit · AuditActions taggées par phase",
+        "en": "Audit PTES milestones · AuditActions tagged by phase"
+      },
+      "hds": "",
+      "source": {
+        "label": "pentest-standard.org",
+        "url": "http://www.pentest-standard.org/index.php/Main_Page"
+      },
+      "keypoints": [
+        {
+          "fr": "Chaque phase a des entrées, des activités et des sorties identifiables — c'est ce qui rend l'avancement mesurable par jalon.",
+          "en": "Each phase has identifiable inputs, activities and outputs — that is what makes progress measurable by milestone."
+        },
+        {
+          "fr": "PTES cadre le déroulé ; il ne prescrit aucun outil. Les guides techniques sont des exemples, pas des obligations.",
+          "en": "PTES frames the flow; it prescribes no tool. The technical guides are examples, not obligations."
+        },
+        {
+          "fr": "La phase Threat Modeling est le point de jonction avec la CTI : c'est là que le scénario émulé prend forme.",
+          "en": "The Threat Modeling phase is the junction with CTI: that is where the emulated scenario takes shape."
+        }
+      ],
+      "pieges": [],
+      "etapes": [],
+      "prose": [
+        {
+          "fr": "Le PTES découpe un test d'intrusion en sept phases, du premier contact commercial jusqu'au rapport. Les trois premières — pré-engagement, collecte de renseignement, modélisation de la menace — se jouent largement en coulisses : elles préparent l'attaque et la rendent pertinente au regard de la vraie menace pesant sur l'organisation.",
+          "en": "PTES splits a penetration test into seven phases, from the first commercial contact to the report. The first three — pre-engagement, intelligence gathering, threat modeling — play out largely behind the scenes: they prepare the attack and make it relevant to the real threat facing the organisation."
+        },
+        {
+          "fr": "Les trois suivantes — analyse de vulnérabilités, exploitation, post-exploitation — sont le cœur technique : c'est là que l'expertise offensive rencontre la compréhension du métier de la cible. La septième, la restitution, capture l'ensemble du processus dans un format qui a du sens pour le client et lui apporte de la valeur.",
+          "en": "The next three — vulnerability analysis, exploitation, post-exploitation — are the technical core: this is where offensive expertise meets an understanding of the target's business. The seventh, reporting, captures the whole process in a format that makes sense to the client and delivers value."
+        },
+        {
+          "fr": "Cette structure en phases est ce qui permet à l'outil de journaliser les AuditActions et de suivre l'avancement par jalon : chaque action se rattache à une phase, chaque phase porte un statut.",
+          "en": "This phased structure is what lets the tool log AuditActions and track progress by milestone: each action attaches to a phase, each phase carries a status."
+        }
+      ],
+      "table": {
+        "head": [
+          {
+            "fr": "Phase PTES",
+            "en": "PTES phase"
+          },
+          {
+            "fr": "Sortie attendue",
+            "en": "Expected output"
+          }
+        ],
+        "rows": [
+          {
+            "tone": "violet",
+            "label": {
+              "fr": "1. Pré-engagement",
+              "en": "1. Pre-engagement"
+            },
+            "texte": {
+              "fr": "Mandat, périmètre, RoE",
+              "en": "Mandate, scope, RoE"
+            }
+          },
+          {
+            "tone": "violet",
+            "label": {
+              "fr": "2. Intelligence gathering",
+              "en": "2. Intelligence gathering"
+            },
+            "texte": {
+              "fr": "Surface d'attaque cartographiée",
+              "en": "Attack surface mapped"
+            }
+          },
+          {
+            "tone": "violet",
+            "label": {
+              "fr": "3. Threat modeling",
+              "en": "3. Threat modeling"
+            },
+            "texte": {
+              "fr": "Scénario émulé (acteur + TTP)",
+              "en": "Emulated scenario (actor + TTPs)"
+            }
+          },
+          {
+            "tone": "cyan",
+            "label": {
+              "fr": "4. Vulnerability analysis",
+              "en": "4. Vulnerability analysis"
+            },
+            "texte": {
+              "fr": "Faiblesses identifiées",
+              "en": "Weaknesses identified"
+            }
+          },
+          {
+            "tone": "cyan",
+            "label": {
+              "fr": "5. Exploitation",
+              "en": "5. Exploitation"
+            },
+            "texte": {
+              "fr": "Exploitabilité confirmée, preuves",
+              "en": "Exploitability confirmed, evidence"
+            }
+          },
+          {
+            "tone": "cyan",
+            "label": {
+              "fr": "6. Post-exploitation",
+              "en": "6. Post-exploitation"
+            },
+            "texte": {
+              "fr": "Impact métier démontré",
+              "en": "Business impact demonstrated"
+            }
+          },
+          {
+            "tone": "green",
+            "label": {
+              "fr": "7. Reporting",
+              "en": "7. Reporting"
+            },
+            "texte": {
+              "fr": "Rapport + recommandations",
+              "en": "Report + recommendations"
+            }
+          }
+        ]
+      },
+      "loop": null,
+      "aller": [
+        {
+          "label": {
+            "fr": "PTES Technical Guidelines",
+            "en": "PTES Technical Guidelines"
+          },
+          "url": "http://www.pentest-standard.org/index.php/PTES_Technical_Guidelines"
+        }
+      ],
+      "lies": [
+        "corp-aud-cadrage",
+        "corp-aud-categories",
+        "corp-aud-chaine"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-aud-referentiels",
+    "nature": "metier",
+    "profils": [
+      "aud"
+    ],
+    "titre_fr": "Choisir son référentiel méthodologique",
+    "titre_en": "Choosing your methodology framework",
+    "gabarit": false,
+    "controles_iso": [],
+    "contenu": {
+      "type": "methodo",
+      "resume": {
+        "fr": "PTES, OWASP WSTG, NIST SP 800-115 et OSSTMM sont combinables : chacun éclaire un angle différent.",
+        "en": "PTES, OWASP WSTG, NIST SP 800-115 and OSSTMM combine: each lights a different angle."
+      },
+      "objectif": {
+        "fr": "Aligner la méthodologie sur la cible réelle plutôt que sur les habitudes de l'équipe.",
+        "en": "Align the methodology with the actual target rather than the team's habits."
+      },
+      "quand": null,
+      "outil": {
+        "fr": "Champ referentiels_methodo[] de l'audit (check-list de phases adaptée)",
+        "en": "Audit referentiels_methodo[] field (adapted phase checklist)"
+      },
+      "hds": "",
+      "source": {
+        "label": "OWASP WSTG",
+        "url": "https://owasp.org/www-project-web-security-testing-guide/"
+      },
+      "keypoints": [
+        {
+          "fr": "Les référentiels ne s'opposent pas, ils se combinent : PTES pour le déroulé, WSTG pour les tests web, 800-115 pour le cadre institutionnel.",
+          "en": "Frameworks don't compete, they combine: PTES for the flow, WSTG for web tests, 800-115 for the institutional frame."
+        },
+        {
+          "fr": "Le choix se fait au cadrage et pilote la check-list de jalons — il doit refléter la cible, pas l'inertie.",
+          "en": "The choice is made at scoping and drives the milestone checklist — it must reflect the target, not inertia."
+        },
+        {
+          "fr": "Un référentiel mal choisi produit un rapport hors-sujet, même si le test technique est bon.",
+          "en": "A poorly chosen framework yields an off-topic report, even when the technical test is sound."
+        }
+      ],
+      "pieges": [],
+      "etapes": [],
+      "prose": [
+        {
+          "fr": "Le PTES structure l'engagement de bout en bout ; le WSTG d'OWASP détaille les batteries de tests applicatifs web ; le NIST SP 800-115 apporte le cadre institutionnel d'une évaluation technique, souvent exigé dans le secteur public ; l'OSSTMM formalise la mesure opérationnelle de la sécurité.",
+          "en": "PTES structures the engagement end to end; OWASP's WSTG details web application test batteries; NIST SP 800-115 provides the institutional frame of a technical assessment, often required in the public sector; OSSTMM formalises operational security measurement."
+        },
+        {
+          "fr": "En pratique, on combine : un audit web s'appuiera typiquement sur PTES (déroulé) + WSTG (couverture des tests) ; un audit d'infrastructure penchera vers PTES + 800-115. Le choix se pose au cadrage et pilote directement la check-list de jalons de l'audit.",
+          "en": "In practice, you combine: a web audit typically relies on PTES (flow) + WSTG (test coverage); an infrastructure audit leans toward PTES + 800-115. The choice arises at scoping and directly drives the audit's milestone checklist."
+        }
+      ],
+      "table": {
+        "head": [
+          {
+            "fr": "Référentiel",
+            "en": "Framework"
+          },
+          {
+            "fr": "Terrain de prédilection",
+            "en": "Preferred ground"
+          }
+        ],
+        "rows": [
+          {
+            "tone": "violet",
+            "label": "PTES",
+            "texte": {
+              "fr": "Déroulé complet d'un engagement",
+              "en": "Full engagement flow"
+            }
+          },
+          {
+            "tone": "cyan",
+            "label": "OWASP WSTG",
+            "texte": {
+              "fr": "Applications et API web",
+              "en": "Web apps and APIs"
+            }
+          },
+          {
+            "tone": "amber",
+            "label": "NIST SP 800-115",
+            "texte": {
+              "fr": "Cadre institutionnel / secteur public",
+              "en": "Institutional / public sector"
+            }
+          },
+          {
+            "tone": "gray",
+            "label": "OSSTMM",
+            "texte": {
+              "fr": "Mesure opérationnelle",
+              "en": "Operational measurement"
+            }
+          }
+        ]
+      },
+      "loop": null,
+      "aller": [
+        {
+          "label": "NIST SP 800-115",
+          "url": "https://csrc.nist.gov/pubs/sp/800/115/final"
+        }
+      ],
+      "lies": [
+        "corp-aud-ptes",
+        "corp-aud-categories"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-aud-categories",
+    "nature": "metier",
+    "profils": [
+      "aud",
+      "mgr"
+    ],
+    "titre_fr": "Red Team, Purple Team, Pentest, BAS : choisir la catégorie d'engagement",
+    "titre_en": "Red Team, Purple Team, Pentest, BAS: choosing the engagement category",
+    "gabarit": false,
+    "controles_iso": [
+      "A.8.29"
+    ],
+    "contenu": {
+      "type": "methodo",
+      "resume": {
+        "fr": "Quatre natures d'exercice, quatre niveaux de collaboration avec la défense.",
+        "en": "Four kinds of exercise, four levels of collaboration with the defence."
+      },
+      "objectif": {
+        "fr": "Choisir la catégorie non pas selon la sophistication voulue, mais selon la question à laquelle on doit répondre.",
+        "en": "Choose the category not by the sophistication you want, but by the question you must answer."
+      },
+      "quand": null,
+      "outil": {
+        "fr": "Catégorie obligatoire de l'audit · répartition du cockpit",
+        "en": "Mandatory audit category · cockpit breakdown"
+      },
+      "hds": "SSI / MCO",
+      "source": {
+        "label": "MITRE ATT&CK",
+        "url": "https://attack.mitre.org/"
+      },
+      "keypoints": [
+        {
+          "fr": "Pentest = « quelles failles ? » · Red = « résiste-t-on à cet acteur ? » · Purple = « détecte-t-on ses techniques ? » · BAS = « détecte-t-on encore ? »",
+          "en": "Pentest = \"which flaws?\" · Red = \"do we withstand this actor?\" · Purple = \"do we detect its techniques?\" · BAS = \"do we still detect?\""
+        },
+        {
+          "fr": "Le Purple se distingue par la Blue Team dans la boucle, étape par étape — c'est le seul format conçu pour améliorer la détection en direct.",
+          "en": "Purple stands out by keeping the Blue Team in the loop, step by step — the only format designed to improve detection live."
+        },
+        {
+          "fr": "La catégorie est une dimension de filtrage du cockpit, distincte du type de test (boîte noire/grise/blanche).",
+          "en": "The category is a cockpit filtering dimension, distinct from the test type (black/grey/white box)."
+        }
+      ],
+      "pieges": [
+        {
+          "fr": "Demander un Red Team quand le besoin réel est un Purple (mesurer la détection) : on obtient un scénario réussi mais aucun apprentissage défensif.",
+          "en": "Asking for a Red Team when the real need is Purple (measuring detection): you get a successful scenario but no defensive learning."
+        },
+        {
+          "fr": "Confondre catégorie d'engagement et niveau de connaissance de l'auditeur (boîte noire ≠ Red Team).",
+          "en": "Confusing engagement category with the auditor's knowledge level (black box ≠ Red Team)."
+        }
+      ],
+      "etapes": [],
+      "prose": [
+        {
+          "fr": "Le pentest cherche l'exhaustivité des vulnérabilités sur un périmètre donné : la question est « où sont les failles ? ». Le Red Team émule un adversaire précis avec un objectif à atteindre, sans prévenir la défense : la question devient « résistons-nous à cet acteur ? ».",
+          "en": "A pentest seeks exhaustive coverage of vulnerabilities across a given scope: the question is \"where are the flaws?\". A Red Team emulates a specific adversary with a goal to reach, without warning the defence: the question becomes \"do we withstand this actor?\"."
+        },
+        {
+          "fr": "Le Purple Team joue la même chaîne d'attaque mais avec la Blue Team dans la boucle, étape par étape, pour mesurer et améliorer la détection en temps réel : « détectons-nous ses techniques, et sinon pourquoi ? ». Le BAS (Breach & Attack Simulation) automatise enfin la validation continue de techniques connues : « détectons-nous encore, après nos derniers changements ? ».",
+          "en": "A Purple Team plays the same attack chain but with the Blue Team in the loop, step by step, to measure and improve detection in real time: \"do we detect its techniques, and if not why?\". BAS (Breach & Attack Simulation) finally automates continuous validation of known techniques: \"do we still detect, after our latest changes?\"."
+        },
+        {
+          "fr": "Le critère de choix n'est donc pas la sophistication attendue mais la question posée. Un même acteur peut être émulé en Red ou en Purple ; c'est le niveau de collaboration avec la défense qui change tout.",
+          "en": "The choice criterion is therefore not the expected sophistication but the question asked. The same actor can be emulated in Red or Purple; it is the level of collaboration with the defence that changes everything."
+        }
+      ],
+      "table": {
+        "head": [
+          {
+            "fr": "Catégorie",
+            "en": "Category"
+          },
+          {
+            "fr": "Question posée · Blue dans la boucle",
+            "en": "Question asked · Blue in the loop"
+          }
+        ],
+        "rows": [
+          {
+            "tone": "cyan",
+            "label": "Pentest",
+            "texte": {
+              "fr": "Où sont les failles ? · non",
+              "en": "Where are the flaws? · no"
+            }
+          },
+          {
+            "tone": "red",
+            "label": "Red Team",
+            "texte": {
+              "fr": "Résiste-t-on à cet acteur ? · non",
+              "en": "Do we withstand this actor? · no"
+            }
+          },
+          {
+            "tone": "violet",
+            "label": "Purple Team",
+            "texte": {
+              "fr": "Détecte-t-on ses techniques ? · oui, étape par étape",
+              "en": "Do we detect its techniques? · yes, step by step"
+            }
+          },
+          {
+            "tone": "amber",
+            "label": "BAS",
+            "texte": {
+              "fr": "Détecte-t-on encore ? · automatisé",
+              "en": "Do we still detect? · automated"
+            }
+          }
+        ]
+      },
+      "loop": null,
+      "aller": [],
+      "lies": [
+        "corp-aud-ptes",
+        "corp-aud-chaine",
+        "corp-mgr-conformite"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-aud-chaine",
+    "nature": "procedure",
+    "profils": [
+      "aud",
+      "cti"
+    ],
+    "titre_fr": "Construire une chaîne d'attaque (threat modeling ATT&CK)",
+    "titre_en": "Building an attack chain (ATT&CK threat modeling)",
+    "gabarit": false,
+    "controles_iso": [],
+    "contenu": {
+      "type": "methodo",
+      "resume": {
+        "fr": "Passer d'un acteur émulé à une séquence de techniques jouables.",
+        "en": "Move from an emulated actor to a playable sequence of techniques."
+      },
+      "objectif": {
+        "fr": "Traduire un renseignement sur un acteur en une chaîne de techniques réaliste, ordonnée et jouable dans le périmètre autorisé.",
+        "en": "Translate intelligence on an actor into a realistic, ordered chain of techniques, playable within the authorised scope."
+      },
+      "quand": {
+        "fr": "En phase Threat Modeling, une fois le cadrage validé et la CTI disponible sur l'acteur visé.",
+        "en": "In the Threat Modeling phase, once scoping is validated and CTI on the target actor is available."
+      },
+      "outil": {
+        "fr": "Éditeur de scénario · autocomplétion ATT&CK · D3FEND auto",
+        "en": "Scenario editor · ATT&CK autocomplete · auto D3FEND"
+      },
+      "hds": "",
+      "source": {
+        "label": "attack.mitre.org",
+        "url": "https://attack.mitre.org/"
+      },
+      "keypoints": [
+        {
+          "fr": "Chaque technique retenue doit être rattachable à du renseignement réel sur l'acteur — pas à l'intuition de l'auditeur.",
+          "en": "Each chosen technique must be traceable to real intelligence on the actor — not the auditor's intuition."
+        },
+        {
+          "fr": "L'ordre kill-chain (accès initial → objectif) est ce qui rend la chaîne mesurable côté détection.",
+          "en": "The kill-chain order (initial access → objective) is what makes the chain measurable on the detection side."
+        },
+        {
+          "fr": "Le D3FEND suggéré donne d'emblée les contre-mesures attendues : c'est la grille de lecture de la Blue Team.",
+          "en": "The suggested D3FEND gives the expected countermeasures upfront: it is the Blue Team's reading grid."
+        }
+      ],
+      "pieges": [
+        {
+          "fr": "Empiler des techniques « impressionnantes » sans cohérence d'acteur : le scénario perd sa valeur d'émulation.",
+          "en": "Stacking \"impressive\" techniques with no actor coherence: the scenario loses its emulation value."
+        },
+        {
+          "fr": "Oublier de vérifier que chaque étape reste dans les RoE et le périmètre de l'audit.",
+          "en": "Forgetting to check that each step stays within the audit's RoE and scope."
+        }
+      ],
+      "etapes": [
+        {
+          "texte": {
+            "fr": "Choisir l'acteur ou le profil de menace à émuler (rapport CTI, groupe suivi, menace sectorielle).",
+            "en": "Choose the actor or threat profile to emulate (CTI report, tracked group, sector threat)."
+          },
+          "role": "CTI",
+          "sortie": {
+            "fr": "Acteur de référence documenté.",
+            "en": "Reference actor documented."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Lister ses TTP connues : techniques et sous-techniques ATT&CK documentées.",
+            "en": "List its known TTPs: documented ATT&CK techniques and sub-techniques."
+          },
+          "role": "CTI",
+          "sortie": {
+            "fr": "Inventaire de TTP sourcées.",
+            "en": "Inventory of sourced TTPs."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Ordonner les techniques en kill-chain réaliste (accès initial → objectif).",
+            "en": "Order the techniques into a realistic kill-chain (initial access → objective)."
+          },
+          "role": "Auditeur",
+          "sortie": {
+            "fr": "Chaîne séquencée par tactique.",
+            "en": "Chain sequenced by tactic."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Pour chaque étape, préciser commande/outil et résultat attendu.",
+            "en": "For each step, specify command/tool and expected result."
+          },
+          "role": "Auditeur",
+          "sortie": {
+            "fr": "Étapes exécutables et vérifiables.",
+            "en": "Executable, verifiable steps."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Vérifier les contre-mesures D3FEND suggérées et ajuster (inclure/exclure).",
+            "en": "Check the suggested D3FEND countermeasures and adjust (include/exclude)."
+          },
+          "role": "Auditeur + Blue",
+          "sortie": {
+            "fr": "Grille de détection attendue par étape.",
+            "en": "Expected detection grid per step."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Faire relire la chaîne : jouable dans le périmètre et les RoE de l'audit ?",
+            "en": "Have the chain reviewed: playable within the audit's scope and RoE?"
+          },
+          "role": "Manager",
+          "sortie": {
+            "fr": "Scénario validé pour exécution.",
+            "en": "Scenario validated for execution."
+          }
+        }
+      ],
+      "prose": [],
+      "table": null,
+      "loop": null,
+      "aller": [
+        {
+          "label": {
+            "fr": "MITRE ATT&CK — Techniques",
+            "en": "MITRE ATT&CK — Techniques"
+          },
+          "url": "https://attack.mitre.org/techniques/enterprise/"
+        }
+      ],
+      "lies": [
+        "corp-cti-scenario",
+        "corp-aud-categories",
+        "corp-cti-cycle"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-aud-action",
+    "nature": "procedure",
+    "profils": [
+      "aud"
+    ],
+    "titre_fr": "Documenter une action de test (AuditAction)",
+    "titre_en": "Documenting a test action (AuditAction)",
+    "gabarit": false,
+    "controles_iso": [
+      "A.5.28"
+    ],
+    "contenu": {
+      "type": "methodo",
+      "resume": {
+        "fr": "Ce qui distingue une note de terrain d'une preuve exploitable dans le rapport.",
+        "en": "What separates a field note from evidence usable in the report."
+      },
+      "objectif": {
+        "fr": "Produire, au moment de l'action, une trace recevable qui tiendra dans le rapport et, si besoin, devant un auditeur.",
+        "en": "Produce, at the moment of the action, an admissible trace that will hold in the report and, if needed, before an auditor."
+      },
+      "quand": {
+        "fr": "En continu pendant l'exécution, à chaque action significative — jamais en reconstitution après coup.",
+        "en": "Continuously during execution, at every significant action — never reconstructed afterward."
+      },
+      "outil": {
+        "fr": "Entité AuditAction (phase, technique, horodatage, preuves)",
+        "en": "AuditAction entity (phase, technique, timestamp, evidence)"
+      },
+      "hds": "SSI / MII",
+      "source": {
+        "label": "pentest-standard.org",
+        "url": "http://www.pentest-standard.org/index.php/Reporting"
+      },
+      "keypoints": [
+        {
+          "fr": "La preuve se capture au moment du résultat : une reconstitution a posteriori perd sa valeur probante.",
+          "en": "Evidence is captured at the moment of the result: an after-the-fact reconstruction loses its probative value."
+        },
+        {
+          "fr": "L'horodatage doit être cohérent avec la télémétrie du client, pour permettre la corrélation côté Blue.",
+          "en": "The timestamp must be consistent with the client's telemetry, to allow correlation on the Blue side."
+        },
+        {
+          "fr": "Chaque action se rattache à une phase PTES et, si pertinent, à la technique ATT&CK jouée.",
+          "en": "Each action attaches to a PTES phase and, where relevant, to the ATT&CK technique played."
+        }
+      ],
+      "pieges": [
+        {
+          "fr": "Décrire l'action sans capturer la preuve : le finding devient invérifiable.",
+          "en": "Describing the action without capturing evidence: the finding becomes unverifiable."
+        },
+        {
+          "fr": "Horodatage en fuseau local non précisé : impossible à recouper avec les logs du SOC.",
+          "en": "Timestamp in an unspecified local time zone: impossible to cross-reference with SOC logs."
+        }
+      ],
+      "etapes": [
+        {
+          "texte": {
+            "fr": "Horodater le début et la fin de l'action, en heure cohérente avec la télémétrie du client.",
+            "en": "Timestamp the start and end of the action, in a time consistent with the client's telemetry."
+          },
+          "role": "Auditeur",
+          "sortie": {
+            "fr": "Fenêtre temporelle corrélable aux logs.",
+            "en": "Time window correlatable with logs."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Rattacher l'action à sa phase PTES et, si pertinent, à la technique ATT&CK jouée.",
+            "en": "Attach the action to its PTES phase and, where relevant, to the ATT&CK technique played."
+          },
+          "role": "Auditeur",
+          "sortie": {
+            "fr": "Action classée phase + technique.",
+            "en": "Action classified by phase + technique."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Capturer la preuve au moment du résultat (capture, sortie de commande).",
+            "en": "Capture evidence at the moment of the result (screenshot, command output)."
+          },
+          "role": "Auditeur",
+          "sortie": {
+            "fr": "Preuve horodatée attachée.",
+            "en": "Timestamped evidence attached."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Noter la cible exacte (application, hôte) et l'outil/commande utilisés.",
+            "en": "Note the exact target (application, host) and the tool/command used."
+          },
+          "role": "Auditeur",
+          "sortie": {
+            "fr": "Contexte technique reproductible.",
+            "en": "Reproducible technical context."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Qualifier le résultat : succès, échec, partiel, information.",
+            "en": "Qualify the result: success, failure, partial, information."
+          },
+          "role": "Auditeur",
+          "sortie": {
+            "fr": "Résultat qualifié.",
+            "en": "Result qualified."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Si une vulnérabilité en découle, la créer et la lier à l'action immédiatement.",
+            "en": "If a vulnerability results, create it and link it to the action immediately."
+          },
+          "role": "Auditeur",
+          "sortie": {
+            "fr": "Vulnérabilité liée à sa preuve d'origine.",
+            "en": "Vulnerability linked to its source evidence."
+          }
+        }
+      ],
+      "prose": [],
+      "table": null,
+      "loop": null,
+      "aller": [],
+      "lies": [
+        "corp-aud-exploit",
+        "corp-voc-preuves",
+        "corp-aud-rapport"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-aud-exploit",
+    "nature": "metier",
+    "profils": [
+      "aud",
+      "voc"
+    ],
+    "titre_fr": "Qualifier l'exploitabilité : confirmée ou théorique",
+    "titre_en": "Qualifying exploitability: confirmed or theoretical",
+    "gabarit": false,
+    "controles_iso": [],
+    "contenu": {
+      "type": "mapping",
+      "resume": {
+        "fr": "La distinction PTES qui pèse sur le rapport et la priorisation.",
+        "en": "The PTES distinction that weighs on the report and prioritisation."
+      },
+      "objectif": {
+        "fr": "Séparer ce qui est démontré de ce qui est supposé, pour que le rapport n'affirme que ce qui est prouvé.",
+        "en": "Separate what is demonstrated from what is assumed, so the report only asserts what is proven."
+      },
+      "quand": null,
+      "outil": {
+        "fr": "Champs exploitabilite et preuve_exploitation de la vulnérabilité",
+        "en": "Vulnerability exploitabilite and preuve_exploitation fields"
+      },
+      "hds": "",
+      "source": {
+        "label": "pentest-standard.org",
+        "url": "http://www.pentest-standard.org/index.php/Exploitation"
+      },
+      "keypoints": [
+        {
+          "fr": "Confirmée = exploitée avec succès, preuve à l'appui : l'impact est démontré, pas supposé.",
+          "en": "Confirmed = successfully exploited, with evidence: impact is demonstrated, not assumed."
+        },
+        {
+          "fr": "Théorique = exposition identifiée mais non prouvée (hors périmètre, hors temps, hors RoE).",
+          "en": "Theoretical = exposure identified but unproven (out of scope, out of time, out of RoE)."
+        },
+        {
+          "fr": "La distinction borne ce que le rapport peut affirmer et module la priorisation côté client.",
+          "en": "The distinction bounds what the report can assert and modulates prioritisation on the client side."
+        }
+      ],
+      "pieges": [],
+      "etapes": [],
+      "prose": [
+        {
+          "fr": "Une vulnérabilité « confirmée » a été exploitée avec succès pendant le test, preuve à l'appui : l'impact est démontré, pas supposé. C'est le niveau de certitude le plus élevé, celui qui justifie une remédiation urgente sans discussion.",
+          "en": "A \"confirmed\" vulnerability was successfully exploited during the test, with evidence: impact is demonstrated, not assumed. It is the highest level of certainty, the one that justifies urgent remediation without debate."
+        },
+        {
+          "fr": "Une vulnérabilité « théorique » présente une exposition identifiée mais non prouvée — parce que l'exploitation sortait du périmètre, du temps imparti ou des règles d'engagement. Elle reste un signal légitime, mais le rapport doit dire clairement qu'elle n'a pas été démontrée.",
+          "en": "A \"theoretical\" vulnerability presents an identified but unproven exposure — because exploitation fell outside the scope, the allotted time or the rules of engagement. It remains a legitimate signal, but the report must clearly state it was not demonstrated."
+        },
+        {
+          "fr": "La distinction n'est pas cosmétique : elle borne ce que le rapport peut affirmer, module la priorisation côté client, et, au sens PTES, sépare nettement la phase d'analyse de vulnérabilités (identification) de la phase d'exploitation (démonstration).",
+          "en": "The distinction is not cosmetic: it bounds what the report can assert, modulates client-side prioritisation, and, in PTES terms, clearly separates the vulnerability analysis phase (identification) from the exploitation phase (demonstration)."
+        }
+      ],
+      "table": null,
+      "loop": null,
+      "aller": [],
+      "lies": [
+        "corp-aud-action",
+        "corp-voc-cvss",
+        "corp-voc-sla"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-aud-rapport",
+    "nature": "procedure",
+    "profils": [
+      "aud",
+      "mgr"
+    ],
+    "titre_fr": "Rédiger un rapport de pentest structuré PTES",
+    "titre_en": "Writing a PTES-structured pentest report",
+    "gabarit": true,
+    "controles_iso": [],
+    "contenu": {
+      "type": "gabarit",
+      "resume": {
+        "fr": "L'enchaînement des sections attendues et ce que chacune doit prouver.",
+        "en": "The expected section sequence and what each must prove."
+      },
+      "objectif": {
+        "fr": "Produire un livrable qui parle au décideur comme au technicien, et qui transforme des constats en décisions.",
+        "en": "Produce a deliverable that speaks to decision-makers and technicians alike, turning findings into decisions."
+      },
+      "quand": {
+        "fr": "En phase Reporting, une fois les actions et vulnérabilités consolidées.",
+        "en": "In the Reporting phase, once actions and vulnerabilities are consolidated."
+      },
+      "outil": {
+        "fr": "Générateur de livrables (rapport, preuves inline, marquage TLP + client)",
+        "en": "Deliverable generator (report, inline evidence, TLP + client marking)"
+      },
+      "hds": "",
+      "source": {
+        "label": "pentest-standard.org",
+        "url": "http://www.pentest-standard.org/index.php/Reporting"
+      },
+      "keypoints": [
+        {
+          "fr": "Le résumé exécutif parle risque métier, jamais technique : c'est la seule section que le décideur lira en entier.",
+          "en": "The executive summary speaks business risk, never technical: it is the only section a decision-maker will read in full."
+        },
+        {
+          "fr": "Chaque vulnérabilité est une fiche autonome : constat, preuve, exploitabilité, impact, recommandation.",
+          "en": "Each vulnerability is a standalone card: finding, evidence, exploitability, impact, recommendation."
+        },
+        {
+          "fr": "Le rapport double audience (exécutif + technique) est une exigence PTES, pas une option de style.",
+          "en": "The dual-audience report (executive + technical) is a PTES requirement, not a stylistic option."
+        }
+      ],
+      "pieges": [
+        {
+          "fr": "Noyer le résumé exécutif dans le jargon : le décideur décroche et le rapport perd son effet.",
+          "en": "Drowning the executive summary in jargon: the decision-maker disengages and the report loses its effect."
+        },
+        {
+          "fr": "Recommandations génériques (« appliquer les correctifs ») au lieu d'actions priorisées et contextualisées.",
+          "en": "Generic recommendations (\"apply patches\") instead of prioritised, contextualised actions."
+        }
+      ],
+      "etapes": [
+        {
+          "texte": {
+            "fr": "Résumé exécutif : risque métier en langage décideur, sans jargon technique.",
+            "en": "Executive summary: business risk in decision-maker language, no technical jargon."
+          },
+          "role": "Manager",
+          "sortie": {
+            "fr": "1-2 pages lisibles par un non-technicien.",
+            "en": "1-2 pages readable by a non-technical reader."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Contexte et périmètre : rappel du mandat, des exclusions et des limites rencontrées.",
+            "en": "Context and scope: recap of the mandate, exclusions and limits encountered."
+          },
+          "role": "Auditeur",
+          "sortie": {
+            "fr": "Cadre de lecture des résultats.",
+            "en": "Reading frame for the results."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Méthodologie : référentiels suivis, catégorie d'engagement, conditions de test.",
+            "en": "Methodology: frameworks followed, engagement category, test conditions."
+          },
+          "role": "Auditeur",
+          "sortie": {
+            "fr": "Reproductibilité et crédibilité établies.",
+            "en": "Reproducibility and credibility established."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Déroulé : chronologie des actions significatives, par phase PTES.",
+            "en": "Walkthrough: chronology of significant actions, by PTES phase."
+          },
+          "role": "Auditeur",
+          "sortie": {
+            "fr": "Récit d'attaque traçable.",
+            "en": "Traceable attack narrative."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Vulnérabilités : une fiche par finding (constat, preuve, exploitabilité, impact, reco).",
+            "en": "Vulnerabilities: one card per finding (finding, evidence, exploitability, impact, rec)."
+          },
+          "role": "Auditeur",
+          "sortie": {
+            "fr": "Findings actionnables et priorisés.",
+            "en": "Actionable, prioritised findings."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Volet Purple le cas échéant : chaîne jouée, verdicts, KPI de détection.",
+            "en": "Purple section where relevant: chain played, verdicts, detection KPIs."
+          },
+          "role": "Auditeur + Blue",
+          "sortie": {
+            "fr": "Bilan défensif mesuré.",
+            "en": "Measured defensive assessment."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Recommandations priorisées et annexes (preuves volumineuses, références).",
+            "en": "Prioritised recommendations and appendices (bulky evidence, references)."
+          },
+          "role": "Auditeur",
+          "sortie": {
+            "fr": "Feuille de route de remédiation.",
+            "en": "Remediation roadmap."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Relecture croisée puis validation avant diffusion TLP.",
+            "en": "Cross-review then validation before TLP distribution."
+          },
+          "role": "Manager",
+          "sortie": {
+            "fr": "Rapport validé et marqué TLP/client.",
+            "en": "Report validated and marked TLP/client."
+          }
+        }
+      ],
+      "prose": [],
+      "table": null,
+      "loop": null,
+      "aller": [],
+      "lies": [
+        "corp-aud-exploit",
+        "corp-aud-action",
+        "corp-cti-tlp"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-aud-legal",
+    "nature": "metier",
+    "profils": [
+      "aud",
+      "mgr"
+    ],
+    "titre_fr": "Cadre légal du test d'intrusion",
+    "titre_en": "Legal framework of penetration testing",
+    "gabarit": true,
+    "controles_iso": [
+      "A.5.31"
+    ],
+    "contenu": {
+      "type": "gabarit",
+      "resume": {
+        "fr": "Pourquoi le mandat écrit n'est pas une formalité : sans lui, le test est une intrusion.",
+        "en": "Why the written mandate is not a formality: without it, the test is an intrusion."
+      },
+      "objectif": {
+        "fr": "Comprendre ce qui protège juridiquement l'auditeur, et ce qui l'expose si le cadrage est bâclé.",
+        "en": "Understand what legally protects the auditor, and what exposes them if scoping is rushed."
+      },
+      "quand": null,
+      "outil": {
+        "fr": "Clause de mandat · clauses légales · NDA structuré de l'audit",
+        "en": "Mandate clause · legal clauses · audit structured NDA"
+      },
+      "hds": "GRC",
+      "source": {
+        "label": "ISO/IEC 27001",
+        "url": "https://www.iso.org/standard/27001"
+      },
+      "keypoints": [
+        {
+          "fr": "Un test reproduit des actes qui, hors mandat, relèvent de l'accès frauduleux à un système de traitement.",
+          "en": "A test reproduces acts that, without a mandate, amount to fraudulent access to a processing system."
+        },
+        {
+          "fr": "La protection repose sur une autorisation signée par une personne réellement habilitée à engager le propriétaire du périmètre.",
+          "en": "Protection rests on an authorisation signed by a person genuinely empowered to bind the scope's owner."
+        },
+        {
+          "fr": "La conduite en cas de découverte fortuite (données illégales, compromission préexistante) doit être prévue au contrat.",
+          "en": "The conduct for incidental discovery (illegal data, pre-existing compromise) must be set out in the contract."
+        }
+      ],
+      "pieges": [
+        {
+          "fr": "Signataire sans autorité sur des actifs hébergés chez un tiers : le mandat ne couvre pas ces systèmes.",
+          "en": "Signatory without authority over third-party-hosted assets: the mandate does not cover those systems."
+        },
+        {
+          "fr": "Absence de clause sur la découverte fortuite : l'auditeur se retrouve sans conduite à tenir.",
+          "en": "No clause on incidental discovery: the auditor is left with no course of action."
+        }
+      ],
+      "etapes": [],
+      "prose": [
+        {
+          "fr": "Un test d'intrusion reproduit des actes qui, hors mandat, relèvent de l'accès frauduleux à un système de traitement automatisé de données. La protection de l'auditeur repose entièrement sur une autorisation écrite, signée par une personne habilitée à engager le propriétaire du périmètre.",
+          "en": "A penetration test reproduces acts that, without a mandate, amount to fraudulent access to an automated data processing system. The auditor's protection rests entirely on a written authorisation, signed by a person empowered to bind the scope's owner."
+        },
+        {
+          "fr": "D'où un point de vigilance central : vérifier que le signataire a bien autorité sur tous les systèmes inclus. Les actifs hébergés chez un tiers (cloud, infogérance) échappent souvent à cette autorité et nécessitent une autorisation distincte du prestataire concerné.",
+          "en": "Hence a central point of vigilance: verify that the signatory truly has authority over all included systems. Third-party-hosted assets (cloud, outsourcing) often fall outside that authority and require a separate authorisation from the provider concerned."
+        },
+        {
+          "fr": "Le NDA encadre la confidentialité des constats ; les clauses légales couvrent la conservation des preuves, le traitement des données personnelles rencontrées et — point trop souvent oublié — la conduite à tenir en cas de découverte fortuite : données manifestement illégales, ou compromission préexistante indépendante du test.",
+          "en": "The NDA frames the confidentiality of findings; the legal clauses cover evidence retention, the handling of personal data encountered and — too often forgotten — the conduct for incidental discovery: manifestly illegal data, or a pre-existing compromise unrelated to the test."
+        }
+      ],
+      "table": null,
+      "loop": null,
+      "aller": [],
+      "lies": [
+        "corp-aud-cadrage",
+        "corp-aud-urgence"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-aud-urgence",
+    "nature": "procedure",
+    "profils": [
+      "aud"
+    ],
+    "titre_fr": "Incident pendant un test : procédure d'arrêt d'urgence",
+    "titre_en": "Incident during a test: emergency stop procedure",
+    "gabarit": false,
+    "controles_iso": [
+      "A.8.34"
+    ],
+    "contenu": {
+      "type": "methodo",
+      "resume": {
+        "fr": "Que faire quand le test dérape ou percute un incident réel.",
+        "en": "What to do when a test goes wrong or collides with a real incident."
+      },
+      "objectif": {
+        "fr": "Réagir sans aggraver : suspendre, alerter, préserver, tracer — dans cet ordre.",
+        "en": "React without making things worse: suspend, alert, preserve, log — in that order."
+      },
+      "quand": {
+        "fr": "Dès qu'une action produit un effet non prévu, ou qu'une compromission préexistante est suspectée.",
+        "en": "As soon as an action produces an unexpected effect, or a pre-existing compromise is suspected."
+      },
+      "outil": {
+        "fr": "contacts_urgence[] et regles_engagement du bloc engagement",
+        "en": "contacts_urgence[] and regles_engagement of the engagement block"
+      },
+      "hds": "SSI / MII",
+      "source": {
+        "label": "pentest-standard.org",
+        "url": "http://www.pentest-standard.org/index.php/Pre-engagement"
+      },
+      "keypoints": [
+        {
+          "fr": "Le premier réflexe est l'arrêt, pas l'investigation : on stoppe avant de comprendre.",
+          "en": "The first reflex is to stop, not to investigate: halt before understanding."
+        },
+        {
+          "fr": "Une compromission préexistante ne se touche pas : on préserve l'état et on escalade.",
+          "en": "A pre-existing compromise is not to be touched: preserve the state and escalate."
+        },
+        {
+          "fr": "Aucune reprise sans accord explicite du contact d'autorisation, tracé au journal.",
+          "en": "No resumption without the authorising contact's explicit agreement, logged in the journal."
+        }
+      ],
+      "pieges": [
+        {
+          "fr": "Continuer « pour vérifier » après un effet anormal : on risque d'aggraver un incident réel.",
+          "en": "Continuing \"to check\" after an abnormal effect: you risk worsening a real incident."
+        },
+        {
+          "fr": "Effacer ses traces avant d'alerter : on détruit des éléments potentiellement probants.",
+          "en": "Wiping your traces before alerting: you destroy potentially probative elements."
+        }
+      ],
+      "etapes": [
+        {
+          "texte": {
+            "fr": "Suspendre immédiatement toute action offensive sur le périmètre concerné.",
+            "en": "Immediately suspend all offensive action on the affected scope."
+          },
+          "role": "Auditeur",
+          "sortie": {
+            "fr": "Activité offensive gelée.",
+            "en": "Offensive activity frozen."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Contacter le contact d'urgence défini au cadrage, par le canal convenu.",
+            "en": "Contact the emergency contact defined at scoping, via the agreed channel."
+          },
+          "role": "Auditeur",
+          "sortie": {
+            "fr": "Alerte transmise sans délai.",
+            "en": "Alert relayed without delay."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Décrire factuellement : action en cours, cible, effet observé, heure exacte.",
+            "en": "Describe factually: action in progress, target, observed effect, exact time."
+          },
+          "role": "Auditeur",
+          "sortie": {
+            "fr": "Compte rendu factuel horodaté.",
+            "en": "Factual, timestamped report."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Si suspicion de compromission préexistante : ne rien toucher, préserver l'état.",
+            "en": "If a pre-existing compromise is suspected: touch nothing, preserve the state."
+          },
+          "role": "Auditeur + Blue",
+          "sortie": {
+            "fr": "État préservé pour investigation.",
+            "en": "State preserved for investigation."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Consigner l'événement dans le journal d'audit avant toute reprise.",
+            "en": "Log the event in the audit journal before any resumption."
+          },
+          "role": "Auditeur",
+          "sortie": {
+            "fr": "Trace tamper-evident de l'incident.",
+            "en": "Tamper-evident trace of the incident."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Ne reprendre le test qu'après accord explicite du contact d'autorisation.",
+            "en": "Resume the test only after the authorising contact's explicit agreement."
+          },
+          "role": "Manager",
+          "sortie": {
+            "fr": "Go de reprise tracé.",
+            "en": "Resumption go logged."
+          }
+        }
+      ],
+      "prose": [],
+      "table": null,
+      "loop": null,
+      "aller": [],
+      "lies": [
+        "corp-aud-cadrage",
+        "corp-aud-legal",
+        "corp-mgr-incidents"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-voc-cycle",
+    "nature": "processus",
+    "profils": [
+      "voc"
+    ],
+    "titre_fr": "Cycle de vie d'une vulnérabilité",
+    "titre_en": "Vulnerability lifecycle",
+    "gabarit": false,
+    "controles_iso": [
+      "A.8.8"
+    ],
+    "contenu": {
+      "type": "methodo",
+      "resume": {
+        "fr": "De la découverte à la remédiation validée, et où interviennent CVSS/EPSS/KEV/SSVC.",
+        "en": "From discovery to validated remediation, and where CVSS/EPSS/KEV/SSVC come in."
+      },
+      "objectif": {
+        "fr": "Suivre une vulnérabilité comme un objet vivant, dont la priorité peut changer à mesure que le renseignement évolue.",
+        "en": "Track a vulnerability as a living object whose priority can change as intelligence evolves."
+      },
+      "quand": {
+        "fr": "Dès qu'une faiblesse est identifiée — par audit, scan ou signalement — et jusqu'à sa validation après correction.",
+        "en": "As soon as a weakness is identified — by audit, scan or report — and until it is validated after fixing."
+      },
+      "outil": {
+        "fr": "Entité Vulnérabilité · SLA §6ter · tickets de détection",
+        "en": "Vulnerability entity · SLA §6ter · detection tickets"
+      },
+      "hds": "SSI / MCO",
+      "source": {
+        "label": "CIRCL Vulnerability-Lookup",
+        "url": "https://vulnerability.circl.lu/"
+      },
+      "keypoints": [
+        {
+          "fr": "La priorité n'est pas figée à la découverte : un passage en KEV peut faire remonter une vulnérabilité d'un coup.",
+          "en": "Priority is not fixed at discovery: a move into KEV can bump a vulnerability up all at once."
+        },
+        {
+          "fr": "L'outil priorise et documente ; il ne pilote pas le déploiement du correctif (frontière avec le tracker de parc).",
+          "en": "The tool prioritises and documents; it does not drive patch deployment (boundary with the fleet tracker)."
+        },
+        {
+          "fr": "La validation par re-test est ce qui ferme le cycle — sans elle, la remédiation reste une intention.",
+          "en": "Validation by re-test is what closes the cycle — without it, remediation stays an intention."
+        }
+      ],
+      "pieges": [],
+      "etapes": [
+        {
+          "texte": {
+            "fr": "Découverte",
+            "en": "Discovery"
+          },
+          "description": {
+            "fr": "Issue d'une action d'audit, d'un scan ou d'un signalement externe.",
+            "en": "From an audit action, a scan or an external report."
+          },
+          "decision": {
+            "fr": "décision : doublon connu ?",
+            "en": "decision: known duplicate?"
+          }
+        },
+        {
+          "texte": {
+            "fr": "Qualification",
+            "en": "Qualification"
+          },
+          "description": {
+            "fr": "Enrichissement CVSS/CWE/CAPEC (saisie ou CIRCL), qualification de l'exploitabilité (confirmée / théorique).",
+            "en": "CVSS/CWE/CAPEC enrichment (manual or CIRCL), exploitability qualification (confirmed / theoretical)."
+          },
+          "decision": null
+        },
+        {
+          "texte": {
+            "fr": "Priorisation",
+            "en": "Prioritisation"
+          },
+          "description": {
+            "fr": "Combinaison EPSS + KEV + SSVC + VEX → niveau P1–P4.",
+            "en": "Combining EPSS + KEV + SSVC + VEX → level P1–P4."
+          },
+          "decision": {
+            "fr": "si KEV → échéance imposée",
+            "en": "if KEV → imposed deadline"
+          }
+        },
+        {
+          "texte": {
+            "fr": "Remédiation",
+            "en": "Remediation"
+          },
+          "description": {
+            "fr": "Transmission au tracker VOC de parc — l'outil priorise, il ne pilote pas le déploiement du correctif.",
+            "en": "Handover to the VOC fleet tracker — the tool prioritises, it does not drive patch deployment."
+          },
+          "decision": null
+        },
+        {
+          "texte": {
+            "fr": "Validation",
+            "en": "Validation"
+          },
+          "description": {
+            "fr": "Re-test, mise à jour du statut, bouclage sur la couverture Purple si issue d'un exercice.",
+            "en": "Re-test, status update, loop back to Purple coverage if it came from an exercise."
+          },
+          "decision": null
+        }
+      ],
+      "prose": [],
+      "table": null,
+      "loop": {
+        "fr": "↺ une vulnérabilité peut revenir en Qualification si une nouvelle intelligence (ex. passage en KEV) modifie sa priorité.",
+        "en": "↺ a vulnerability can return to Qualification if new intelligence (e.g. a move into KEV) changes its priority."
+      },
+      "aller": [],
+      "lies": [
+        "corp-voc-signaux",
+        "corp-voc-sla",
+        "corp-voc-frontiere"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-voc-cvss",
+    "nature": "metier",
+    "profils": [
+      "voc"
+    ],
+    "titre_fr": "Scorer une vulnérabilité : CVSS 3.1 et 4.0",
+    "titre_en": "Scoring a vulnerability: CVSS 3.1 and 4.0",
+    "gabarit": false,
+    "controles_iso": [],
+    "contenu": {
+      "type": "methodo",
+      "resume": {
+        "fr": "Ce que mesure le vecteur, et ce qu'il ne mesure pas.",
+        "en": "What the vector measures, and what it doesn't."
+      },
+      "objectif": {
+        "fr": "Utiliser CVSS pour ce qu'il est — une mesure de sévérité technique — sans lui faire dire ce qu'il ne dit pas.",
+        "en": "Use CVSS for what it is — a technical severity measure — without making it say what it doesn't."
+      },
+      "quand": null,
+      "outil": {
+        "fr": "Champ CVSS + vecteur de la vulnérabilité",
+        "en": "Vulnerability CVSS + vector field"
+      },
+      "hds": "",
+      "source": {
+        "label": "FIRST — CVSS",
+        "url": "https://www.first.org/cvss/"
+      },
+      "keypoints": [
+        {
+          "fr": "CVSS mesure la sévérité technique intrinsèque, pas le risque réel pour votre organisation.",
+          "en": "CVSS measures intrinsic technical severity, not the real risk to your organisation."
+        },
+        {
+          "fr": "La 4.0 affine la granularité : exigences d'attaque, impacts sur systèmes subséquents, séparation base/contexte.",
+          "en": "4.0 refines granularity: attack requirements, subsequent-system impacts, base/context separation."
+        },
+        {
+          "fr": "Un 9.8 sur un système isolé peut être moins urgent qu'un 7.5 sur l'actif critique exposé.",
+          "en": "A 9.8 on an isolated system can be less urgent than a 7.5 on the exposed critical asset."
+        }
+      ],
+      "pieges": [
+        {
+          "fr": "Prioriser au score CVSS seul : on traite des 9.8 inertes avant des 7.5 réellement exploités.",
+          "en": "Prioritising on the CVSS score alone: you treat inert 9.8s before actively exploited 7.5s."
+        },
+        {
+          "fr": "Oublier de reporter le vecteur : sans lui, le score n'est pas auditable ni recalculable.",
+          "en": "Forgetting to record the vector: without it, the score is neither auditable nor recomputable."
+        }
+      ],
+      "etapes": [],
+      "prose": [
+        {
+          "fr": "CVSS mesure la sévérité technique intrinsèque d'une vulnérabilité : vecteur d'accès, complexité, privilèges requis, interaction utilisateur, et impact sur la confidentialité, l'intégrité et la disponibilité. C'est une photographie de « à quel point c'est grave en soi », indépendamment du contexte.",
+          "en": "CVSS measures a vulnerability's intrinsic technical severity: access vector, complexity, required privileges, user interaction, and impact on confidentiality, integrity and availability. It is a snapshot of \"how bad it is in itself\", independent of context."
+        },
+        {
+          "fr": "La version 4.0 affine la granularité — exigences d'attaque, impacts sur les systèmes subséquents — et clarifie la séparation entre le score de base (intrinsèque) et le contexte (environnemental, temporel). Elle corrige plusieurs angles morts de la 3.1, notamment sur les chaînes d'exploitation.",
+          "en": "Version 4.0 refines granularity — attack requirements, impacts on subsequent systems — and clarifies the separation between the base score (intrinsic) and context (environmental, temporal). It fixes several blind spots of 3.1, notably on exploitation chains."
+        },
+        {
+          "fr": "Ce que CVSS ne dit pas, c'est l'essentiel pour prioriser : la probabilité d'exploitation réelle (rôle d'EPSS), l'exploitation avérée dans la nature (rôle de KEV), et l'importance de l'actif pour le métier. D'où la priorisation multi-signaux : CVSS est un ingrédient, jamais la décision.",
+          "en": "What CVSS doesn't say is what matters most for prioritising: the real probability of exploitation (EPSS's role), proven exploitation in the wild (KEV's role), and the asset's importance to the business. Hence multi-signal prioritisation: CVSS is an ingredient, never the decision."
+        }
+      ],
+      "table": null,
+      "loop": null,
+      "aller": [
+        {
+          "label": "FIRST — CVSS Calculator",
+          "url": "https://www.first.org/cvss/calculator/4.0"
+        }
+      ],
+      "lies": [
+        "corp-voc-signaux",
+        "corp-voc-sla"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-voc-signaux",
+    "nature": "metier",
+    "profils": [
+      "voc"
+    ],
+    "titre_fr": "Compléter le scoring : EPSS, KEV, SSVC, VEX",
+    "titre_en": "Rounding out the scoring: EPSS, KEV, SSVC, VEX",
+    "gabarit": false,
+    "controles_iso": [],
+    "contenu": {
+      "type": "methodo",
+      "resume": {
+        "fr": "Quatre signaux complémentaires, quatre questions différentes.",
+        "en": "Four complementary signals, four different questions."
+      },
+      "objectif": {
+        "fr": "Combiner quatre signaux qui répondent chacun à une question distincte, plutôt que d'en absolutiser un seul.",
+        "en": "Combine four signals that each answer a distinct question, rather than absolutising one."
+      },
+      "quand": null,
+      "outil": {
+        "fr": "Enrichissement CIRCL · champs EPSS/KEV/SSVC/VEX de la vulnérabilité",
+        "en": "CIRCL enrichment · vulnerability EPSS/KEV/SSVC/VEX fields"
+      },
+      "hds": "",
+      "source": {
+        "label": "CISA — SSVC",
+        "url": "https://www.cisa.gov/stakeholder-specific-vulnerability-categorization-ssvc"
+      },
+      "keypoints": [
+        {
+          "fr": "EPSS = probabilité (prédictif) · KEV = exploitation avérée (constaté) · SSVC = décision · VEX = applicabilité.",
+          "en": "EPSS = probability (predictive) · KEV = proven exploitation (observed) · SSVC = decision · VEX = applicability."
+        },
+        {
+          "fr": "Ordre de lecture : VEX (concerné ?) → KEV (exploité ?) → EPSS (le sera-t-il ?) → SSVC (que fait-on ?).",
+          "en": "Reading order: VEX (affected?) → KEV (exploited?) → EPSS (will it be?) → SSVC (what do we do?)."
+        },
+        {
+          "fr": "VEX not_affected justifié permet de sortir légitimement une vulnérabilité du circuit — un gain de temps considérable.",
+          "en": "A justified VEX not_affected legitimately removes a vulnerability from the loop — a considerable time saver."
+        }
+      ],
+      "pieges": [],
+      "etapes": [],
+      "prose": [
+        {
+          "fr": "EPSS (FIRST) estime la probabilité qu'une vulnérabilité soit exploitée dans les 30 jours : un signal prédictif, recalculé quotidiennement. KEV (CISA) recense au contraire l'exploitation avérée dans la nature et impose une échéance de remédiation : un signal constaté, pas une prédiction.",
+          "en": "EPSS (FIRST) estimates the probability that a vulnerability will be exploited within 30 days: a predictive signal, recomputed daily. KEV (CISA), by contrast, records proven exploitation in the wild and imposes a remediation deadline: an observed signal, not a prediction."
+        },
+        {
+          "fr": "SSVC transforme ces signaux en décision d'action — Track, Track*, Attend, Act — via un arbre qui tient compte de l'automatisabilité de l'exploitation et de l'impact sur la mission. C'est le pont entre « quel score ? » et « que fait-on ? ». VEX, enfin, dit si le produit est réellement affecté (affected, not_affected, fixed, under_investigation) : le filtre d'applicabilité qui évite de mobiliser des équipes sur ce qui ne s'applique pas.",
+          "en": "SSVC turns these signals into an action decision — Track, Track*, Attend, Act — via a tree accounting for exploitation automatability and mission impact. It is the bridge between \"what score?\" and \"what do we do?\". VEX, finally, states whether the product is actually affected (affected, not_affected, fixed, under_investigation): the applicability filter that avoids mobilising teams on what doesn't apply."
+        },
+        {
+          "fr": "En pratique, l'ordre de lecture le plus efficace est : VEX d'abord (sommes-nous concernés ?), puis KEV (est-ce exploité maintenant ?), puis EPSS (le sera-t-il bientôt ?), et enfin SSVC pour trancher l'action.",
+          "en": "In practice, the most effective reading order is: VEX first (are we affected?), then KEV (is it exploited now?), then EPSS (will it be soon?), and finally SSVC to settle the action."
+        }
+      ],
+      "table": {
+        "head": [
+          {
+            "fr": "Signal",
+            "en": "Signal"
+          },
+          {
+            "fr": "Question posée · nature",
+            "en": "Question asked · nature"
+          }
+        ],
+        "rows": [
+          {
+            "tone": "cyan",
+            "label": "VEX",
+            "texte": {
+              "fr": "Le produit est-il réellement affecté ? · applicabilité",
+              "en": "Is the product actually affected? · applicability"
+            }
+          },
+          {
+            "tone": "red",
+            "label": "KEV",
+            "texte": {
+              "fr": "L'exploitation est-elle avérée ? · constaté",
+              "en": "Is exploitation proven? · observed"
+            }
+          },
+          {
+            "tone": "violet",
+            "label": "EPSS",
+            "texte": {
+              "fr": "Quelle probabilité à 30 jours ? · prédictif",
+              "en": "What probability at 30 days? · predictive"
+            }
+          },
+          {
+            "tone": "amber",
+            "label": "SSVC",
+            "texte": {
+              "fr": "Quelle décision d'action ? · arbitrage",
+              "en": "What action decision? · arbitration"
+            }
+          }
+        ]
+      },
+      "loop": null,
+      "aller": [
+        {
+          "label": "CISA — KEV Catalog",
+          "url": "https://www.cisa.gov/known-exploited-vulnerabilities-catalog"
+        },
+        {
+          "label": "FIRST — EPSS",
+          "url": "https://www.first.org/epss/"
+        }
+      ],
+      "lies": [
+        "corp-voc-cvss",
+        "corp-voc-sla",
+        "corp-voc-circl"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-voc-cwe",
+    "nature": "metier",
+    "profils": [
+      "voc",
+      "aud"
+    ],
+    "titre_fr": "Classer une faiblesse : OWASP, CWE, CAPEC",
+    "titre_en": "Classifying a weakness: OWASP, CWE, CAPEC",
+    "gabarit": false,
+    "controles_iso": [],
+    "contenu": {
+      "type": "mapping",
+      "resume": {
+        "fr": "Trois taxonomies souvent confondues, trois objets différents.",
+        "en": "Three often-confused taxonomies, three different objects."
+      },
+      "objectif": {
+        "fr": "Ne plus confondre la faiblesse (CWE), le patron d'attaque (CAPEC) et la catégorie de risque (OWASP).",
+        "en": "Stop confusing the weakness (CWE), the attack pattern (CAPEC) and the risk category (OWASP)."
+      },
+      "quand": null,
+      "outil": {
+        "fr": "Pickers OWASP / CWE / CAPEC de la vulnérabilité",
+        "en": "Vulnerability OWASP / CWE / CAPEC pickers"
+      },
+      "hds": "",
+      "source": {
+        "label": "cwe.mitre.org",
+        "url": "https://cwe.mitre.org/"
+      },
+      "keypoints": [
+        {
+          "fr": "CWE décrit la faiblesse dans le code (ex. injection SQL = CWE-89) — précis et stable.",
+          "en": "CWE describes the weakness in the code (e.g. SQL injection = CWE-89) — precise and stable."
+        },
+        {
+          "fr": "CAPEC décrit comment l'attaquant l'exploite — le vecteur, pas la faille.",
+          "en": "CAPEC describes how the attacker exploits it — the vector, not the flaw."
+        },
+        {
+          "fr": "OWASP Top 10 regroupe des catégories de risque pour la lecture managériale — pas une classification technique fine.",
+          "en": "OWASP Top 10 groups risk categories for managerial reading — not a fine technical classification."
+        }
+      ],
+      "pieges": [],
+      "etapes": [],
+      "prose": [
+        {
+          "fr": "Le CWE (Common Weakness Enumeration) décrit la faiblesse elle-même, dans le code ou la conception : une injection SQL est CWE-89, un XSS est CWE-79. C'est une taxonomie précise et stable, idéale pour classer un finding sans ambiguïté.",
+          "en": "CWE (Common Weakness Enumeration) describes the weakness itself, in code or design: a SQL injection is CWE-89, an XSS is CWE-79. It is a precise, stable taxonomy, ideal for classifying a finding without ambiguity."
+        },
+        {
+          "fr": "Le CAPEC (Common Attack Pattern Enumeration) décrit le patron d'attaque qui exploite cette faiblesse — le comment de l'attaquant. L'OWASP Top 10, enfin, regroupe des catégories de risque applicatif à des fins de sensibilisation et de couverture, pas de classification technique.",
+          "en": "CAPEC (Common Attack Pattern Enumeration) describes the attack pattern that exploits this weakness — the attacker's how. The OWASP Top 10, finally, groups application risk categories for awareness and coverage, not technical classification."
+        },
+        {
+          "fr": "En pratique : une vulnérabilité se classe d'abord par CWE (précis), se rattache à un CAPEC quand le vecteur d'attaque est documenté, et se mappe à l'OWASP Top 10 pour la lecture managériale du rapport. Les trois cohabitent, chacun à son niveau de lecture.",
+          "en": "In practice: a vulnerability is first classified by CWE (precise), attached to a CAPEC when the attack vector is documented, and mapped to the OWASP Top 10 for the report's managerial reading. All three coexist, each at its reading level."
+        }
+      ],
+      "table": {
+        "head": [
+          {
+            "fr": "Taxonomie",
+            "en": "Taxonomy"
+          },
+          {
+            "fr": "Ce qu'elle décrit",
+            "en": "What it describes"
+          }
+        ],
+        "rows": [
+          {
+            "tone": "violet",
+            "label": "CWE",
+            "texte": {
+              "fr": "La faiblesse dans le code / la conception",
+              "en": "The weakness in code / design"
+            }
+          },
+          {
+            "tone": "red",
+            "label": "CAPEC",
+            "texte": {
+              "fr": "Le patron d'attaque qui l'exploite",
+              "en": "The attack pattern that exploits it"
+            }
+          },
+          {
+            "tone": "amber",
+            "label": "OWASP Top 10",
+            "texte": {
+              "fr": "La catégorie de risque (lecture managériale)",
+              "en": "The risk category (managerial reading)"
+            }
+          }
+        ]
+      },
+      "loop": null,
+      "aller": [
+        {
+          "label": "CAPEC — MITRE",
+          "url": "https://capec.mitre.org/"
+        }
+      ],
+      "lies": [
+        "corp-voc-cvss",
+        "corp-aud-exploit"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-voc-sla",
+    "nature": "processus",
+    "profils": [
+      "voc",
+      "mgr"
+    ],
+    "titre_fr": "Déterminer le SLA de remédiation (P1–P4)",
+    "titre_en": "Determining the remediation SLA (P1–P4)",
+    "gabarit": false,
+    "controles_iso": [
+      "A.8.8"
+    ],
+    "contenu": {
+      "type": "mapping",
+      "resume": {
+        "fr": "La logique multi-signaux qui fixe l'échéance, et le cas particulier KEV.",
+        "en": "The multi-signal logic that sets the deadline, and the KEV special case."
+      },
+      "objectif": {
+        "fr": "Dériver une échéance de remédiation défendable à partir de signaux objectifs, pas d'une sévérité brute.",
+        "en": "Derive a defensible remediation deadline from objective signals, not raw severity."
+      },
+      "quand": {
+        "fr": "À la priorisation, une fois la vulnérabilité qualifiée et enrichie.",
+        "en": "At prioritisation, once the vulnerability is qualified and enriched."
+      },
+      "outil": {
+        "fr": "SLA de remédiation §6ter (niveaux P1–P4 configurables)",
+        "en": "Remediation SLA §6ter (configurable P1–P4 levels)"
+      },
+      "hds": "SSI / MCO",
+      "source": {
+        "label": "CISA — KEV",
+        "url": "https://www.cisa.gov/known-exploited-vulnerabilities-catalog"
+      },
+      "keypoints": [
+        {
+          "fr": "KEV est un plancher non négociable : présence dans le catalogue = P1, échéance alignée sur la dueDate CISA.",
+          "en": "KEV is a non-negotiable floor: presence in the catalog = P1, deadline aligned with the CISA dueDate."
+        },
+        {
+          "fr": "VEX not_affected justifié sort la vulnérabilité du circuit SLA — statut suivi, pas d'échéance.",
+          "en": "A justified VEX not_affected removes the vulnerability from the SLA loop — tracked status, no deadline."
+        },
+        {
+          "fr": "EPSS ou CVSS peuvent faire remonter d'un niveau, jamais descendre sous le plancher KEV.",
+          "en": "EPSS or CVSS can bump a level up, never below the KEV floor."
+        }
+      ],
+      "pieges": [],
+      "etapes": [
+        {
+          "texte": {
+            "fr": "Applicabilité",
+            "en": "Applicability"
+          },
+          "description": {
+            "fr": "VEX not_affected justifié → sortie du circuit SLA (statut suivi, pas d'échéance).",
+            "en": "Justified VEX not_affected → exit the SLA loop (tracked status, no deadline)."
+          },
+          "decision": null
+        },
+        {
+          "texte": {
+            "fr": "Exploitation avérée",
+            "en": "Proven exploitation"
+          },
+          "description": {
+            "fr": "Présence KEV → P1 d'office, échéance alignée sur la dueDate CISA.",
+            "en": "KEV presence → automatic P1, deadline aligned with the CISA dueDate."
+          },
+          "decision": {
+            "fr": "KEV = plancher non négociable",
+            "en": "KEV = non-negotiable floor"
+          }
+        },
+        {
+          "texte": {
+            "fr": "Décision SSVC",
+            "en": "SSVC decision"
+          },
+          "description": {
+            "fr": "Act → P1 · Attend → P2 · Track*/Track → P3/P4, modulé par l'impact mission.",
+            "en": "Act → P1 · Attend → P2 · Track*/Track → P3/P4, modulated by mission impact."
+          },
+          "decision": null
+        },
+        {
+          "texte": {
+            "fr": "Ajustement signaux",
+            "en": "Signal adjustment"
+          },
+          "description": {
+            "fr": "EPSS élevé ou CVSS critique peuvent remonter d'un niveau ; jamais descendre sous KEV.",
+            "en": "High EPSS or critical CVSS can bump up a level; never below KEV."
+          },
+          "decision": null
+        },
+        {
+          "texte": {
+            "fr": "Échéance",
+            "en": "Deadline"
+          },
+          "description": {
+            "fr": "Chaque niveau P1–P4 porte un délai configurable par client ; dépassement = hors SLA au cockpit.",
+            "en": "Each P1–P4 level carries a per-client configurable delay; overrun = out of SLA on the cockpit."
+          },
+          "decision": null
+        }
+      ],
+      "prose": [],
+      "table": null,
+      "loop": {
+        "fr": "↺ un nouveau signal (passage en KEV, hausse EPSS) recalcule le niveau et peut raccourcir l'échéance.",
+        "en": "↺ a new signal (move into KEV, EPSS rise) recomputes the level and can shorten the deadline."
+      },
+      "aller": [],
+      "lies": [
+        "corp-voc-signaux",
+        "corp-voc-cycle",
+        "corp-mgr-conformite"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-voc-patch",
+    "nature": "processus",
+    "profils": [
+      "voc"
+    ],
+    "titre_fr": "Patch management : le cycle de déploiement des correctifs",
+    "titre_en": "Patch management: the fix deployment cycle",
+    "gabarit": false,
+    "controles_iso": [
+      "A.8.8",
+      "A.8.9"
+    ],
+    "contenu": {
+      "type": "methodo",
+      "resume": {
+        "fr": "Purement méthodologique : le suivi de déploiement reste sur le tracker VOC de parc.",
+        "en": "Purely methodological: deployment tracking stays on the VOC fleet tracker."
+      },
+      "objectif": {
+        "fr": "Comprendre le cycle de correctif que l'outil alimente en priorité, sans chercher à le piloter à la place du tracker de parc.",
+        "en": "Understand the fix cycle the tool feeds priority into, without trying to drive it in place of the fleet tracker."
+      },
+      "quand": {
+        "fr": "En aval de la priorisation, côté exploitation du parc — hors périmètre de suivi de l'outil.",
+        "en": "Downstream of prioritisation, on the fleet operations side — outside the tool's tracking scope."
+      },
+      "outil": {
+        "fr": "Aucune entité dédiée — frontière assumée avec le tracker de parc",
+        "en": "No dedicated entity — deliberate boundary with the fleet tracker"
+      },
+      "hds": "SSI / MCO",
+      "source": {
+        "label": "ISO/IEC 27001",
+        "url": "https://www.iso.org/standard/27001"
+      },
+      "keypoints": [
+        {
+          "fr": "Un correctif se teste avant de se déployer : régression fonctionnelle, prérequis, rollback préparé.",
+          "en": "A fix is tested before deployment: functional regression, prerequisites, rollback prepared."
+        },
+        {
+          "fr": "Toute dérogation est motivée, datée et bornée dans le temps — sinon elle devient une dette invisible.",
+          "en": "Every exemption is justified, dated and time-bounded — otherwise it becomes invisible debt."
+        },
+        {
+          "fr": "L'outil fournit la priorité (quoi corriger d'abord) ; le tracker de parc gère le déploiement (comment, quand, où).",
+          "en": "The tool provides the priority (what to fix first); the fleet tracker handles deployment (how, when, where)."
+        }
+      ],
+      "pieges": [
+        {
+          "fr": "Déployer en production sans fenêtre de rollback : un correctif régressif devient un incident.",
+          "en": "Deploying to production without a rollback window: a regressive fix becomes an incident."
+        },
+        {
+          "fr": "Dérogation « temporaire » sans date d'expiration : elle se pérennise et échappe au suivi.",
+          "en": "A \"temporary\" exemption with no expiry date: it becomes permanent and escapes tracking."
+        }
+      ],
+      "etapes": [
+        {
+          "texte": {
+            "fr": "Veille & réception",
+            "en": "Watch & intake"
+          },
+          "description": {
+            "fr": "Bulletins éditeurs, corrélation avec l'inventaire (CPE) des actifs.",
+            "en": "Vendor advisories, correlation with the asset inventory (CPE)."
+          },
+          "decision": null
+        },
+        {
+          "texte": {
+            "fr": "Test",
+            "en": "Test"
+          },
+          "description": {
+            "fr": "Validation en environnement représentatif : régression fonctionnelle, prérequis, rollback préparé.",
+            "en": "Validation in a representative environment: functional regression, prerequisites, rollback prepared."
+          },
+          "decision": null
+        },
+        {
+          "texte": {
+            "fr": "Planification",
+            "en": "Planning"
+          },
+          "description": {
+            "fr": "Fenêtre de maintenance, séquencement par criticité d'actif, communication.",
+            "en": "Maintenance window, sequencing by asset criticality, communication."
+          },
+          "decision": null
+        },
+        {
+          "texte": {
+            "fr": "Déploiement",
+            "en": "Deployment"
+          },
+          "description": {
+            "fr": "Application progressive, supervision des effets, plan de retour arrière prêt.",
+            "en": "Progressive rollout, effect monitoring, rollback plan ready."
+          },
+          "decision": {
+            "fr": "échec → rollback",
+            "en": "failure → rollback"
+          }
+        },
+        {
+          "texte": {
+            "fr": "Vérification & dérogations",
+            "en": "Verification & exemptions"
+          },
+          "description": {
+            "fr": "Contrôle d'application effective ; toute dérogation est motivée, datée et bornée.",
+            "en": "Check of effective application; every exemption is justified, dated and bounded."
+          },
+          "decision": null
+        }
+      ],
+      "prose": [],
+      "table": null,
+      "loop": {
+        "fr": "↺ un correctif en échec revient en Test ; une dérogation expire et revient en Planification.",
+        "en": "↺ a failed fix returns to Test; an exemption expires and returns to Planning."
+      },
+      "aller": [],
+      "lies": [
+        "corp-voc-cycle",
+        "corp-voc-frontiere"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-voc-circl",
+    "nature": "metier",
+    "profils": [
+      "voc"
+    ],
+    "titre_fr": "Sources d'enrichissement CVE : CIRCL, GCVE, dumps offline",
+    "titre_en": "CVE enrichment sources: CIRCL, GCVE, offline dumps",
+    "gabarit": false,
+    "controles_iso": [],
+    "contenu": {
+      "type": "methodo",
+      "resume": {
+        "fr": "Fonctionnement, limites temporelles et repli hors-ligne.",
+        "en": "How it works, timing limits and offline fallback."
+      },
+      "objectif": {
+        "fr": "Choisir sa source d'enrichissement selon deux contraintes : fraîcheur de la donnée et confidentialité des requêtes.",
+        "en": "Choose your enrichment source by two constraints: data freshness and query confidentiality."
+      },
+      "quand": null,
+      "outil": {
+        "fr": "enrichment_base_url configurable · ré-enrichissement · cache sur le finding",
+        "en": "configurable enrichment_base_url · re-enrichment · cache on the finding"
+      },
+      "hds": "",
+      "source": {
+        "label": "vulnerability.circl.lu",
+        "url": "https://vulnerability.circl.lu/"
+      },
+      "keypoints": [
+        {
+          "fr": "Les champs de base (CVSS, CWE, CAPEC) sont fiables dès publication ; le bloc corrélé (EPSS, SSVC, KEV) arrive en décalé.",
+          "en": "Base fields (CVSS, CWE, CAPEC) are reliable at publication; the correlated block (EPSS, SSVC, KEV) arrives with a lag."
+        },
+        {
+          "fr": "L'instance publique journalise les requêtes : pour un enrichissement sans fuite, pointer vers une instance interne ou GCVE.",
+          "en": "The public instance logs queries: for leak-free enrichment, point to an internal instance or GCVE."
+        },
+        {
+          "fr": "L'action « ré-enrichir » existe précisément parce que les CVE fraîches ont souvent des champs corrélés vides.",
+          "en": "The \"re-enrich\" action exists precisely because fresh CVEs often have empty correlated fields."
+        }
+      ],
+      "pieges": [
+        {
+          "fr": "Traiter l'absence d'EPSS/SSVC comme une donnée fiable : c'est souvent un simple décalage de calcul, pas un « pas de risque ».",
+          "en": "Treating the absence of EPSS/SSVC as reliable data: it is often just a computation lag, not \"no risk\"."
+        },
+        {
+          "fr": "Interroger l'instance publique sur des CVE sensibles internes : les requêtes sont journalisées côté fournisseur.",
+          "en": "Querying the public instance on sensitive internal CVEs: the queries are logged on the provider side."
+        }
+      ],
+      "etapes": [],
+      "prose": [
+        {
+          "fr": "Le Vulnerability-Lookup du CIRCL agrège les données par CVE : CVSS et vecteur, CWE, CAPEC, produits affectés, références — tous fiables dès la publication de la CVE. C'est la source par défaut de l'enrichissement à la saisie.",
+          "en": "CIRCL's Vulnerability-Lookup aggregates data by CVE: CVSS and vector, CWE, CAPEC, affected products, references — all reliable from CVE publication. It is the default source for enrichment at entry."
+        },
+        {
+          "fr": "Le bloc corrélé — EPSS, SSVC, appartenance KEV — arrive en revanche en décalé : il est souvent absent pour les CVE fraîchement publiées, car EPSS est recalculé quotidiennement et les décisions SSVC/vulnrichment prennent du temps. D'où le parsing défensif de l'outil (tout est optionnel) et l'action « ré-enrichir » pour compléter plus tard.",
+          "en": "The correlated block — EPSS, SSVC, KEV membership — arrives with a lag, however: it is often absent for freshly published CVEs, because EPSS is recomputed daily and SSVC/vulnrichment decisions take time. Hence the tool's defensive parsing (everything is optional) and the \"re-enrich\" action to complete later."
+        },
+        {
+          "fr": "Point de confidentialité : l'instance publique journalise les requêtes. Pour un enrichissement sans fuite d'information sur vos vulnérabilités internes, on pointe enrichment_base_url vers une instance auto-hébergée ou vers GCVE. En mode entièrement hors-ligne, on importe les dumps CIRCL ou des extraits ciblés KEV/EPSS, au prix d'un stockage plus lourd.",
+          "en": "Confidentiality point: the public instance logs queries. For enrichment without leaking information about your internal vulnerabilities, point enrichment_base_url to a self-hosted instance or to GCVE. In fully offline mode, import the CIRCL dumps or targeted KEV/EPSS extracts, at the cost of heavier storage."
+        }
+      ],
+      "table": null,
+      "loop": null,
+      "aller": [
+        {
+          "label": "GCVE",
+          "url": "https://gcve.eu/"
+        }
+      ],
+      "lies": [
+        "corp-voc-signaux",
+        "corp-voc-frontiere"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-voc-frontiere",
+    "nature": "metier",
+    "profils": [
+      "voc",
+      "mgr"
+    ],
+    "titre_fr": "Frontière outil / tracker VOC de parc",
+    "titre_en": "Boundary: tool / VOC fleet tracker",
+    "gabarit": false,
+    "controles_iso": [],
+    "contenu": {
+      "type": "mapping",
+      "resume": {
+        "fr": "L'outil enrichit et priorise pour le rapport et le SLA ; le suivi de remédiation de parc reste ailleurs.",
+        "en": "The tool enriches and prioritises for the report and the SLA; fleet remediation tracking stays elsewhere."
+      },
+      "objectif": {
+        "fr": "Poser une frontière nette pour éviter deux vérités divergentes entre ce cockpit et le tracker de parc.",
+        "en": "Set a clear boundary to avoid two diverging truths between this cockpit and the fleet tracker."
+      },
+      "quand": null,
+      "outil": {
+        "fr": "Principe directeur : se connecter, ne pas remplacer",
+        "en": "Guiding principle: connect, don't replace"
+      },
+      "hds": "Organisation & prestation",
+      "source": {
+        "label": "Cahier des charges §0.A",
+        "url": ""
+      },
+      "keypoints": [
+        {
+          "fr": "L'outil stocke l'enrichissement parce qu'il alimente deux choses précises : le rapport client et le SLA de remédiation.",
+          "en": "The tool stores enrichment because it feeds two precise things: the client report and the remediation SLA."
+        },
+        {
+          "fr": "Le suivi de parc — inventaire, campagnes, tickets d'exploitation — reste sur le tracker VOC, vers lequel l'outil pointe.",
+          "en": "Fleet tracking — inventory, campaigns, operations tickets — stays on the VOC tracker, to which the tool links."
+        },
+        {
+          "fr": "Dupliquer ce suivi créerait deux vérités divergentes, exactement ce qu'un audit sanctionne.",
+          "en": "Duplicating that tracking would create two diverging truths, exactly what an audit penalises."
+        }
+      ],
+      "pieges": [],
+      "etapes": [],
+      "prose": [
+        {
+          "fr": "Ce cockpit stocke l'enrichissement (CVSS, EPSS, KEV, SSVC, VEX) avec la vulnérabilité parce qu'il alimente deux choses très précises : le rapport client et le SLA de remédiation basé sur les standards. Ces deux usages justifient la persistance locale.",
+          "en": "This cockpit stores enrichment (CVSS, EPSS, KEV, SSVC, VEX) with the vulnerability because it feeds two very precise things: the client report and the standards-based remediation SLA. These two uses justify local persistence."
+        },
+        {
+          "fr": "Ce qu'il ne cherche pas à devenir, c'est le système de référence du suivi de parc : l'inventaire des actifs, les campagnes de correctifs, les tickets d'exploitation restent sur le tracker VOC, vers lequel l'outil établit un lien sortant plutôt que de dupliquer la donnée.",
+          "en": "What it does not seek to become is the system of record for fleet tracking: the asset inventory, patch campaigns and operations tickets stay on the VOC tracker, to which the tool establishes an outbound link rather than duplicating the data."
+        },
+        {
+          "fr": "La raison est la même que pour le TIP côté CTI : dupliquer un suivi vivant crée fatalement deux vérités qui divergent. La frontière — enrichir et prioriser ici, suivre le déploiement là-bas — est un choix d'architecture, pas une limite temporaire.",
+          "en": "The reason is the same as for the TIP on the CTI side: duplicating a live tracking inevitably creates two diverging truths. The boundary — enrich and prioritise here, track deployment there — is an architectural choice, not a temporary limit."
+        }
+      ],
+      "table": null,
+      "loop": null,
+      "aller": [],
+      "lies": [
+        "corp-voc-cycle",
+        "corp-voc-patch",
+        "corp-cti-tip"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-voc-preuves",
+    "nature": "metier",
+    "profils": [
+      "voc",
+      "aud"
+    ],
+    "titre_fr": "Preuves et éléments probants d'une vulnérabilité",
+    "titre_en": "Evidence and probative elements of a vulnerability",
+    "gabarit": false,
+    "controles_iso": [
+      "A.5.28",
+      "A.8.24"
+    ],
+    "contenu": {
+      "type": "mapping",
+      "resume": {
+        "fr": "Intégrité, horodatage, conservation : ce qui rend une preuve recevable.",
+        "en": "Integrity, timestamping, retention: what makes evidence admissible."
+      },
+      "objectif": {
+        "fr": "Produire des preuves qui tiennent dans le temps et devant un tiers, pas seulement des captures d'écran.",
+        "en": "Produce evidence that holds over time and before a third party, not just screenshots."
+      },
+      "quand": null,
+      "outil": {
+        "fr": "Preuves chiffrées AES-GCM · journal tamper-evident",
+        "en": "AES-GCM-encrypted evidence · tamper-evident journal"
+      },
+      "hds": "SSI / PDP",
+      "source": {
+        "label": "ISO/IEC 27001",
+        "url": "https://www.iso.org/standard/27001"
+      },
+      "keypoints": [
+        {
+          "fr": "Une preuve utile montre le constat au moment où il se produit, avec un contexte identifiable (cible, compte, heure).",
+          "en": "Useful evidence shows the finding at the moment it occurs, with an identifiable context (target, account, time)."
+        },
+        {
+          "fr": "Sa valeur tient à la chaîne de conservation : qui l'a produite, quand, et la garantie qu'elle n'a pas été altérée.",
+          "en": "Its value rests on the chain of custody: who produced it, when, and the guarantee it was not altered."
+        },
+        {
+          "fr": "Tamper-evident n'est pas tamper-proof : l'altération se détecte, elle ne s'empêche pas — limite à connaître.",
+          "en": "Tamper-evident is not tamper-proof: alteration is detected, not prevented — a limit to know."
+        }
+      ],
+      "pieges": [
+        {
+          "fr": "Capturer sans contexte identifiable : une preuve sans cible ni horodatage est difficilement opposable.",
+          "en": "Capturing without identifiable context: evidence with no target or timestamp is hard to rely on."
+        },
+        {
+          "fr": "Confondre journal tamper-evident et coffre inviolable : le premier détecte, il ne bloque pas.",
+          "en": "Confusing a tamper-evident journal with an inviolable vault: the former detects, it does not block."
+        }
+      ],
+      "etapes": [],
+      "prose": [
+        {
+          "fr": "Une preuve utile montre le constat au moment exact où il se produit : capture horodatée, sortie de commande brute, avec un contexte identifiable — cible, compte utilisé, heure. Une belle capture sans contexte n'est pas une preuve opposable.",
+          "en": "Useful evidence shows the finding at the exact moment it occurs: timestamped capture, raw command output, with an identifiable context — target, account used, time. A nice screenshot without context is not admissible evidence."
+        },
+        {
+          "fr": "Sa valeur juridique et technique tient à la chaîne de conservation : qui l'a produite, à quel moment, et la garantie qu'elle n'a pas été altérée après coup. C'est cette traçabilité, plus que le contenu lui-même, qui fait la recevabilité.",
+          "en": "Its legal and technical value rests on the chain of custody: who produced it, when, and the guarantee it was not altered afterward. It is this traceability, more than the content itself, that makes it admissible."
+        },
+        {
+          "fr": "Dans l'outil, les preuves sensibles se chiffrent (AES-GCM, clé dérivée d'une passphrase par PBKDF2) et le journal à chaînage détectable trace les manipulations. Une nuance à connaître : tamper-evident signifie que l'altération se détecte, pas qu'elle s'empêche — c'est une garantie de détection, pas d'inviolabilité.",
+          "en": "In the tool, sensitive evidence is encrypted (AES-GCM, key derived from a passphrase via PBKDF2) and the chained, detectable journal traces manipulations. A nuance to know: tamper-evident means alteration is detected, not prevented — it is a guarantee of detection, not of inviolability."
+        }
+      ],
+      "table": null,
+      "loop": null,
+      "aller": [],
+      "lies": [
+        "corp-aud-action",
+        "corp-aud-exploit",
+        "corp-mgr-conformite"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-cti-sources",
+    "nature": "metier",
+    "profils": [
+      "cti"
+    ],
+    "titre_fr": "Gérer ses sources de renseignement",
+    "titre_en": "Managing your intelligence sources",
+    "gabarit": false,
+    "controles_iso": [
+      "A.5.7"
+    ],
+    "contenu": {
+      "type": "methodo",
+      "resume": {
+        "fr": "Typologie des sources et cotation de fiabilité (grille type Admiralty).",
+        "en": "Source typology and reliability rating (Admiralty-style grid)."
+      },
+      "objectif": {
+        "fr": "Construire un dispositif de veille qui vaut par la complémentarité de ses sources, pas par leur volume.",
+        "en": "Build a watch capability that is worth its sources' complementarity, not their volume."
+      },
+      "quand": null,
+      "outil": {
+        "fr": "Champ source du scénario — entité Source dédiée : évolution proposée",
+        "en": "Scenario source field — dedicated Source entity: proposed evolution"
+      },
+      "hds": "GRC / SSI",
+      "source": {
+        "label": "CERT-FR",
+        "url": "https://cert.ssi.gouv.fr/"
+      },
+      "keypoints": [
+        {
+          "fr": "Cinq familles de sources : OSINT, communautés fermées, feeds commerciaux, télémétrie propre, échanges bilatéraux CERT.",
+          "en": "Five source families: OSINT, closed communities, commercial feeds, own telemetry, bilateral CERT exchanges."
+        },
+        {
+          "fr": "La grille Admiralty croise deux axes indépendants : fiabilité de la source (A→F) et crédibilité de l'info (1→6).",
+          "en": "The Admiralty grid crosses two independent axes: source reliability (A→F) and information credibility (1→6)."
+        },
+        {
+          "fr": "Coter les deux évite le biais d'autorité : une source A peut sortir une info 4, une source D une info 2.",
+          "en": "Rating both avoids the authority bias: an A source can produce a 4 info, a D source a 2 info."
+        }
+      ],
+      "pieges": [
+        {
+          "fr": "Confondre volume et valeur : trois feeds redondants n'apportent pas plus qu'un seul bien exploité.",
+          "en": "Confusing volume and value: three redundant feeds add no more than one well exploited."
+        },
+        {
+          "fr": "Croire à un recoupement quand trois articles citent en réalité le même rapport source.",
+          "en": "Believing in corroboration when three articles actually cite the same source report."
+        }
+      ],
+      "etapes": [],
+      "prose": [
+        {
+          "fr": "Les sources de renseignement se répartissent en grandes familles au profil très différent : l'OSINT (publications, blogs techniques, réseaux), les communautés fermées (ISAC sectoriels, cercles de confiance), les feeds commerciaux, la télémétrie propre à l'organisation, et les échanges bilatéraux entre CERT. Chacune a son équilibre coût / fraîcheur / fiabilité : la valeur d'un dispositif de veille tient à leur combinaison, jamais au seul volume.",
+          "en": "Intelligence sources fall into broad families with very different profiles: OSINT (publications, technical blogs, social networks), closed communities (sector ISACs, trust circles), commercial feeds, the organisation's own telemetry, and bilateral CERT exchanges. Each has its own cost / freshness / reliability balance: a watch capability's value lies in their combination, never in volume alone."
+        },
+        {
+          "fr": "La cotation de type Admiralty structure cette évaluation en croisant deux axes strictement indépendants. Le premier note la fiabilité de la source elle-même, de A (toujours fiable) à F (fiabilité inévaluable). Le second note la crédibilité de l'information rapportée, de 1 (confirmée par d'autres sources) à 6 (invérifiable).",
+          "en": "The Admiralty-style rating structures this assessment by crossing two strictly independent axes. The first rates the reliability of the source itself, from A (always reliable) to F (reliability cannot be judged). The second rates the credibility of the reported information, from 1 (confirmed by other sources) to 6 (cannot be verified)."
+        },
+        {
+          "fr": "L'intérêt de croiser ces deux axes est d'échapper au biais d'autorité : une source habituellement fiable (A) peut produire une information douteuse (4), et une source médiocre (D) peut sortir une information rapidement confirmée (2). Coter les deux séparément force l'analyste à ne pas déduire la qualité de l'info du prestige de la source.",
+          "en": "The point of crossing these two axes is to escape the authority bias: a usually reliable source (A) can produce dubious information (4), and a mediocre source (D) can put out quickly confirmed information (2). Rating both separately forces the analyst not to infer the info's quality from the source's prestige."
+        }
+      ],
+      "table": {
+        "head": [
+          {
+            "fr": "Axe (indépendant)",
+            "en": "Axis (independent)"
+          },
+          {
+            "fr": "Échelle",
+            "en": "Scale"
+          }
+        ],
+        "rows": [
+          {
+            "tone": "violet",
+            "label": {
+              "fr": "Fiabilité de la source",
+              "en": "Source reliability"
+            },
+            "texte": {
+              "fr": "A (fiable) → F (inévaluable)",
+              "en": "A (reliable) → F (cannot judge)"
+            }
+          },
+          {
+            "tone": "cyan",
+            "label": {
+              "fr": "Crédibilité de l'information",
+              "en": "Information credibility"
+            },
+            "texte": {
+              "fr": "1 (confirmée) → 6 (invérifiable)",
+              "en": "1 (confirmed) → 6 (cannot verify)"
+            }
+          }
+        ]
+      },
+      "loop": null,
+      "aller": [
+        {
+          "label": {
+            "fr": "CERT-FR — publications",
+            "en": "CERT-FR — publications"
+          },
+          "url": "https://cert.ssi.gouv.fr/"
+        }
+      ],
+      "lies": [
+        "corp-cti-cycle",
+        "corp-cti-qualif"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-cti-cycle",
+    "nature": "processus",
+    "profils": [
+      "cti"
+    ],
+    "titre_fr": "Le cycle du renseignement",
+    "titre_en": "The intelligence cycle",
+    "gabarit": false,
+    "controles_iso": [
+      "A.5.7"
+    ],
+    "contenu": {
+      "type": "methodo",
+      "resume": {
+        "fr": "De la donnée brute au renseignement actionnable — et la place des IOC/IOA.",
+        "en": "From raw data to actionable intelligence — and where IOCs/IOAs fit."
+      },
+      "objectif": {
+        "fr": "Voir la veille comme un cycle piloté par un besoin, pas comme une collecte tous azimuts.",
+        "en": "See the watch as a cycle driven by a need, not an all-directions collection."
+      },
+      "quand": {
+        "fr": "En continu ; chaque tour est déclenché par une expression de besoin des consommateurs (Purple, SOC, direction).",
+        "en": "Continuously; each turn is triggered by a need expressed by consumers (Purple, SOC, management)."
+      },
+      "outil": {
+        "fr": "Champs IOC/IOA du scénario (contexte) · la gestion d'IOC reste sur le TIP",
+        "en": "Scenario IOC/IOA fields (context) · IOC management stays on the TIP"
+      },
+      "hds": "GRC",
+      "source": {
+        "label": "CERT-FR",
+        "url": "https://cert.ssi.gouv.fr/"
+      },
+      "keypoints": [
+        {
+          "fr": "Le cycle part d'un besoin (orientation) et y revient (diffusion) : sans besoin exprimé, la collecte tourne à vide.",
+          "en": "The cycle starts from a need (direction) and returns to it (dissemination): with no expressed need, collection runs empty."
+        },
+        {
+          "fr": "La phase Analyse est celle qui transforme la donnée en connaissance : acteur → TTP → scénario.",
+          "en": "The Analysis phase is the one that turns data into knowledge: actor → TTP → scenario."
+        },
+        {
+          "fr": "Les IOC vivent sur le TIP (flux) ; le scénario stabilisé peut vivre au catalogue de l'outil.",
+          "en": "IOCs live on the TIP (flow); the stabilised scenario can live in the tool's catalog."
+        }
+      ],
+      "pieges": [],
+      "etapes": [
+        {
+          "texte": {
+            "fr": "Orientation",
+            "en": "Direction"
+          },
+          "description": {
+            "fr": "Expression de besoin : quelles menaces, pour quels périmètres, pour quels consommateurs.",
+            "en": "Need expression: which threats, for which scopes, for which consumers."
+          },
+          "decision": null
+        },
+        {
+          "texte": {
+            "fr": "Collecte",
+            "en": "Collection"
+          },
+          "description": {
+            "fr": "Sources ouvertes, fermées, télémétrie — tracées et cotées.",
+            "en": "Open, closed sources, telemetry — traced and rated."
+          },
+          "decision": null
+        },
+        {
+          "texte": {
+            "fr": "Traitement",
+            "en": "Processing"
+          },
+          "description": {
+            "fr": "Normalisation, déduplication, structuration (STIX sur le TIP).",
+            "en": "Normalisation, deduplication, structuring (STIX on the TIP)."
+          },
+          "decision": null
+        },
+        {
+          "texte": {
+            "fr": "Analyse",
+            "en": "Analysis"
+          },
+          "description": {
+            "fr": "Corrélation, attribution prudente, transformation en connaissance : acteur → TTP → scénario.",
+            "en": "Correlation, cautious attribution, transformation into knowledge: actor → TTP → scenario."
+          },
+          "decision": {
+            "fr": "confiance suffisante ?",
+            "en": "sufficient confidence?"
+          }
+        },
+        {
+          "texte": {
+            "fr": "Diffusion",
+            "en": "Dissemination"
+          },
+          "description": {
+            "fr": "Produits finis marqués TLP/PAP, adaptés au destinataire (scénario pour le Purple, IOC pour le SOC).",
+            "en": "Finished products marked TLP/PAP, tailored to the recipient (scenario for Purple, IOCs for the SOC)."
+          },
+          "decision": null
+        }
+      ],
+      "prose": [],
+      "table": null,
+      "loop": {
+        "fr": "↺ le retour des consommateurs (Purple, SOC) réoriente l'expression de besoin du cycle suivant.",
+        "en": "↺ consumer feedback (Purple, SOC) reorients the next cycle's need."
+      },
+      "aller": [],
+      "lies": [
+        "corp-cti-sources",
+        "corp-cti-qualif",
+        "corp-cti-scenario"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-cti-qualif",
+    "nature": "metier",
+    "profils": [
+      "cti"
+    ],
+    "titre_fr": "Qualifier et coter la donnée de veille",
+    "titre_en": "Qualifying and rating watch data",
+    "gabarit": false,
+    "controles_iso": [],
+    "contenu": {
+      "type": "methodo",
+      "resume": {
+        "fr": "Niveaux de confiance et pièges cognitifs de l'analyste.",
+        "en": "Confidence levels and the analyst's cognitive traps."
+      },
+      "objectif": {
+        "fr": "Faire voyager le niveau de confiance avec l'information, pour qu'un « possible » ne se présente jamais comme un « confirmé ».",
+        "en": "Make the confidence level travel with the information, so a \"possible\" never presents as a \"confirmed\"."
+      },
+      "quand": null,
+      "outil": {
+        "fr": "Notes et source du scénario",
+        "en": "Scenario notes and source"
+      },
+      "hds": "",
+      "source": {
+        "label": "CERT-FR",
+        "url": "https://cert.ssi.gouv.fr/"
+      },
+      "keypoints": [
+        {
+          "fr": "Une échelle explicite — confirmé / probable / possible — doit accompagner chaque information jusqu'au produit final.",
+          "en": "An explicit scale — confirmed / probable / possible — must accompany each piece of information to the final product."
+        },
+        {
+          "fr": "Le recoupement n'a de valeur que par des sources réellement indépendantes.",
+          "en": "Corroboration only has value through genuinely independent sources."
+        },
+        {
+          "fr": "Trois biais à contrer en permanence : confirmation, ancrage, autorité.",
+          "en": "Three biases to counter constantly: confirmation, anchoring, authority."
+        }
+      ],
+      "pieges": [
+        {
+          "fr": "Laisser un scénario bâti sur du « possible » se présenter comme du « confirmé » une fois mis en forme.",
+          "en": "Letting a scenario built on \"possible\" present as \"confirmed\" once formatted."
+        },
+        {
+          "fr": "Surpondérer une source prestigieuse non recoupée (biais d'autorité).",
+          "en": "Over-weighting a prestigious, uncorroborated source (authority bias)."
+        }
+      ],
+      "etapes": [],
+      "prose": [
+        {
+          "fr": "Une information de veille se qualifie sur une échelle explicite — confirmé (recoupé par des sources indépendantes), probable (source solide mais non recoupée), possible (indice isolé) — et cette qualification doit voyager avec l'information tout au long de son traitement. Un scénario construit sur du « possible » ne doit jamais se présenter comme du « confirmé » une fois mis en forme.",
+          "en": "Watch information is qualified on an explicit scale — confirmed (corroborated by independent sources), probable (solid source but uncorroborated), possible (isolated clue) — and this qualification must travel with the information throughout its processing. A scenario built on \"possible\" must never present as \"confirmed\" once formatted."
+        },
+        {
+          "fr": "Trois biais cognitifs guettent l'analyste. Le biais de confirmation : ne retenir que ce qui valide l'hypothèse de départ. L'ancrage : rester fixé sur la première attribution, même quand les indices s'accumulent contre elle. Le biais d'autorité : surpondérer une source prestigieuse simplement parce qu'elle est prestigieuse, sans la recouper.",
+          "en": "Three cognitive biases lie in wait for the analyst. Confirmation bias: retaining only what validates the initial hypothesis. Anchoring: staying fixed on the first attribution, even as clues pile up against it. Authority bias: over-weighting a prestigious source simply because it is prestigious, without corroborating it."
+        },
+        {
+          "fr": "L'antidote reste le recoupement par des sources réellement indépendantes — pas trois articles qui citent tous le même rapport initial. Cette indépendance des sources est ce qui distingue un « confirmé » solide d'une rumeur bien relayée.",
+          "en": "The antidote remains corroboration by genuinely independent sources — not three articles all citing the same initial report. This source independence is what distinguishes a solid \"confirmed\" from a well-relayed rumour."
+        }
+      ],
+      "table": null,
+      "loop": null,
+      "aller": [],
+      "lies": [
+        "corp-cti-sources",
+        "corp-cti-cycle"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-cti-tlp",
+    "nature": "metier",
+    "profils": [
+      "cti",
+      "mgr"
+    ],
+    "titre_fr": "TLP 2.0 — Traffic Light Protocol",
+    "titre_en": "TLP 2.0 — Traffic Light Protocol",
+    "gabarit": false,
+    "controles_iso": [
+      "A.5.34"
+    ],
+    "contenu": {
+      "type": "mapping",
+      "resume": {
+        "fr": "Les cinq niveaux de diffusion et les règles de repartage.",
+        "en": "The five sharing levels and the re-sharing rules."
+      },
+      "objectif": {
+        "fr": "Marquer correctement la diffusion d'une information — à qui elle peut aller — sans confondre avec son usage.",
+        "en": "Correctly mark an information's distribution — who it can go to — without confusing it with its use."
+      },
+      "quand": null,
+      "outil": {
+        "fr": "Marquage TLP présent sur toutes les entités sensibles de l'outil",
+        "en": "TLP marking present on all sensitive entities of the tool"
+      },
+      "hds": "PDP",
+      "source": {
+        "label": "FIRST — TLP",
+        "url": "https://www.first.org/tlp/"
+      },
+      "keypoints": [
+        {
+          "fr": "Le TLP borne la diffusion, pas l'usage : c'est le PAP qui borne les actions permises.",
+          "en": "TLP bounds distribution, not use: it is PAP that bounds permitted actions."
+        },
+        {
+          "fr": "Version 2.0 : WHITE devient CLEAR, et AMBER+STRICT restreint à l'organisation seule (sans les clients).",
+          "en": "Version 2.0: WHITE becomes CLEAR, and AMBER+STRICT restricts to the organisation alone (without clients)."
+        },
+        {
+          "fr": "Hors GREEN et CLEAR, un destinataire ne repartage jamais de lui-même : il repasse par la source.",
+          "en": "Beyond GREEN and CLEAR, a recipient never re-shares on their own: they go back through the source."
+        }
+      ],
+      "pieges": [
+        {
+          "fr": "Traiter le TLP comme un contrôle d'accès technique : c'est une convention de confiance, pas un verrou.",
+          "en": "Treating TLP as a technical access control: it is a trust convention, not a lock."
+        },
+        {
+          "fr": "Repartager du TLP:AMBER à un tiers sans autorisation de la source d'origine.",
+          "en": "Re-sharing TLP:AMBER to a third party without the original source's authorisation."
+        }
+      ],
+      "etapes": [],
+      "prose": [
+        {
+          "fr": "Le TLP borne la diffusion d'une information — à qui peut-on la transmettre — mais pas son usage, qui relève du PAP. La version 2.0 publiée par le FIRST apporte deux changements notables : WHITE est renommé CLEAR, et un nouveau niveau AMBER+STRICT restreint le partage à la seule organisation du destinataire, sans ses clients.",
+          "en": "TLP bounds an information's distribution — to whom it can be passed — but not its use, which falls to PAP. Version 2.0 published by FIRST brings two notable changes: WHITE is renamed CLEAR, and a new AMBER+STRICT level restricts sharing to the recipient's organisation alone, without its clients."
+        },
+        {
+          "fr": "La règle de repartage est le cœur du protocole : hors GREEN et CLEAR, un destinataire ne repartage pas de lui-même l'information reçue. S'il a besoin de l'étendre, il repasse par la source d'origine, qui autorise ou prend elle-même en charge la diffusion.",
+          "en": "The re-sharing rule is the heart of the protocol: beyond GREEN and CLEAR, a recipient does not re-share received information on their own. If they need to extend it, they go back through the original source, which authorises or handles the distribution itself."
+        },
+        {
+          "fr": "Point à ne jamais perdre de vue : le TLP est une convention de confiance, pas un contrôle technique. Dans l'outil, il guide le cloisonnement par client et le marquage des exports, mais il ne remplace ni le chiffrement des données ni les habilitations d'accès.",
+          "en": "A point never to lose sight of: TLP is a trust convention, not a technical control. In the tool, it guides per-client partitioning and export marking, but it replaces neither data encryption nor access permissions."
+        }
+      ],
+      "table": {
+        "head": [
+          {
+            "fr": "Niveau",
+            "en": "Level"
+          },
+          {
+            "fr": "Périmètre de diffusion",
+            "en": "Distribution scope"
+          }
+        ],
+        "rows": [
+          {
+            "tone": "red",
+            "label": "TLP:RED",
+            "texte": {
+              "fr": "Destinataires nommés uniquement, pas de repartage.",
+              "en": "Named recipients only, no re-sharing."
+            }
+          },
+          {
+            "tone": "amber",
+            "label": "TLP:AMBER+STRICT",
+            "texte": {
+              "fr": "Organisation du destinataire uniquement.",
+              "en": "Recipient's organisation only."
+            }
+          },
+          {
+            "tone": "amber",
+            "label": "TLP:AMBER",
+            "texte": {
+              "fr": "Organisation + clients, au besoin d'en connaître.",
+              "en": "Organisation + clients, on a need-to-know basis."
+            }
+          },
+          {
+            "tone": "green",
+            "label": "TLP:GREEN",
+            "texte": {
+              "fr": "Communauté élargie, pas de canaux publics.",
+              "en": "Broader community, no public channels."
+            }
+          },
+          {
+            "tone": "gray",
+            "label": "TLP:CLEAR",
+            "texte": {
+              "fr": "Diffusion libre.",
+              "en": "Free distribution."
+            }
+          }
+        ]
+      },
+      "loop": null,
+      "aller": [
+        {
+          "label": {
+            "fr": "FIRST — Standard TLP 2.0",
+            "en": "FIRST — TLP 2.0 Standard"
+          },
+          "url": "https://www.first.org/tlp/"
+        }
+      ],
+      "lies": [
+        "corp-cti-pap",
+        "corp-cti-qualif"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-cti-pap",
+    "nature": "metier",
+    "profils": [
+      "cti"
+    ],
+    "titre_fr": "PAP — Permissible Actions Protocol",
+    "titre_en": "PAP — Permissible Actions Protocol",
+    "gabarit": false,
+    "controles_iso": [],
+    "contenu": {
+      "type": "methodo",
+      "resume": {
+        "fr": "Quelles actions mener sur une donnée sans révéler l'investigation à l'attaquant.",
+        "en": "Which actions to take on data without revealing the investigation to the attacker."
+      },
+      "objectif": {
+        "fr": "Décider quelles actions sont permises sur un indicateur sans risquer d'alerter l'acteur sous surveillance.",
+        "en": "Decide which actions are permitted on an indicator without risking alerting the actor under surveillance."
+      },
+      "quand": null,
+      "outil": {
+        "fr": "Aucun champ PAP actuellement — évolution proposée à côté du TLP",
+        "en": "No PAP field currently — proposed evolution alongside TLP"
+      },
+      "hds": "",
+      "source": {
+        "label": "MISP taxonomies (CIRCL, 2016)",
+        "url": "https://www.misp-project.org/taxonomies.html"
+      },
+      "keypoints": [
+        {
+          "fr": "Le TLP dit à qui partager ; le PAP dit quoi faire de l'information sans exposer l'analyse.",
+          "en": "TLP says who to share with; PAP says what to do with the information without exposing the analysis."
+        },
+        {
+          "fr": "Conçu pour l'analyste opérationnel : requêter un tiers ou sonder une infra adverse sont des actions visibles.",
+          "en": "Designed for the operational analyst: querying a third party or probing adversary infra are visible actions."
+        },
+        {
+          "fr": "Se lit toujours à côté du TLP : une donnée TLP:GREEN peut imposer un usage PAP:RED.",
+          "en": "Always read alongside TLP: a TLP:GREEN datum can impose PAP:RED usage."
+        }
+      ],
+      "pieges": [
+        {
+          "fr": "Interroger un service de réputation public sur un IOC en PAP:RED : la requête peut être vue par l'adversaire.",
+          "en": "Querying a public reputation service on a PAP:RED IOC: the query can be seen by the adversary."
+        },
+        {
+          "fr": "Oublier que l'enrichissement automatique (DNS, SIEM) peut déclencher des requêtes externes non voulues.",
+          "en": "Forgetting that automatic enrichment (DNS, SIEM) can trigger unwanted external queries."
+        }
+      ],
+      "etapes": [],
+      "prose": [
+        {
+          "fr": "Le TLP indique à qui partager une information ; le PAP répond à une question différente et complémentaire : quoi faire de cette information sans exposer l'analyse en cours. Introduit en 2016 dans les taxonomies MISP — maintenues par le CIRCL, la même origine que l'enrichissement CVE de ce cockpit — il est pensé pour l'analyste opérationnel.",
+          "en": "TLP indicates who to share information with; PAP answers a different, complementary question: what to do with that information without exposing the ongoing analysis. Introduced in 2016 in the MISP taxonomies — maintained by CIRCL, the same origin as this cockpit's CVE enrichment — it is designed for the operational analyst."
+        },
+        {
+          "fr": "La logique est celle de la détectabilité de l'action. Requêter un service de réputation tiers sur un indicateur, sonder une infrastructure adverse, bloquer un flux : ce sont des actions potentiellement visibles qui peuvent alerter l'acteur surveillé qu'une investigation est en cours. Le PAP gradue ce que l'on s'autorise, du purement passif à l'entièrement libre.",
+          "en": "The logic is that of action detectability. Querying a third-party reputation service on an indicator, probing an adversary infrastructure, blocking a flow: these are potentially visible actions that can alert the watched actor that an investigation is underway. PAP grades what you allow yourself, from purely passive to entirely free."
+        },
+        {
+          "fr": "Il se lit toujours à côté du TLP : les deux marquages sont indépendants. Une donnée largement partageable (TLP:GREEN) peut parfaitement imposer une extrême prudence d'usage (PAP:RED) si toute action visible risquerait de compromettre l'opération.",
+          "en": "It is always read alongside TLP: the two markings are independent. Widely shareable data (TLP:GREEN) can perfectly well impose extreme usage caution (PAP:RED) if any visible action would risk compromising the operation."
+        }
+      ],
+      "table": {
+        "head": [
+          {
+            "fr": "Niveau",
+            "en": "Level"
+          },
+          {
+            "fr": "Actions permises",
+            "en": "Permitted actions"
+          }
+        ],
+        "rows": [
+          {
+            "tone": "red",
+            "label": "PAP:RED",
+            "texte": {
+              "fr": "Actions non détectables uniquement — analyse passive sur ses propres journaux.",
+              "en": "Non-detectable actions only — passive analysis on one's own logs."
+            }
+          },
+          {
+            "tone": "amber",
+            "label": "PAP:AMBER",
+            "texte": {
+              "fr": "Vérifications passives via des tiers (services de réputation).",
+              "en": "Passive checks via third parties (reputation services)."
+            }
+          },
+          {
+            "tone": "green",
+            "label": "PAP:GREEN",
+            "texte": {
+              "fr": "Actions actives : sonder, bloquer, interagir via leurre.",
+              "en": "Active actions: probe, block, interact via decoy."
+            }
+          },
+          {
+            "tone": "gray",
+            "label": "PAP:WHITE",
+            "texte": {
+              "fr": "Aucune restriction d'usage.",
+              "en": "No usage restriction."
+            }
+          }
+        ]
+      },
+      "loop": null,
+      "aller": [
+        {
+          "label": {
+            "fr": "MISP — taxonomie PAP",
+            "en": "MISP — PAP taxonomy"
+          },
+          "url": "https://www.misp-project.org/taxonomies.html"
+        }
+      ],
+      "lies": [
+        "corp-cti-tlp",
+        "corp-cti-cycle"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-cti-stix",
+    "nature": "metier",
+    "profils": [
+      "cti"
+    ],
+    "titre_fr": "STIX 2.1 : structurer un scénario pour l'échange",
+    "titre_en": "STIX 2.1: structuring a scenario for exchange",
+    "gabarit": false,
+    "controles_iso": [],
+    "contenu": {
+      "type": "methodo",
+      "resume": {
+        "fr": "Le périmètre d'interchange de l'outil : le scénario, pas les IOC.",
+        "en": "The tool's interchange scope: the scenario, not the IOCs."
+      },
+      "objectif": {
+        "fr": "Comprendre ce que l'outil importe et exporte en STIX — la connaissance d'acteur, pas le flux d'indicateurs.",
+        "en": "Understand what the tool imports and exports in STIX — actor knowledge, not the indicator flow."
+      },
+      "quand": null,
+      "outil": {
+        "fr": "Import/export STIX 2.1 du scénario (intrusion-set + attack-pattern)",
+        "en": "STIX 2.1 scenario import/export (intrusion-set + attack-pattern)"
+      },
+      "hds": "",
+      "source": {
+        "label": "OASIS STIX 2.1",
+        "url": "https://docs.oasis-open.org/cti/stix/v2.1/stix-v2.1.html"
+      },
+      "keypoints": [
+        {
+          "fr": "STIX modélise la menace en objets liés : intrusion-set (acteur), attack-pattern (techniques), relationship (liens).",
+          "en": "STIX models the threat as linked objects: intrusion-set (actor), attack-pattern (techniques), relationship (links)."
+        },
+        {
+          "fr": "L'outil échange le sous-ensemble scénario ; les indicateurs restent sur le TIP.",
+          "en": "The tool exchanges the scenario subset; indicators stay on the TIP."
+        },
+        {
+          "fr": "Import STIX = amorcer un scénario depuis un TIP ; export = restituer un scénario créé dans l'outil.",
+          "en": "STIX import = seed a scenario from a TIP; export = hand back a scenario created in the tool."
+        }
+      ],
+      "pieges": [],
+      "etapes": [],
+      "prose": [
+        {
+          "fr": "STIX 2.1 modélise la connaissance de menace en objets liés : l'intrusion-set représente l'acteur, l'attack-pattern représente ses techniques (mappées sur ATT&CK), et les objets relationship expriment les liens entre eux. C'est un langage d'échange standardisé, lisible par machine.",
+          "en": "STIX 2.1 models threat knowledge as linked objects: the intrusion-set represents the actor, the attack-pattern represents its techniques (mapped to ATT&CK), and relationship objects express the links between them. It is a standardised, machine-readable exchange language."
+        },
+        {
+          "fr": "C'est précisément ce sous-ensemble — acteur et techniques — que l'outil sait importer depuis un TIP pour amorcer un scénario, et exporter pour restituer un scénario créé ici. L'interchange se fait au niveau de la connaissance stabilisée sur l'adversaire.",
+          "en": "It is precisely this subset — actor and techniques — that the tool can import from a TIP to seed a scenario, and export to hand back a scenario created here. The interchange happens at the level of stabilised knowledge about the adversary."
+        },
+        {
+          "fr": "Les indicateurs (indicator, observable) restent volontairement hors périmètre : leur cycle de vie — fraîcheur, faux positifs, expiration — appartient au TIP. L'outil consomme la connaissance stabilisée sur l'acteur, pas le flux d'indicateurs qui, lui, se périme vite.",
+          "en": "Indicators (indicator, observable) deliberately stay out of scope: their lifecycle — freshness, false positives, expiry — belongs to the TIP. The tool consumes stabilised knowledge about the actor, not the indicator flow, which expires quickly."
+        }
+      ],
+      "table": null,
+      "loop": null,
+      "aller": [
+        {
+          "label": "OASIS — STIX 2.1",
+          "url": "https://docs.oasis-open.org/cti/stix/v2.1/stix-v2.1.html"
+        }
+      ],
+      "lies": [
+        "corp-cti-scenario",
+        "corp-cti-tip"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-cti-modeles",
+    "nature": "metier",
+    "profils": [
+      "cti"
+    ],
+    "titre_fr": "Modèles d'analyse : Diamond, Kill Chain, VERIS",
+    "titre_en": "Analysis models: Diamond, Kill Chain, VERIS",
+    "gabarit": false,
+    "controles_iso": [],
+    "contenu": {
+      "type": "methodo",
+      "resume": {
+        "fr": "Trois cadres complémentaires d'ATT&CK, chacun pour une question différente.",
+        "en": "Three frameworks complementary to ATT&CK, each for a different question."
+      },
+      "objectif": {
+        "fr": "Savoir quel cadre d'analyse sortir selon la question — pivoter, ordonner une chaîne, ou capitaliser un incident.",
+        "en": "Know which analysis framework to reach for by the question — pivot, order a chain, or capitalise an incident."
+      },
+      "quand": null,
+      "outil": {
+        "fr": "Backlog v4.7 — enrichissement futur du drawer Scénario",
+        "en": "Backlog v4.7 — future enrichment of the Scenario drawer"
+      },
+      "hds": "",
+      "source": {
+        "label": "Lockheed Martin — Cyber Kill Chain",
+        "url": "https://www.lockheedmartin.com/en-us/capabilities/cyber/cyber-kill-chain.html"
+      },
+      "keypoints": [
+        {
+          "fr": "Diamond Model : quatre sommets (adversaire, capacité, infrastructure, victime) — idéal pour pivoter en investigation.",
+          "en": "Diamond Model: four vertices (adversary, capability, infrastructure, victim) — ideal for pivoting in investigation."
+        },
+        {
+          "fr": "Cyber Kill Chain : sept étapes séquentielles — utile pour raisonner « où casser la chaîne ».",
+          "en": "Cyber Kill Chain: seven sequential stages — useful to reason \"where to break the chain\"."
+        },
+        {
+          "fr": "VERIS : structure l'incident (acteur, action, actif, attribut) — pour la comparabilité statistique.",
+          "en": "VERIS: structures the incident (actor, action, asset, attribute) — for statistical comparability."
+        }
+      ],
+      "pieges": [],
+      "etapes": [],
+      "prose": [
+        {
+          "fr": "Le Diamond Model analyse un événement d'intrusion par quatre sommets — adversaire, capacité, infrastructure, victime — et les relations entre eux. Sa force est le pivot : à partir d'une infrastructure connue, on remonte aux capacités, puis à d'autres victimes. C'est le modèle de l'investigation.",
+          "en": "The Diamond Model analyses an intrusion event through four vertices — adversary, capability, infrastructure, victim — and the relationships between them. Its strength is the pivot: from a known infrastructure, you trace back to capabilities, then to other victims. It is the model of investigation."
+        },
+        {
+          "fr": "La Cyber Kill Chain découpe l'intrusion en sept étapes séquentielles, de la reconnaissance à l'action sur objectif. Elle est utile pour raisonner défense : à chaque étape correspond une opportunité de « casser la chaîne ». VERIS, de son côté, structure la description d'un incident selon quatre axes (acteur, action, actif, attribut) dans un but de comparabilité statistique entre incidents.",
+          "en": "The Cyber Kill Chain splits the intrusion into seven sequential stages, from reconnaissance to action on objective. It is useful to reason about defence: each stage is an opportunity to \"break the chain\". VERIS, for its part, structures an incident's description along four axes (actor, action, asset, attribute) for statistical comparability across incidents."
+        },
+        {
+          "fr": "ATT&CK reste le langage des techniques ; ces trois modèles apportent la grammaire de l'analyse, chacun pour un usage. En pratique Purple : la Kill Chain pour ordonner une chaîne d'attaque, le Diamond pour documenter un acteur en profondeur, VERIS pour capitaliser et comparer les incidents dans le temps.",
+          "en": "ATT&CK remains the language of techniques; these three models bring the grammar of analysis, each for a use. In Purple practice: the Kill Chain to order an attack chain, the Diamond to document an actor in depth, VERIS to capitalise and compare incidents over time."
+        }
+      ],
+      "table": {
+        "head": [
+          {
+            "fr": "Modèle",
+            "en": "Model"
+          },
+          {
+            "fr": "Usage de prédilection",
+            "en": "Preferred use"
+          }
+        ],
+        "rows": [
+          {
+            "tone": "violet",
+            "label": "Diamond Model",
+            "texte": {
+              "fr": "Pivot en investigation",
+              "en": "Pivot in investigation"
+            }
+          },
+          {
+            "tone": "cyan",
+            "label": "Cyber Kill Chain",
+            "texte": {
+              "fr": "Ordonner une chaîne / casser la chaîne",
+              "en": "Order a chain / break the chain"
+            }
+          },
+          {
+            "tone": "amber",
+            "label": "VERIS",
+            "texte": {
+              "fr": "Capitaliser et comparer les incidents",
+              "en": "Capitalise and compare incidents"
+            }
+          }
+        ]
+      },
+      "loop": null,
+      "aller": [
+        {
+          "label": "VERIS",
+          "url": "https://verisframework.org/"
+        }
+      ],
+      "lies": [
+        "corp-cti-scenario",
+        "corp-aud-chaine"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-cti-scenario",
+    "nature": "procedure",
+    "profils": [
+      "cti"
+    ],
+    "titre_fr": "Construire un scénario de menace pour le catalogue",
+    "titre_en": "Building a threat scenario for the catalog",
+    "gabarit": false,
+    "controles_iso": [
+      "A.5.7"
+    ],
+    "contenu": {
+      "type": "methodo",
+      "resume": {
+        "fr": "Du renseignement brut au scénario réutilisable du catalogue global.",
+        "en": "From raw intelligence to a reusable scenario in the global catalog."
+      },
+      "objectif": {
+        "fr": "Transformer un renseignement d'acteur en un scénario réutilisable, versé au catalogue global et rattachable à tout audit.",
+        "en": "Turn actor intelligence into a reusable scenario, added to the global catalog and attachable to any audit."
+      },
+      "quand": {
+        "fr": "Quand un acteur pertinent émerge (menace sectorielle, incident marquant, acteur suivi) et mérite d'être émulable.",
+        "en": "When a relevant actor emerges (sector threat, notable incident, tracked actor) and is worth being emulable."
+      },
+      "outil": {
+        "fr": "Éditeur de scénario · catalogue CTI global (non cloisonné par client)",
+        "en": "Scenario editor · global CTI catalog (not partitioned by client)"
+      },
+      "hds": "GRC",
+      "source": {
+        "label": "attack.mitre.org",
+        "url": "https://attack.mitre.org/"
+      },
+      "keypoints": [
+        {
+          "fr": "Chaque TTP retenue doit être sourcée — rattachable à du renseignement, pas à l'intuition.",
+          "en": "Each chosen TTP must be sourced — traceable to intelligence, not intuition."
+        },
+        {
+          "fr": "Le scénario naît global : son rattachement à un client vient plus tard, au cadrage d'un audit.",
+          "en": "The scenario is born global: its attachment to a client comes later, at an audit's scoping."
+        },
+        {
+          "fr": "Les IOC/IOA restent du contexte libre ; leur source de vérité demeure le TIP.",
+          "en": "IOCs/IOAs stay as free context; their source of truth remains the TIP."
+        }
+      ],
+      "pieges": [
+        {
+          "fr": "Cloisonner le scénario par client dès la création : il perd sa réutilisabilité de catalogue.",
+          "en": "Partitioning the scenario by client at creation: it loses its catalog reusability."
+        },
+        {
+          "fr": "Mélanger scénario et flux d'IOC : le premier est stable, le second se périme.",
+          "en": "Mixing scenario and IOC flow: the former is stable, the latter expires."
+        }
+      ],
+      "etapes": [
+        {
+          "texte": {
+            "fr": "Partir d'un besoin : acteur pertinent pour les clients suivis, menace sectorielle, incident marquant.",
+            "en": "Start from a need: actor relevant to tracked clients, sector threat, notable incident."
+          },
+          "role": "CTI",
+          "sortie": {
+            "fr": "Justification du scénario établie.",
+            "en": "Scenario justification established."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Documenter l'acteur émulé et l'objectif du scénario (que démontre-t-on ?).",
+            "en": "Document the emulated actor and the scenario's objective (what do we demonstrate?)."
+          },
+          "role": "CTI",
+          "sortie": {
+            "fr": "Identité et objectif du scénario.",
+            "en": "Scenario identity and objective."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Sélectionner les TTP sourcées — chaque technique rattachable à du renseignement.",
+            "en": "Select sourced TTPs — each technique traceable to intelligence."
+          },
+          "role": "CTI",
+          "sortie": {
+            "fr": "Chaîne de TTP justifiées.",
+            "en": "Chain of justified TTPs."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Ordonner les étapes en chaîne jouable et calibrer la sophistication.",
+            "en": "Order the steps into a playable chain and calibrate the sophistication."
+          },
+          "role": "CTI + Red",
+          "sortie": {
+            "fr": "Chaîne séquencée et calibrée.",
+            "en": "Sequenced, calibrated chain."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Vérifier le D3FEND suggéré, ajouter IOC/IOA en contexte (source d'IOC = TIP).",
+            "en": "Check the suggested D3FEND, add IOCs/IOAs as context (IOC source = TIP)."
+          },
+          "role": "CTI",
+          "sortie": {
+            "fr": "Contre-mesures et contexte renseignés.",
+            "en": "Countermeasures and context filled in."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Marquer le TLP et publier au catalogue global (rattachement client au cadrage d'un audit).",
+            "en": "Mark the TLP and publish to the global catalog (client attachment at an audit's scoping)."
+          },
+          "role": "CTI",
+          "sortie": {
+            "fr": "Scénario publié, réutilisable.",
+            "en": "Scenario published, reusable."
+          }
+        }
+      ],
+      "prose": [],
+      "table": null,
+      "loop": null,
+      "aller": [],
+      "lies": [
+        "corp-aud-chaine",
+        "corp-cti-stix",
+        "corp-cti-cycle"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-cti-tip",
+    "nature": "metier",
+    "profils": [
+      "cti",
+      "mgr"
+    ],
+    "titre_fr": "Frontière outil / TIP",
+    "titre_en": "Boundary: tool / TIP",
+    "gabarit": false,
+    "controles_iso": [],
+    "contenu": {
+      "type": "mapping",
+      "resume": {
+        "fr": "La gestion d'IOC et des feeds reste sur le TIP ; l'outil consomme le scénario stabilisé.",
+        "en": "IOC and feed management stays on the TIP; the tool consumes the stabilised scenario."
+      },
+      "objectif": {
+        "fr": "Poser la frontière entre le flux (TIP) et la connaissance stabilisée (catalogue de scénarios).",
+        "en": "Set the boundary between the flow (TIP) and stabilised knowledge (scenario catalog)."
+      },
+      "quand": null,
+      "outil": {
+        "fr": "Principe directeur : se connecter, ne pas remplacer",
+        "en": "Guiding principle: connect, don't replace"
+      },
+      "hds": "Organisation & prestation",
+      "source": {
+        "label": "Cahier des charges §0.A",
+        "url": ""
+      },
+      "keypoints": [
+        {
+          "fr": "Tout ce qui a un cycle de vie de flux (fraîcheur, expiration, faux positifs) vit sur le TIP.",
+          "en": "Everything with a flow lifecycle (freshness, expiry, false positives) lives on the TIP."
+        },
+        {
+          "fr": "Tout ce qui est connaissance stabilisée et réutilisable (acteur, chaîne de TTP) peut vivre au catalogue.",
+          "en": "Everything that is stabilised, reusable knowledge (actor, TTP chain) can live in the catalog."
+        },
+        {
+          "fr": "L'outil s'interface en STIX — import et export de scénario — sans dupliquer les fonctions du TIP.",
+          "en": "The tool interfaces via STIX — scenario import and export — without duplicating the TIP's functions."
+        }
+      ],
+      "pieges": [],
+      "etapes": [],
+      "prose": [
+        {
+          "fr": "Le TIP (MISP, OpenCTI…) est le système de référence de la CTI : ingestion de feeds, gestion des indicateurs, corrélation, partage TAXII. C'est là que vit l'opérationnel de la menace, avec son rythme rapide et ses faux positifs à trier.",
+          "en": "The TIP (MISP, OpenCTI…) is the CTI system of record: feed ingestion, indicator management, correlation, TAXII sharing. That is where the threat's operational side lives, with its fast pace and false positives to sort."
+        },
+        {
+          "fr": "Ce cockpit s'y interface — import STIX d'un scénario pour l'amorcer, export d'un scénario créé ici — sans chercher à dupliquer ces fonctions. Il consomme la connaissance stabilisée sur l'adversaire, pas le flux d'indicateurs.",
+          "en": "This cockpit interfaces with it — STIX import of a scenario to seed it, export of a scenario created here — without seeking to duplicate those functions. It consumes stabilised knowledge about the adversary, not the indicator flow."
+        },
+        {
+          "fr": "Le critère de frontière est simple et se généralise : tout ce qui a un cycle de vie de flux — fraîcheur, expiration, faux positifs — vit sur le TIP ; tout ce qui est connaissance stabilisée et réutilisable — acteur, chaîne de TTP, contre-mesures — peut vivre au catalogue de scénarios de l'outil.",
+          "en": "The boundary criterion is simple and generalises: everything with a flow lifecycle — freshness, expiry, false positives — lives on the TIP; everything that is stabilised, reusable knowledge — actor, TTP chain, countermeasures — can live in the tool's scenario catalog."
+        }
+      ],
+      "table": null,
+      "loop": null,
+      "aller": [],
+      "lies": [
+        "corp-cti-stix",
+        "corp-cti-scenario",
+        "corp-voc-frontiere"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-mgr-conformite",
+    "nature": "metier",
+    "profils": [
+      "mgr"
+    ],
+    "titre_fr": "Ce que les activités Purple prouvent en audit ISO 27001 / HDS",
+    "titre_en": "What Purple activities prove in an ISO 27001 / HDS audit",
+    "gabarit": false,
+    "controles_iso": [
+      "A.5.35",
+      "A.5.36",
+      "A.8.29"
+    ],
+    "contenu": {
+      "type": "mapping",
+      "resume": {
+        "fr": "Lecture croisée : chaque donnée produite par l'outil comme élément de preuve.",
+        "en": "Cross-reading: each datum the tool produces as an element of evidence."
+      },
+      "objectif": {
+        "fr": "Transformer l'activité Purple en éléments de preuve mobilisables devant un auditeur, sans confondre preuve et procédure approuvée.",
+        "en": "Turn Purple activity into evidence usable before an auditor, without confusing evidence and approved procedure."
+      },
+      "quand": null,
+      "outil": {
+        "fr": "Cockpit · historique d'audits · KPI · journal tamper-evident",
+        "en": "Cockpit · audit history · KPIs · tamper-evident journal"
+      },
+      "hds": "GRC",
+      "source": {
+        "label": "ISO/IEC 27001",
+        "url": "https://www.iso.org/standard/27001"
+      },
+      "keypoints": [
+        {
+          "fr": "L'outil fournit la donnée qui atteste un contrôle ; la procédure approuvée, elle, vit dans le SMSI de l'organisation.",
+          "en": "The tool provides the data attesting a control; the approved procedure lives in the organisation's ISMS."
+        },
+        {
+          "fr": "Un même exercice Purple alimente plusieurs contrôles à la fois (test, revue indépendante, détection).",
+          "en": "A single Purple exercise feeds several controls at once (testing, independent review, detection)."
+        },
+        {
+          "fr": "Le corpus fournit des points de départ exportables, jamais la version officielle des procédures.",
+          "en": "The corpus provides exportable starting points, never the official version of the procedures."
+        }
+      ],
+      "pieges": [],
+      "etapes": [],
+      "prose": [
+        {
+          "fr": "Les exercices et audits tracés dans l'outil constituent des éléments de preuve directs pour plusieurs contrôles de l'Annexe A d'ISO 27001 : les tests de sécurité récurrents (A.8.29), la revue indépendante de la sécurité (A.5.35), la gestion des vulnérabilités techniques (A.8.8), les activités de surveillance et de détection (A.8.16), la collecte de preuves (A.5.28). Côté HDS, ces mêmes activités alimentent les domaines GRC, SSI/MCO et MII.",
+          "en": "The exercises and audits traced in the tool constitute direct evidence for several ISO 27001 Annex A controls: recurring security testing (A.8.29), independent security review (A.5.35), technical vulnerability management (A.8.8), monitoring and detection activities (A.8.16), evidence collection (A.5.28). On the HDS side, these same activities feed the GRC, SSI/MCO and MII domains."
+        },
+        {
+          "fr": "Le principe à retenir tient en une phrase : l'article de corpus explique l'exigence, l'outil fournit la donnée qui en atteste — mais la procédure approuvée, elle, vit dans le SMSI de l'organisation. Le corpus fournit des gabarits exportables comme points de départ, jamais la version officielle et vivante du document.",
+          "en": "The principle to remember fits in one sentence: the corpus article explains the requirement, the tool provides the data attesting it — but the approved procedure lives in the organisation's ISMS. The corpus provides exportable templates as starting points, never the official, living version of the document."
+        },
+        {
+          "fr": "Cette séparation est ce qui évite le piège classique de l'audit : deux versions divergentes d'une même procédure. L'outil prouve l'activité ; l'organisation détient la doctrine.",
+          "en": "This separation is what avoids the classic audit trap: two diverging versions of the same procedure. The tool proves the activity; the organisation holds the doctrine."
+        }
+      ],
+      "table": {
+        "head": [
+          {
+            "fr": "Contrôle",
+            "en": "Control"
+          },
+          {
+            "fr": "Preuve produite par l'outil",
+            "en": "Evidence produced by the tool"
+          }
+        ],
+        "rows": [
+          {
+            "tone": "violet",
+            "label": "A.8.29",
+            "texte": {
+              "fr": "Audits catégorisés, jalons PTES, AuditActions",
+              "en": "Categorised audits, PTES milestones, AuditActions"
+            }
+          },
+          {
+            "tone": "cyan",
+            "label": "A.8.8",
+            "texte": {
+              "fr": "Vulnérabilités enrichies, SLA P1–P4, tickets",
+              "en": "Enriched vulnerabilities, P1–P4 SLA, tickets"
+            }
+          },
+          {
+            "tone": "green",
+            "label": "A.8.16",
+            "texte": {
+              "fr": "Verdicts d'étape, MTTD/MTTR, angles morts",
+              "en": "Step verdicts, MTTD/MTTR, blind spots"
+            }
+          },
+          {
+            "tone": "amber",
+            "label": "A.5.28",
+            "texte": {
+              "fr": "Preuves chiffrées, journal tamper-evident",
+              "en": "Encrypted evidence, tamper-evident journal"
+            }
+          },
+          {
+            "tone": "gray",
+            "label": "A.5.35",
+            "texte": {
+              "fr": "Historique d'exercices, KPI de tendance",
+              "en": "Exercise history, trend KPIs"
+            }
+          }
+        ]
+      },
+      "loop": null,
+      "aller": [],
+      "lies": [
+        "corp-mgr-incidents",
+        "corp-voc-sla",
+        "corp-aud-categories"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-mgr-incidents",
+    "nature": "processus",
+    "profils": [
+      "mgr",
+      "cti"
+    ],
+    "titre_fr": "Gestion des incidents de sécurité — le cycle et l'articulation Red/Blue",
+    "titre_en": "Security incident management — the cycle and the Red/Blue articulation",
+    "gabarit": false,
+    "controles_iso": [
+      "A.5.24",
+      "A.5.25",
+      "A.5.26",
+      "A.5.27"
+    ],
+    "contenu": {
+      "type": "mapping",
+      "resume": {
+        "fr": "Préparation, détection, réponse, enseignements : où l'exercice Purple s'insère.",
+        "en": "Preparation, detection, response, lessons: where the Purple exercise fits in."
+      },
+      "objectif": {
+        "fr": "Situer l'exercice Purple comme un test à froid du dispositif d'incident, et faire des enseignements le moteur du cycle suivant.",
+        "en": "Position the Purple exercise as a cold test of the incident capability, and make lessons the engine of the next cycle."
+      },
+      "quand": {
+        "fr": "Le cycle tourne en continu ; l'exercice Purple s'y greffe pour éprouver préparation et détection sans incident réel.",
+        "en": "The cycle runs continuously; the Purple exercise grafts onto it to test preparation and detection without a real incident."
+      },
+      "outil": {
+        "fr": "DefenseObservation · DetectionTicket · verdicts d'étape · debrief",
+        "en": "DefenseObservation · DetectionTicket · step verdicts · debrief"
+      },
+      "hds": "MII",
+      "source": {
+        "label": "ISO/IEC 27001",
+        "url": "https://www.iso.org/standard/27001"
+      },
+      "keypoints": [
+        {
+          "fr": "L'exercice Purple teste le dispositif d'incident à froid, avant qu'un vrai incident ne le mette à l'épreuve.",
+          "en": "The Purple exercise tests the incident capability cold, before a real incident puts it to the test."
+        },
+        {
+          "fr": "Le verdict d'étape (prévenu / alerté / journalisé / aucune télémétrie) est la mesure de détection de l'exercice.",
+          "en": "The step verdict (prevented / alerted / logged / no telemetry) is the exercise's detection measure."
+        },
+        {
+          "fr": "Les enseignements du debrief alimentent la préparation du cycle suivant — c'est la boucle d'amélioration.",
+          "en": "The debrief's lessons feed the next cycle's preparation — that is the improvement loop."
+        }
+      ],
+      "pieges": [],
+      "etapes": [
+        {
+          "texte": {
+            "fr": "Préparation",
+            "en": "Preparation"
+          },
+          "description": {
+            "fr": "Rôles, canaux, critères de qualification définis avant l'incident — l'exercice Purple teste ce dispositif à froid.",
+            "en": "Roles, channels, qualification criteria defined before the incident — the Purple exercise tests this capability cold."
+          },
+          "decision": null
+        },
+        {
+          "texte": {
+            "fr": "Détection & signalement",
+            "en": "Detection & reporting"
+          },
+          "description": {
+            "fr": "La télémétrie remonte l'événement ; côté Purple, c'est le verdict d'étape (prévenu / alerté / journalisé / aucune télémétrie).",
+            "en": "Telemetry surfaces the event; on the Purple side, it is the step verdict (prevented / alerted / logged / no telemetry)."
+          },
+          "decision": null
+        },
+        {
+          "texte": {
+            "fr": "Évaluation",
+            "en": "Assessment"
+          },
+          "description": {
+            "fr": "Qualification : incident avéré ou non, gravité, périmètre.",
+            "en": "Qualification: confirmed incident or not, severity, scope."
+          },
+          "decision": {
+            "fr": "incident confirmé ?",
+            "en": "incident confirmed?"
+          }
+        },
+        {
+          "texte": {
+            "fr": "Réponse",
+            "en": "Response"
+          },
+          "description": {
+            "fr": "Containment, éradication, rétablissement — mesurés en exercice par MTTR-réponse.",
+            "en": "Containment, eradication, recovery — measured in the exercise by response MTTR."
+          },
+          "decision": null
+        },
+        {
+          "texte": {
+            "fr": "Enseignements",
+            "en": "Lessons"
+          },
+          "description": {
+            "fr": "Debrief : règles de détection à écrire, sources à déployer, procédures à corriger.",
+            "en": "Debrief: detection rules to write, sources to deploy, procedures to fix."
+          },
+          "decision": null
+        }
+      ],
+      "prose": [],
+      "table": null,
+      "loop": {
+        "fr": "↺ les enseignements alimentent la préparation du cycle suivant — et le prochain exercice Purple.",
+        "en": "↺ the lessons feed the next cycle's preparation — and the next Purple exercise."
+      },
+      "aller": [],
+      "lies": [
+        "corp-mgr-conformite",
+        "corp-mgr-sensibilisation",
+        "corp-aud-urgence"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-mgr-sensibilisation",
+    "nature": "metier",
+    "profils": [
+      "mgr"
+    ],
+    "titre_fr": "L'exercice Purple comme levier de sensibilisation",
+    "titre_en": "The Purple exercise as an awareness lever",
+    "gabarit": false,
+    "controles_iso": [
+      "A.6.3"
+    ],
+    "contenu": {
+      "type": "mapping",
+      "resume": {
+        "fr": "Le debrief vaut mieux qu'une session de e-learning : preuve A.6.3 par la pratique.",
+        "en": "The debrief beats an e-learning session: A.6.3 evidence through practice."
+      },
+      "objectif": {
+        "fr": "Faire du debrief Purple une preuve de formation en situation, plus démontrable qu'une feuille d'émargement.",
+        "en": "Make the Purple debrief evidence of situational training, more demonstrable than a sign-in sheet."
+      },
+      "quand": null,
+      "outil": {
+        "fr": "Panneau pédagogique du cycle Purple · debrief/rétrospective",
+        "en": "Purple cycle teaching panel · debrief/retrospective"
+      },
+      "hds": "GRC",
+      "source": {
+        "label": "ISO/IEC 27001",
+        "url": "https://www.iso.org/standard/27001"
+      },
+      "keypoints": [
+        {
+          "fr": "Un debrief bien mené montre des techniques réelles jouées sur le propre périmètre de la Blue Team.",
+          "en": "A well-run debrief shows real techniques played on the Blue Team's own scope."
+        },
+        {
+          "fr": "La montée en compétence se mesure : une alerte manquée aujourd'hui devient une règle écrite demain.",
+          "en": "Skill growth is measurable: a missed alert today becomes a written rule tomorrow."
+        },
+        {
+          "fr": "Pour l'audit A.6.3, tracer participants, enseignements et remédiations suivies.",
+          "en": "For the A.6.3 audit, trace participants, lessons and remediations followed."
+        }
+      ],
+      "pieges": [],
+      "etapes": [],
+      "prose": [
+        {
+          "fr": "Un exercice Purple bien débriefé est un dispositif de formation en situation, autrement plus efficace qu'une session de e-learning générique. La Blue Team voit des techniques réelles jouées sur son propre périmètre, comprend concrètement pourquoi une alerte a manqué, et repart avec des actions précises : une règle de détection à écrire, une source de télémétrie à brancher.",
+          "en": "A well-debriefed Purple exercise is a form of situational training, far more effective than a generic e-learning session. The Blue Team sees real techniques played on its own scope, concretely understands why an alert was missed, and leaves with precise actions: a detection rule to write, a telemetry source to connect."
+        },
+        {
+          "fr": "C'est aussi une preuve de sensibilisation bien plus solide qu'une feuille d'émargement. Là où un audit A.6.3 peut interroger la réalité d'une formation en salle, un debrief Purple documenté montre une montée en compétence mesurable : l'angle mort identifié un jour devient la règle déployée le suivant.",
+          "en": "It is also far stronger awareness evidence than a sign-in sheet. Where an A.6.3 audit may question the reality of classroom training, a documented Purple debrief shows measurable skill growth: the blind spot identified one day becomes the rule deployed the next."
+        },
+        {
+          "fr": "Pour que l'argument tienne devant l'auditeur, il faut tracer trois choses que les entités exercice, ticket et journal capturent déjà : qui a participé au debrief, quels enseignements ont été tirés, et quelles remédiations ont effectivement suivi.",
+          "en": "For the argument to hold before the auditor, three things must be traced — which the exercise, ticket and journal entities already capture: who took part in the debrief, what lessons were drawn, and which remediations actually followed."
+        }
+      ],
+      "table": null,
+      "loop": null,
+      "aller": [],
+      "lies": [
+        "corp-mgr-incidents",
+        "corp-mgr-conformite",
+        "corp-aud-categories"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-mgr-exercice",
+    "nature": "processus",
+    "profils": [
+      "mgr",
+      "aud",
+      "cti"
+    ],
+    "titre_fr": "Conduire un exercice Purple de bout en bout",
+    "titre_en": "Running a Purple exercise end to end",
+    "gabarit": false,
+    "controles_iso": [
+      "A.8.16",
+      "A.5.35"
+    ],
+    "contenu": {
+      "type": "methodo",
+      "extension": true,
+      "resume": {
+        "fr": "Le déroulé complet d'un exercice Purple : du choix du scénario au re-jeu de validation, avec les entités de l'outil mobilisées à chaque phase.",
+        "en": "The full flow of a Purple exercise: from scenario selection to validation replay, with the tool's entities engaged at every phase."
+      },
+      "objectif": {
+        "fr": "Faire collaborer attaque et défense sur un même scénario, technique par technique, pour produire des améliorations de détection mesurables — pas un rapport de plus.",
+        "en": "Have offense and defense collaborate on the same scenario, technique by technique, to produce measurable detection improvements — not one more report."
+      },
+      "quand": {
+        "fr": "À chaque campagne Purple planifiée, et en re-jeu ciblé après remédiation d'un angle mort.",
+        "en": "For every planned Purple campaign, and as a targeted replay after a blind spot has been remediated."
+      },
+      "outil": {
+        "fr": "Exercice + observations défensives · tickets de détection · scénario du catalogue",
+        "en": "Exercise + defensive observations · detection tickets · catalogue scenario"
+      },
+      "hds": "SSI / MII",
+      "source": {
+        "label": "Purple Team Exercise Framework (PTEF)",
+        "url": "https://github.com/scythe-io/purple-team-exercise-framework"
+      },
+      "keypoints": [
+        {
+          "fr": "La valeur d'un exercice Purple se mesure en angles morts fermés (et re-testés), pas en nombre de techniques exécutées.",
+          "en": "A Purple exercise's value is measured in blind spots closed (and re-tested), not in the number of techniques executed."
+        },
+        {
+          "fr": "Une technique jouée sans observation défensive saisie est une occasion perdue : l'observation est le livrable de la Blue Team.",
+          "en": "A technique played without a recorded defensive observation is a wasted opportunity: the observation is the Blue Team's deliverable."
+        },
+        {
+          "fr": "Le scénario vient du catalogue CTI : l'exercice teste la menace qui vous vise réellement, pas une liste générique.",
+          "en": "The scenario comes from the CTI catalogue: the exercise tests the threat actually facing you, not a generic list."
+        }
+      ],
+      "pieges": [
+        {
+          "fr": "Jouer trop de techniques en une session : mieux vaut dix TTP bien observées que quarante survolées.",
+          "en": "Playing too many techniques in one session: ten well-observed TTPs beat forty skimmed ones."
+        },
+        {
+          "fr": "Debrief sans plan d'action daté ni responsable : les tickets restent ouverts et le re-jeu n'arrive jamais.",
+          "en": "A debrief with no dated, owned action plan: tickets stay open and the replay never happens."
+        },
+        {
+          "fr": "Confondre Purple et Red Team : sans transparence pendant l'exercice, la Blue Team n'apprend rien en temps réel.",
+          "en": "Confusing Purple with Red Team: without transparency during the exercise, the Blue Team learns nothing in real time."
+        }
+      ],
+      "etapes": [
+        {
+          "texte": {
+            "fr": "Préparation",
+            "en": "Preparation"
+          },
+          "description": {
+            "fr": "Choisir le scénario dans le catalogue CTI, fixer le périmètre et les participants ; vérifier le mandat et les fenêtres de jeu.",
+            "en": "Pick the scenario from the CTI catalogue, set scope and participants; check the mandate and the play windows."
+          },
+          "decision": {
+            "fr": "décision : scénario prêt à jouer ?",
+            "en": "decision: scenario ready to play?"
+          }
+        },
+        {
+          "texte": {
+            "fr": "Briefing commun",
+            "en": "Joint briefing"
+          },
+          "description": {
+            "fr": "Réunir Red et Blue : objectifs, TTP prévues, canaux de communication. En Purple, la transparence remplace la surprise.",
+            "en": "Bring Red and Blue together: objectives, planned TTPs, communication channels. In Purple, transparency replaces surprise."
+          },
+          "decision": null
+        },
+        {
+          "texte": {
+            "fr": "Émulation technique par technique",
+            "en": "Technique-by-technique emulation"
+          },
+          "description": {
+            "fr": "La Red Team joue chaque TTP ; chaque exécution est tracée en action d'audit horodatée, rattachée à l'exercice.",
+            "en": "The Red Team plays each TTP; every execution is logged as a timestamped audit action, attached to the exercise."
+          },
+          "decision": null
+        },
+        {
+          "texte": {
+            "fr": "Observation défensive",
+            "en": "Defensive observation"
+          },
+          "description": {
+            "fr": "Pour chaque technique : prévenue, alertée, journalisée, ou aucune télémétrie ? L'observation est saisie à chaud, pendant l'exercice.",
+            "en": "For each technique: prevented, alerted, logged, or no telemetry? The observation is recorded live, during the exercise."
+          },
+          "decision": {
+            "fr": "décision : angle mort détecté ?",
+            "en": "decision: blind spot found?"
+          }
+        },
+        {
+          "texte": {
+            "fr": "Tickets de détection",
+            "en": "Detection tickets"
+          },
+          "description": {
+            "fr": "Chaque angle mort devient un ticket : règle à écrire, source de télémétrie à brancher, configuration à corriger.",
+            "en": "Each blind spot becomes a ticket: a rule to write, a telemetry source to connect, a configuration to fix."
+          },
+          "decision": null
+        },
+        {
+          "texte": {
+            "fr": "Debrief et re-jeu",
+            "en": "Debrief and replay"
+          },
+          "description": {
+            "fr": "Enseignements partagés, plan d'action daté et porté ; les techniques corrigées sont re-jouées pour valider la détection.",
+            "en": "Lessons shared, dated and owned action plan; fixed techniques are replayed to validate detection."
+          },
+          "decision": null
+        }
+      ],
+      "prose": [],
+      "table": null,
+      "loop": {
+        "fr": "↺ le re-jeu ramène l'exercice à la phase d'émulation, sur le seul sous-ensemble corrigé.",
+        "en": "↺ the replay loops the exercise back to the emulation phase, on the fixed subset only."
+      },
+      "aller": [
+        {
+          "label": {
+            "fr": "PTEF — Purple Team Exercise Framework",
+            "en": "PTEF — Purple Team Exercise Framework"
+          },
+          "url": "https://github.com/scythe-io/purple-team-exercise-framework"
+        }
+      ],
+      "lies": [
+        "corp-aud-categories",
+        "corp-cti-scenario",
+        "corp-cti-detection"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-cti-detection",
+    "nature": "processus",
+    "profils": [
+      "cti",
+      "mgr"
+    ],
+    "titre_fr": "La boucle d'ingénierie de détection",
+    "titre_en": "The detection engineering loop",
+    "gabarit": false,
+    "controles_iso": [
+      "A.8.16"
+    ],
+    "contenu": {
+      "type": "methodo",
+      "extension": true,
+      "resume": {
+        "fr": "De l'angle mort constaté en exercice à la règle validée par re-jeu : le cycle qui transforme les observations en couverture de détection réelle.",
+        "en": "From the blind spot found in an exercise to the rule validated by replay: the cycle that turns observations into real detection coverage."
+      },
+      "objectif": {
+        "fr": "Traiter chaque défaut de détection comme un défaut logiciel : reproductible, corrigé par une règle versionnée, validé par un test re-jouable.",
+        "en": "Treat every detection gap like a software defect: reproducible, fixed by a versioned rule, validated by a replayable test."
+      },
+      "quand": {
+        "fr": "Après chaque exercice Purple ou incident ; en continu sur les techniques prioritaires du catalogue de scénarios.",
+        "en": "After every Purple exercise or incident; continuously on the priority techniques of the scenario catalogue."
+      },
+      "outil": {
+        "fr": "Tickets de détection · observations d'exercice · matrice ATT&CK de couverture",
+        "en": "Detection tickets · exercise observations · ATT&CK coverage matrix"
+      },
+      "hds": "SSI / MII",
+      "source": {
+        "label": "MITRE D3FEND",
+        "url": "https://d3fend.mitre.org"
+      },
+      "keypoints": [
+        {
+          "fr": "Détecter le comportement plutôt que l'indicateur : une règle au niveau de la TTP survit au changement d'outillage de l'attaquant.",
+          "en": "Detect the behaviour, not the indicator: a TTP-level rule survives the attacker's tooling changes."
+        },
+        {
+          "fr": "Un ticket de détection fermé sans re-jeu de validation n'est pas fermé — il est juste oublié.",
+          "en": "A detection ticket closed without a validation replay is not closed — it is merely forgotten."
+        },
+        {
+          "fr": "La matrice de couverture n'est pas un score à maximiser : viser d'abord les techniques des scénarios qui vous menacent.",
+          "en": "The coverage matrix is not a score to maximise: aim first at the techniques of the scenarios that threaten you."
+        }
+      ],
+      "pieges": [
+        {
+          "fr": "Importer des règles sur étagère sans la télémétrie correspondante : la couverture affichée devient fictive.",
+          "en": "Importing off-the-shelf rules without the matching telemetry: displayed coverage becomes fictional."
+        },
+        {
+          "fr": "Mesurer l'équipe au nombre de règles écrites plutôt qu'aux angles morts effectivement fermés.",
+          "en": "Measuring the team by rules written rather than blind spots actually closed."
+        }
+      ],
+      "etapes": [
+        {
+          "texte": {
+            "fr": "Constat",
+            "en": "Finding"
+          },
+          "description": {
+            "fr": "Un angle mort sort d'un exercice (aucune télémétrie, ou journalisé sans alerte) ou d'un incident réel.",
+            "en": "A blind spot emerges from an exercise (no telemetry, or logged without alerting) or from a real incident."
+          },
+          "decision": {
+            "fr": "décision : télémétrie disponible ?",
+            "en": "decision: telemetry available?"
+          }
+        },
+        {
+          "texte": {
+            "fr": "Télémétrie",
+            "en": "Telemetry"
+          },
+          "description": {
+            "fr": "Sans donnée, pas de règle : brancher ou enrichir la source (EDR, journaux applicatifs, réseau) avant d'écrire quoi que ce soit.",
+            "en": "No data, no rule: connect or enrich the source (EDR, application logs, network) before writing anything."
+          },
+          "decision": null
+        },
+        {
+          "texte": {
+            "fr": "Conception de la règle",
+            "en": "Rule design"
+          },
+          "description": {
+            "fr": "Écrire la logique de détection au niveau du comportement (TTP), pas de l'indicateur : un hash change, un comportement reste.",
+            "en": "Write the detection logic at behaviour (TTP) level, not indicator level: a hash changes, a behaviour stays."
+          },
+          "decision": null
+        },
+        {
+          "texte": {
+            "fr": "Revue et déploiement",
+            "en": "Review and deployment"
+          },
+          "description": {
+            "fr": "Règle versionnée, relue, testée hors production ; le ticket trace la décision et le déploiement.",
+            "en": "Rule versioned, reviewed, tested outside production; the ticket traces the decision and the deployment."
+          },
+          "decision": {
+            "fr": "décision : taux de faux positifs acceptable ?",
+            "en": "decision: acceptable false-positive rate?"
+          }
+        },
+        {
+          "texte": {
+            "fr": "Validation par re-jeu",
+            "en": "Validation by replay"
+          },
+          "description": {
+            "fr": "La technique est re-jouée (exercice ciblé) : la règle doit alerter. Le ticket ne se ferme que sur ce re-test.",
+            "en": "The technique is replayed (targeted exercise): the rule must alert. The ticket only closes on that re-test."
+          },
+          "decision": null
+        }
+      ],
+      "prose": [],
+      "table": null,
+      "loop": {
+        "fr": "↺ chaque nouvelle variante de la technique ré-ouvre la boucle au constat.",
+        "en": "↺ every new variant of the technique reopens the loop at the finding stage."
+      },
+      "aller": [
+        {
+          "label": {
+            "fr": "MITRE D3FEND",
+            "en": "MITRE D3FEND"
+          },
+          "url": "https://d3fend.mitre.org"
+        },
+        {
+          "label": {
+            "fr": "Sigma — règles de détection génériques",
+            "en": "Sigma — generic detection rules"
+          },
+          "url": "https://sigmahq.io"
+        }
+      ],
+      "lies": [
+        "corp-mgr-exercice",
+        "corp-mgr-incidents",
+        "corp-aud-chaine"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-mgr-validation",
+    "nature": "procedure",
+    "profils": [
+      "mgr",
+      "voc"
+    ],
+    "titre_fr": "Valider une remédiation, accepter un risque",
+    "titre_en": "Validating a remediation, accepting a risk",
+    "gabarit": true,
+    "controles_iso": [],
+    "contenu": {
+      "type": "gabarit",
+      "extension": true,
+      "resume": {
+        "fr": "La marche à suivre pour fermer proprement une vulnérabilité : re-test dans les conditions du constat, validation tracée, ou acceptation de risque formalisée.",
+        "en": "The steps to close a vulnerability properly: re-test under the original finding's conditions, traced validation, or a formalised risk acceptance."
+      },
+      "objectif": {
+        "fr": "Garantir qu'aucune vulnérabilité ne se ferme sur parole : chaque clôture passe par un re-test probant ou une acceptation portée par le propriétaire du risque.",
+        "en": "Ensure no vulnerability is closed on someone's word: every closure goes through a conclusive re-test or an acceptance owned by the risk owner."
+      },
+      "quand": {
+        "fr": "Quand un ticket de remédiation revient « corrigé », ou quand le correctif est impossible dans le SLA (P1–P4).",
+        "en": "When a remediation ticket comes back as “fixed”, or when the fix is impossible within the SLA (P1–P4)."
+      },
+      "outil": {
+        "fr": "Cycle de vie des vulnérabilités · action de validation (V) · journal d'audit",
+        "en": "Vulnerability lifecycle · validation action (V) · audit journal"
+      },
+      "hds": "GRC / SSI",
+      "source": {
+        "label": "ISO/IEC 27005",
+        "url": "https://www.iso.org/standard/80585.html"
+      },
+      "keypoints": [
+        {
+          "fr": "La validation (V) est une action dédiée du modèle de droits, distincte de l'édition : elle engage nominativement celui qui la déroule.",
+          "en": "Validation (V) is a dedicated action in the rights model, distinct from editing: it commits, by name, whoever performs it."
+        },
+        {
+          "fr": "Une acceptation de risque est une décision du propriétaire du risque, pas de l'équipe sécurité — l'outil trace qui a accepté quoi, jusqu'à quand.",
+          "en": "A risk acceptance is the risk owner's decision, not the security team's — the tool traces who accepted what, and until when."
+        },
+        {
+          "fr": "Le re-test se fait dans les conditions du constat : un scan propre ne prouve pas qu'un chemin d'exploitation manuel est fermé.",
+          "en": "The re-test runs under the finding's conditions: a clean scan does not prove a manual exploitation path is closed."
+        }
+      ],
+      "pieges": [
+        {
+          "fr": "Clore sur la parole de l'équipe de remédiation, sans re-test — la vulnérabilité revient à l'audit suivant.",
+          "en": "Closing on the remediation team's word, without a re-test — the vulnerability returns at the next audit."
+        },
+        {
+          "fr": "Accepter un risque sans échéance de réexamen ni mesure compensatoire documentée.",
+          "en": "Accepting a risk with no review date and no documented compensating control."
+        },
+        {
+          "fr": "Laisser la même personne corriger et valider : la séparation des rôles est le contrôle.",
+          "en": "Letting the same person fix and validate: the separation of duties is the control."
+        }
+      ],
+      "etapes": [
+        {
+          "texte": {
+            "fr": "Vérifier que la remédiation annoncée est déployée sur tout le périmètre affecté, pas seulement sur l'instance testée.",
+            "en": "Check the announced remediation is deployed across the whole affected scope, not just the tested instance."
+          },
+          "role": "VOC",
+          "sortie": {
+            "fr": "Périmètre de déploiement confirmé.",
+            "en": "Deployment scope confirmed."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Re-tester la vulnérabilité dans les conditions du constat initial (même vecteur, mêmes préconditions).",
+            "en": "Re-test the vulnerability under the original finding's conditions (same vector, same preconditions)."
+          },
+          "role": "Auditeur + VOC",
+          "sortie": {
+            "fr": "Preuve de re-test versée au coffre.",
+            "en": "Re-test evidence filed in the vault."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Si le re-test échoue (toujours exploitable) : ré-ouvrir le ticket avec les constats, sans remettre l'horloge SLA à zéro.",
+            "en": "If the re-test fails (still exploitable): reopen the ticket with the findings, without resetting the SLA clock."
+          },
+          "role": "VOC",
+          "sortie": {
+            "fr": "Ticket ré-ouvert, horloge SLA d'origine maintenue.",
+            "en": "Ticket reopened, original SLA clock kept."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Si le re-test passe : dérouler l'action de validation (V) — une décision distincte d'une simple édition de statut.",
+            "en": "If the re-test passes: perform the validation action (V) — a decision distinct from a mere status edit."
+          },
+          "role": "Manager / RSSI",
+          "sortie": {
+            "fr": "Vulnérabilité close, validation tracée au journal.",
+            "en": "Vulnerability closed, validation traced in the journal."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Si le correctif est impossible dans le SLA : documenter la mesure compensatoire et le risque résiduel.",
+            "en": "If the fix is impossible within the SLA: document the compensating control and the residual risk."
+          },
+          "role": "VOC + Manager",
+          "sortie": {
+            "fr": "Dossier d'acceptation préparé.",
+            "en": "Acceptance file prepared."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Faire porter l'acceptation par le propriétaire du risque (côté client), avec une échéance de réexamen explicite.",
+            "en": "Have the acceptance owned by the risk owner (client side), with an explicit review date."
+          },
+          "role": "RSSI client",
+          "sortie": {
+            "fr": "Acceptation datée, portée, à échéance.",
+            "en": "Acceptance dated, owned, with a deadline."
+          }
+        },
+        {
+          "texte": {
+            "fr": "Programmer le réexamen : une acceptation sans date de revue est une dette invisible.",
+            "en": "Schedule the review: an acceptance without a review date is invisible debt."
+          },
+          "role": "Manager",
+          "sortie": {
+            "fr": "Rappel de réexamen posé dans l'outil.",
+            "en": "Review reminder set in the tool."
+          }
+        }
+      ],
+      "prose": [],
+      "table": null,
+      "loop": null,
+      "aller": [
+        {
+          "label": {
+            "fr": "ISO/IEC 27005 — gestion des risques",
+            "en": "ISO/IEC 27005 — risk management"
+          },
+          "url": "https://www.iso.org/standard/80585.html"
+        }
+      ],
+      "lies": [
+        "corp-voc-cycle",
+        "corp-voc-sla",
+        "corp-mgr-journal"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-aud-custody",
+    "nature": "metier",
+    "profils": [
+      "aud",
+      "mgr"
+    ],
+    "titre_fr": "Chaîne de possession d'une preuve",
+    "titre_en": "Evidence chain of custody",
+    "gabarit": false,
+    "controles_iso": [
+      "A.5.28"
+    ],
+    "contenu": {
+      "type": "methodo",
+      "extension": true,
+      "resume": {
+        "fr": "Ce qui fait d'une capture un élément probant : le sas d'ingestion, le stockage inaltérable et la trace nominative de chaque consultation.",
+        "en": "What turns a capture into admissible evidence: the ingestion airlock, tamper-proof storage, and a named trace of every access."
+      },
+      "objectif": {
+        "fr": "Pouvoir répondre, des mois plus tard : qui a déposé cette preuve, quand, ce qui lui est arrivé depuis, et qui l'a consultée.",
+        "en": "Be able to answer, months later: who filed this evidence, when, what has happened to it since, and who has accessed it."
+      },
+      "quand": {
+        "fr": "À chaque dépôt de preuve pendant un test, et à chaque contestation d'un constat.",
+        "en": "At every evidence filing during a test, and whenever a finding is disputed."
+      },
+      "outil": {
+        "fr": "Coffre de preuves · journal d'accès aux preuves · marquage TLP/PAP",
+        "en": "Evidence vault · evidence access log · TLP/PAP marking"
+      },
+      "hds": "SSI / PDP",
+      "source": {
+        "label": "NIST SP 800-86",
+        "url": "https://csrc.nist.gov/pubs/sp/800/86/final"
+      },
+      "keypoints": [
+        {
+          "fr": "L'empreinte calculée au dépôt est l'ancre de toute la chaîne : sans elle, impossible de prouver l'intégrité.",
+          "en": "The digest computed at filing time anchors the whole chain: without it, integrity cannot be proven."
+        },
+        {
+          "fr": "Le journal d'accès trace aussi les refus — c'est ce qui le rend crédible face à un tiers.",
+          "en": "The access log also traces denials — that is what makes it credible before a third party."
+        },
+        {
+          "fr": "Déposer tôt : une preuve versée au moment du constat vaut plus qu'une preuve retrouvée en fin de mission.",
+          "en": "File early: evidence deposited at the time of the finding is worth more than evidence retrieved at the end of the mission."
+        }
+      ],
+      "pieges": [
+        {
+          "fr": "Stocker les preuves hors du coffre « en attendant » — la chaîne de possession commence au dépôt, pas avant.",
+          "en": "Keeping evidence outside the vault “for now” — the chain of custody starts at filing, not before."
+        },
+        {
+          "fr": "Marquer toutes les preuves TLP:CLEAR par défaut : le marquage se décide preuve par preuve, au dépôt.",
+          "en": "Marking all evidence TLP:CLEAR by default: marking is decided per item, at filing time."
+        },
+        {
+          "fr": "Confondre suppression et crypto-shredding : seul le second est défendable devant un tiers.",
+          "en": "Confusing deletion with crypto-shredding: only the latter is defensible before a third party."
+        }
+      ],
+      "etapes": [],
+      "prose": [
+        {
+          "fr": "Une capture d'écran posée dans un dossier partagé ne prouve rien : rien n'atteste qu'elle n'a pas été modifiée, ni qui l'a produite. La chaîne de possession transforme cette capture en élément probant : l'empreinte est calculée au dépôt, le fichier passe un sas (antivirus, vérification du type réel), puis est chiffré et déposé dans un stockage à verrou d'objet — il ne peut plus être ni modifié ni supprimé silencieusement.",
+          "en": "A screenshot dropped in a shared folder proves nothing: nothing attests it has not been altered, nor who produced it. The chain of custody turns that capture into admissible evidence: the digest is computed at filing, the file goes through an airlock (antivirus, real-type check), then is encrypted and stored under object lock — it can no longer be silently modified or deleted."
+        },
+        {
+          "fr": "À partir de là, chaque événement de la vie de la preuve laisse une trace : consultation, embarquement dans un rapport, tentative refusée. Le journal d'accès répond nominativement à « qui a vu cette preuve, quand, pourquoi » — refus compris. La suppression elle-même n'en est pas une : c'est une destruction de clé (crypto-shredding), tracée, qui laisse le journal intact.",
+          "en": "From then on, every event in the evidence's life leaves a trace: viewing, embedding in a report, denied attempts. The access log answers, by name, “who saw this evidence, when, why” — denials included. Even deletion is not deletion: it is a traced key destruction (crypto-shredding) that leaves the log intact."
+        },
+        {
+          "fr": "Pour l'auditeur, deux réflexes suffisent : déposer la preuve au moment du constat (pas en fin de mission), et vérifier l'empreinte affichée contre l'original. Le marquage TLP/PAP posé au dépôt conditionne ensuite qui pourra la consulter — c'est lui qui protège un exploit fonctionnel d'une diffusion trop large.",
+          "en": "For the auditor, two reflexes suffice: file the evidence at the time of the finding (not at the end of the mission), and check the displayed digest against the original. The TLP/PAP marking set at filing then governs who may access it — it is what keeps a working exploit from spreading too far."
+        }
+      ],
+      "table": {
+        "head": [
+          {
+            "fr": "Événement",
+            "en": "Event"
+          },
+          {
+            "fr": "Trace produite",
+            "en": "Trace produced"
+          }
+        ],
+        "rows": [
+          {
+            "tone": "violet",
+            "label": {
+              "fr": "Dépôt",
+              "en": "Filing"
+            },
+            "texte": {
+              "fr": "Empreinte SHA-256, sas AV + type réel, horodatage, déposant.",
+              "en": "SHA-256 digest, AV + real-type airlock, timestamp, depositor."
+            }
+          },
+          {
+            "tone": "cyan",
+            "label": {
+              "fr": "Consultation",
+              "en": "Access"
+            },
+            "texte": {
+              "fr": "Entrée nominative au journal d'accès (motif, échéance).",
+              "en": "Named entry in the access log (purpose, expiry)."
+            }
+          },
+          {
+            "tone": "amber",
+            "label": {
+              "fr": "Refus",
+              "en": "Denial"
+            },
+            "texte": {
+              "fr": "Entrée journalisée avec la raison du refus.",
+              "en": "Logged entry with the reason for denial."
+            }
+          },
+          {
+            "tone": "green",
+            "label": {
+              "fr": "Rapport",
+              "en": "Report"
+            },
+            "texte": {
+              "fr": "Une empreinte d'accès par preuve embarquée.",
+              "en": "One access record per embedded evidence item."
+            }
+          },
+          {
+            "tone": "red",
+            "label": {
+              "fr": "Destruction",
+              "en": "Destruction"
+            },
+            "texte": {
+              "fr": "Crypto-shredding tracé ; le journal survit à la preuve.",
+              "en": "Traced crypto-shredding; the log outlives the evidence."
+            }
+          }
+        ]
+      },
+      "loop": null,
+      "aller": [
+        {
+          "label": {
+            "fr": "NIST SP 800-86 — investigation numérique",
+            "en": "NIST SP 800-86 — forensic techniques"
+          },
+          "url": "https://csrc.nist.gov/pubs/sp/800/86/final"
+        }
+      ],
+      "lies": [
+        "corp-voc-preuves",
+        "corp-aud-action",
+        "corp-mgr-journal"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  },
+  {
+    "slug": "corp-mgr-journal",
+    "nature": "metier",
+    "profils": [
+      "mgr"
+    ],
+    "titre_fr": "Le journal inviolable, expliqué à l'audité",
+    "titre_en": "The tamper-evident journal, explained to the auditee",
+    "gabarit": false,
+    "controles_iso": [
+      "A.8.15"
+    ],
+    "contenu": {
+      "type": "mapping",
+      "extension": true,
+      "resume": {
+        "fr": "Pourquoi le journal d'audit de l'outil est opposable : append-only, chaîné par empreintes, impossible à falsifier silencieusement — même pour l'administrateur.",
+        "en": "Why the tool's audit journal is defensible: append-only, hash-chained, impossible to falsify silently — even for the administrator."
+      },
+      "objectif": {
+        "fr": "Donner au manager les arguments pour présenter le journal comme élément de preuve en revue ISO 27001 / HDS.",
+        "en": "Give the manager the arguments to present the journal as evidence in an ISO 27001 / HDS review."
+      },
+      "quand": {
+        "fr": "En préparation d'un audit de certification, ou à toute contestation d'une action passée.",
+        "en": "When preparing a certification audit, or whenever a past action is disputed."
+      },
+      "outil": {
+        "fr": "Journal d'audit · vérification d'intégrité de la chaîne",
+        "en": "Audit journal · chain integrity check"
+      },
+      "hds": "GRC",
+      "source": {
+        "label": "NIST SP 800-92",
+        "url": "https://csrc.nist.gov/pubs/sp/800/92/final"
+      },
+      "keypoints": [
+        {
+          "fr": "Le journal ne se défend pas en montrant des lignes, mais en démontrant une propriété : append-only + chaînage d'empreintes.",
+          "en": "The journal is not defended by showing lines, but by demonstrating a property: append-only + hash chaining."
+        },
+        {
+          "fr": "Lecture seule pour tous les rôles, administrateur compris : l'argument le plus simple face à un auditeur.",
+          "en": "Read-only for every role, administrator included: the simplest argument before an auditor."
+        },
+        {
+          "fr": "Il survit au crypto-shredding des preuves — les faits restent quand le contenu disparaît.",
+          "en": "It outlives the crypto-shredding of evidence — the facts remain when the content is gone."
+        }
+      ],
+      "pieges": [],
+      "etapes": [],
+      "prose": [
+        {
+          "fr": "Un journal classique se contredit facilement : un administrateur peut effacer ou réécrire une ligne. Celui de l'outil est append-only — un déclencheur en base interdit toute mise à jour ou suppression, y compris à l'administrateur — et chaque entrée est chaînée à la précédente par empreinte. Modifier une ligne ancienne casserait visiblement toute la chaîne qui la suit.",
+          "en": "A classic log is easily contradicted: an administrator can erase or rewrite a line. The tool's journal is append-only — a database trigger forbids any update or deletion, administrator included — and each entry is hash-chained to the previous one. Altering an old line would visibly break the whole chain after it."
+        },
+        {
+          "fr": "Face à un auditeur, cela change la nature de la conversation : on ne présente pas un export de logs, on démontre une propriété. La vérification d'intégrité rejoue la chaîne de bout en bout et atteste qu'aucune entrée n'a été altérée depuis son écriture. Le journal étant en lecture seule pour tous les rôles, la question « qui aurait pu maquiller l'historique ? » a une réponse simple : personne.",
+          "en": "Before an auditor, this changes the nature of the conversation: you do not present a log export, you demonstrate a property. The integrity check replays the chain end to end and attests that no entry has been altered since it was written. As the journal is read-only for every role, the question “who could have doctored the history?” has a simple answer: nobody."
+        },
+        {
+          "fr": "Deux limites à présenter honnêtement : le journal prouve l'intégrité de ce qui a été écrit, pas l'exhaustivité de ce qui aurait dû l'être ; et sa rétention est distincte de celle des preuves — il survit au crypto-shredding précisément parce qu'il ne contient que des faits et des empreintes, jamais de contenu sensible.",
+          "en": "Two limits to present honestly: the journal proves the integrity of what was written, not the completeness of what should have been; and its retention is distinct from the evidence's — it outlives crypto-shredding precisely because it holds only facts and digests, never sensitive content."
+        }
+      ],
+      "table": null,
+      "loop": null,
+      "aller": [
+        {
+          "label": {
+            "fr": "NIST SP 800-92 — gestion des journaux",
+            "en": "NIST SP 800-92 — log management"
+          },
+          "url": "https://csrc.nist.gov/pubs/sp/800/92/final"
+        }
+      ],
+      "lies": [
+        "corp-aud-custody",
+        "corp-mgr-conformite",
+        "corp-aud-action"
+      ],
+      "livrables": [],
+      "refs": []
+    }
+  }
+]

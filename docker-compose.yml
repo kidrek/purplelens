@@ -1,92 +1,247 @@
-name: purplelens
-
-# Deux réseaux pour cloisonner :
-#   - internal : isolé d'Internet (internal: true). Porte la db, minio, backend.
-#                Les conteneurs s'y parlent par leur nom DNS, mais rien n'est
-#                routable depuis l'extérieur ni vers l'extérieur.
-#   - web      : relie le frontend au backend. Seul le frontend y publie un port.
+# Cockpit de Pilotage Purple Team — déploiement auto-hébergé (DAT §4.1 / §4.1bis)
 #
-# Résultat : un seul port exposé sur l'hôte (le frontend). La base, MinIO et
-# l'API ne sont joignables que depuis l'intérieur du réseau Docker.
+# RÈGLE D'OR (DAT §4.1bis) : un seul service publie des ports — le reverse proxy `frontend`.
+# Tout autre `ports:` est un défaut de sécurité, vérifié en CI (make config / test_network_exposure).
+# La communication inter-services passe par les réseaux Docker internes (`expose` implicite).
 
 networks:
+  edge:
+    driver: bridge
   internal:
-    internal: true
-  web:
+    driver: bridge
+    internal: false   # sortie contrôlée (ClamAV freshclam, Keycloak). Durcir en prod si besoin.
+
+volumes:
+  pg_data:
+  minio_data:
+  vault_data:
+  redis_data:
+  clamav_data:
 
 services:
-  # --- Base de données (jamais exposée) ---
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-purplelens}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-purplelens}
-      POSTGRES_DB: ${POSTGRES_DB:-purplelens}
-    volumes:
-      - db_data:/var/lib/postgresql/data
-    networks:
-      - internal
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-purplelens}"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-    restart: unless-stopped
-
-  # --- Stockage objet Evidence Vault (jamais exposé par défaut) ---
-  # La console d'admin (9001) peut être ouverte ponctuellement en dev via
-  # le fichier docker-compose.override.yml (voir make minio-console).
-  minio:
-    image: minio/minio:latest
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-purplelens}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-purplelens-secret}
-    volumes:
-      - minio_data:/data
-    networks:
-      - internal
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-  # --- API FastAPI (jamais exposée ; atteinte via le proxy Nginx) ---
-  backend:
-    build:
-      context: ./backend
-    environment:
-      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-purplelens}:${POSTGRES_PASSWORD:-purplelens}@db:5432/${POSTGRES_DB:-purplelens}
-      STORAGE_BACKEND: s3
-      S3_ENDPOINT: http://minio:9000
-      S3_BUCKET: ${S3_BUCKET:-purplelens-evidence}
-      SEED_ON_START: ${SEED_ON_START:-1}
-    networks:
-      - internal   # accès db + minio
-      - web        # accessible par le frontend
-    depends_on:
-      db:
-        condition: service_healthy
-      minio:
-        condition: service_started
-    restart: unless-stopped
-
-  # --- Frontend (seul service exposé sur l'hôte) ---
-  # Nginx sert le SPA et proxifie /api -> http://backend:8000 via le réseau web.
-  # La doc interactive de l'API reste accessible derrière le proxy : /api/docs
+  # ── Point d'entrée unique ────────────────────────────────────────────────
   frontend:
     build:
       context: ./frontend
-    networks:
-      - web
-    ports:
-      - "${WEB_PORT:-8080}:80"
-    depends_on:
-      - backend
+      dockerfile: Dockerfile
+    image: purple/frontend:dev
     restart: unless-stopped
+    depends_on:
+      - api
+    networks: [edge, internal]
+    # SEUL service autorisé à publier des ports (DAT §4.1bis).
+    ports:
+      - "${EDGE_BIND_ADDRESS:-0.0.0.0}:${EDGE_HTTP_PORT:-80}:80"
+      - "${EDGE_BIND_ADDRESS:-0.0.0.0}:${EDGE_HTTPS_PORT:-443}:443"
+    volumes:
+      # Source unique du reverse proxy (routage /api /storage /idp) + certificats TLS.
+      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/nginx/tls:/etc/nginx/tls:ro
+    environment:
+      EXPOSE_ADMIN_CONSOLES: "${EXPOSE_ADMIN_CONSOLES:-false}"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
-volumes:
-  db_data:
-  minio_data:
+  # ── BFF : point unique de décision (RBAC/RLS, presign, journalisation) ───
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: purple/api:dev
+    restart: unless-stopped
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_started}
+      minio: {condition: service_started}
+      vault: {condition: service_started}
+    networks: [edge, internal]
+    env_file: [.env]
+    environment:
+      # URL de connexion CONSTRUITES depuis les composants du .env : le mot de passe
+      # n'est saisi qu'à UN endroit (APP_*_PASSWORD). Prévaut sur toute valeur du .env.
+      DATABASE_URL: "postgresql+asyncpg://app_api:${APP_API_PASSWORD:-api}@postgres:5432/${POSTGRES_DB:-purple}"
+      MIGRATION_DATABASE_URL: "postgresql+psycopg://app_migrator:${APP_MIGRATOR_PASSWORD:-migrator}@postgres:5432/${POSTGRES_DB:-purple}"
+    expose: ["8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health/live').status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  # ── Exécuteur de tests (make test) — profil `test`, jamais démarré avec la
+  #    stack normale. Construit l'étage `test` du Dockerfile (pytest + tests/),
+  #    distinct de l'image de production qui reste vierge d'outillage.
+  api-test:
+    profiles: ["test"]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: test
+    image: purple/api-test:dev
+    networks: [internal]
+    env_file: [.env]
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://app_api:${APP_API_PASSWORD:-api}@postgres:5432/${POSTGRES_DB:-purple}"
+      # Tests d'isolation RLS (bout en bout, rôle app_api NOBYPASSRLS) :
+      TEST_DATABASE_URL: "postgresql://app_api:${APP_API_PASSWORD:-api}@postgres:5432/${POSTGRES_DB:-purple}"
+    volumes:
+      # test_network_exposure lit le compose à la racine (= / dans le conteneur).
+      - ./docker-compose.yml:/docker-compose.yml:ro
+    depends_on:
+      postgres: {condition: service_healthy}
+
+  # ── Workers Celery : sas d'ingestion + jobs (files séparées) ─────────────
+  worker:
+    image: purple/api:dev
+    restart: unless-stopped
+    command: ["celery", "-A", "app.workers.celery_app.celery", "worker",
+              "-Q", "ingest,jobs", "--concurrency", "4", "-l", "INFO"]
+    depends_on:
+      - api
+      - redis
+      - clamav
+    networks: [internal]
+    env_file: [.env]
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://app_api:${APP_API_PASSWORD:-api}@postgres:5432/${POSTGRES_DB:-purple}"
+
+  beat:
+    image: purple/api:dev
+    restart: unless-stopped
+    command: ["celery", "-A", "app.workers.celery_app.celery", "beat", "-l", "INFO"]
+    depends_on: [redis, api]
+    networks: [internal]
+    env_file: [.env]
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://app_api:${APP_API_PASSWORD:-api}@postgres:5432/${POSTGRES_DB:-purple}"
+
+  # ── Générateur de livrables : HTML → PDF (Chromium headless) ─────────────
+  pdf-renderer:
+    image: purple/api:dev
+    restart: unless-stopped
+    command: ["python", "-m", "app.deliverables.service"]
+    depends_on: [api]
+    networks: [internal]
+    env_file: [.env]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── Données & sécurité (jamais sur `edge`) ───────────────────────────────
+  postgres:
+    image: postgres:15
+    restart: unless-stopped
+    networks: [internal]
+    expose: ["5432"]
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      # Script shell (pas .sql) : l'entrypoint n'expose l'environnement qu'aux .sh,
+      # ce qui permet de lire APP_*_PASSWORD depuis le .env. Exécuté UNIQUEMENT à la
+      # première initialisation du volume ; pour resynchroniser un volume existant :
+      #   docker compose exec postgres bash /docker-entrypoint-initdb.d/00-roles.sh
+      - ./backend/sql/00-roles.sh:/docker-entrypoint-initdb.d/00-roles.sh:ro
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB:-purple}"
+      POSTGRES_USER: "${POSTGRES_SUPERUSER:-postgres}"
+      POSTGRES_PASSWORD: "${POSTGRES_SUPERPASSWORD:-postgres}"
+      APP_MIGRATOR_PASSWORD: "${APP_MIGRATOR_PASSWORD:-migrator}"
+      APP_API_PASSWORD: "${APP_API_PASSWORD:-api}"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_SUPERUSER:-postgres} -d ${POSTGRES_DB:-purple}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    networks: [internal]
+    expose: ["6379"]
+    volumes: [redis_data:/data]
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: ["server", "/data", "--console-address", ":9001"]
+    networks: [internal]
+    expose: ["9000", "9001"]
+    volumes: [minio_data:/data]
+    environment:
+      MINIO_ROOT_USER: "${MINIO_ROOT_USER:-minioadmin}"
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:-minioadmin}"
+      # Région du serveur = région dont l'API se sert pour signer les présignatures
+      # (même variable MINIO_REGION). Les deux DOIVENT correspondre, sinon la
+      # signature est rejetée à l'usage. us-east-1 = défaut historique de MinIO.
+      MINIO_SITE_REGION: "${MINIO_REGION:-us-east-1}"
+      # Identité publique du serveur MinIO lui-même (ex. redirections de sa console web,
+      # non routée par défaut — EXPOSE_ADMIN_CONSOLES=false). Sans rapport avec les URL
+      # présignées : celles-ci sont signées par l'API avec l'hôte de la requête entrante
+      # (storage/minio_client.py:public_origin), pas avec ce réglage.
+      MINIO_SERVER_URL: "https://localhost/storage"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  vault:
+    image: hashicorp/vault:latest
+    restart: unless-stopped
+    # Mode serveur + stockage fichier ; JAMAIS `-dev` hors développement (DAT §4.1).
+    command: ["server"]
+    cap_add: [IPC_LOCK]
+    # IPC_LOCK ne suffit pas si la limite memlock du conteneur est trop basse :
+    # on la lève pour que Vault puisse verrouiller sa mémoire (secrets hors swap).
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks: [internal]
+    expose: ["8200"]
+    volumes:
+      - vault_data:/vault/file
+      - ./deploy/vault/vault.hcl:/vault/config/vault.hcl:ro
+    environment:
+      VAULT_ADDR: "http://127.0.0.1:8200"
+
+  keycloak:
+    # Version ÉPINGLÉE (le tag `latest` a introduit une rupture d'options CLI).
+    image: quay.io/keycloak/keycloak:26.1.1
+    restart: unless-stopped
+    # start-dev : mode développement derrière le reverse proxy (TLS terminé par nginx).
+    #   --proxy-headers=xforwarded  remplace l'ancien --proxy=edge (supprimé en v26) ;
+    #                               nginx transmet les en-têtes X-Forwarded-*.
+    #   http activé + hostname permissif : implicites en start-dev.
+    # Pour la PRODUCTION : passer en `start` avec KC_DB=postgres configuré et un
+    # KC_HOSTNAME fixe (URL complète). Voir docs/runbook-vault.md / README.
+    command: ["start-dev", "--import-realm",
+              "--http-relative-path=/idp", "--proxy-headers=xforwarded"]
+    networks: [internal]
+    expose: ["8080"]
+    volumes:
+      - ./deploy/keycloak/realm-purple.json:/opt/keycloak/data/import/realm-purple.json:ro
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: "${KC_ADMIN:-admin}"
+      KC_BOOTSTRAP_ADMIN_PASSWORD: "${KC_ADMIN_PASSWORD:-admin}"
+      # Laisser vide pour une résolution par en-têtes (défaut/localhost). Pour un
+      # port externe non standard (ex. 7443), fixer KC_HOSTNAME=https://localhost:7443.
+      KC_HOSTNAME: "${KC_HOSTNAME:-}"
+      KC_HTTP_RELATIVE_PATH: "/idp"
+
+  clamav:
+    image: clamav/clamav:latest
+    restart: unless-stopped
+    networks: [internal]
+    expose: ["3310"]
+    volumes: [clamav_data:/var/lib/clamav]
+    healthcheck:
+      test: ["CMD-SHELL", "echo PING | nc -w 5 localhost 3310 | grep -q PONG"]
+      interval: 60s
+      timeout: 10s
+      retries: 5

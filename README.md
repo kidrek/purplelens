@@ -1,132 +1,138 @@
-# PurpleLens — Plateforme de validation Purple Team
+# Cockpit de Pilotage Purple Team
 
-> La source de vérité des exercices Purple Team.
-> Relie la chaîne complète : **CTI → Scénario → Audit → Vulnérabilité → Détection → Réaction → Couverture MITRE ATT&CK → Risque applicatif.**
+Plateforme multi-clients de pilotage d'une équipe Purple Team (cybersécurité offensive
+et défensive coordonnées). Elle gère le cycle complet : organisations, applications,
+ressources, scénarios de menace, audits, exercices Purple, chaînes d'attaque,
+observations défensives, vulnérabilités, tickets de détection, livrables — et un
+**sous-système de preuves chiffrées** de bout en bout.
 
-PurpleLens ne remplace pas vos outils (XSIAM, Defender, Splunk, Jira, Kenna). Il consolide leurs résultats par application pour répondre à une seule question métier :
+Ce dépôt implémente les documents normatifs du projet : cahier des charges v5.0,
+architecture technique (DAT) v1.1, spécification Auth & RBAC v2.0 et direction
+artistique v2.7.
 
-**« Sommes-nous capables de détecter et réagir aux scénarios de menace qui ciblent réellement nos applications critiques ? »**
+## Doctrine de sécurité — défense en profondeur (4 couches)
 
----
+Aucune autorisation n'est décidée côté client : **le serveur décide, toujours**.
+Les binaires ne transitent jamais par l'API. Quatre couches indépendantes se
+superposent, de sorte que la défaillance d'une seule ne compromet pas l'ensemble :
 
-## Périmètre du MVP v1
+1. **`can()` applicatif** — un moteur à 5 portes (authentification, MFA/step-up,
+   matrice RBAC, cloisonnement client, TLP/PAP) évalué à chaque appel, refus par défaut.
+2. **RLS PostgreSQL** — Row-Level Security *forcée* (`FORCE ROW LEVEL SECURITY`) sur
+   toutes les tables cloisonnées. Le rôle applicatif (`app_api`) est `NOBYPASSRLS` :
+   même une requête qui échapperait à la couche 1 ne voit que les clients de son
+   périmètre. Sans contexte applicatif établi, **aucune ligne n'est visible**.
+3. **Chiffrement enveloppe** — chaque preuve est chiffrée par une clé de données (DEK)
+   AES-256-GCM propre à l'audit ; la DEK est elle-même enveloppée par une clé maître
+   (KEK) par client, gérée dans Vault (moteur *transit*). Détruire la KEK/DEK rend les
+   données irrécupérables (*crypto-shredding*).
+4. **Stockage WORM + journal inviolable** — les objets chiffrés sont déposés en MinIO
+   avec *Object Lock* (write-once-read-many) ; le journal d'audit est chaîné par hachage
+   (tamper-evident) et **immuable applicativement** : aucun rôle, pas même `admin`, ne
+   peut le modifier ou le supprimer.
 
-Les 7 modules de la spécification sont implémentés au niveau du modèle de données et de l'API. L'effort produit (UI) se concentre sur le **Dashboard Purple Team** et le **moteur de scores**, qui constituent la valeur visible.
+Le déploiement respecte la **règle d'un seul point d'entrée** (DAT §4.1bis) : seul le
+reverse proxy `frontend` publie des ports ; tous les autres services ne communiquent
+que sur les réseaux Docker internes. Un test de CI (`scripts/check_ports.py`) échoue si
+un autre service expose un port.
 
-| # | Module | Modèle | API | UI |
-|---|--------|:------:|:---:|:--:|
-| 1 | Référentiel des applications | ✅ | ✅ | ✅ |
-| 2 | Base CTI (scénarios + MITRE) | ✅ | ✅ | ✅ liste |
-| 3 | Gestion des audits | ✅ | ✅ | ✅ liste |
-| 4 | Exécution ATT&CK (détection/réaction) | ✅ | ✅ | ✅ saisie |
-| 5 | Gestion des vulnérabilités | ✅ | ✅ | ✅ liste |
-| 6 | Evidence Vault | ✅ | ✅ | — (v2 UI) |
-| 7 | Dashboard Purple Team | ✅ | ✅ | ✅ **focus** |
+## Pile technique
 
-## Les 5 KPIs
+| Couche      | Technologie |
+|-------------|-------------|
+| Backend/BFF | Python 3.11+ (validé sur 3.12) · FastAPI · SQLAlchemy 2 (async) · Alembic |
+| Tâches      | Celery + Redis (files `ingest` / `jobs`) |
+| Données     | PostgreSQL 15+ (validé sur 16, RLS forcée) |
+| Secrets/KEK | HashiCorp Vault (moteur transit) |
+| Objets      | MinIO (S3, Object Lock COMPLIANCE) |
+| Antivirus   | ClamAV (sas d'ingestion) |
+| Identité    | Keycloak (OIDC + PKCE S256) — l'IdP authentifie, le produit autorise |
+| Frontend    | Vue 3 · Vite · Pinia · vue-i18n (FR/EN) — thèmes A (clair) / B (SOC sombre) |
+| Déploiement | Docker Compose + Makefile |
 
-1. **Coverage ATT&CK** — techniques testées / techniques pertinentes
-2. **Detection Coverage** — techniques détectées / techniques testées
-3. **Response Coverage** — techniques avec réaction / techniques testées
-4. **MTTD** — Mean Time To Detect
-5. **MTTR** — Mean Time To Respond
+## Démarrage rapide
 
----
-
-## Stack
-
-- **Backend** : FastAPI + SQLAlchemy + Pydantic
-- **Base de données** : PostgreSQL (SQLite par défaut en dev, zéro config)
-- **Frontend** : React (Vite) + Recharts
-- **Stockage preuves** : abstraction S3/MinIO (métadonnées en MVP)
-
-## Démarrage rapide — Docker (recommandé)
-
-Tout est piloté par le `Makefile`. Deux modes selon le contexte.
-
-**Développement** — ports d'administration ouverts sur `127.0.0.1` (base, API directe, console MinIO) pour faciliter le debug :
-
-```bash
-make up
-```
-
-**Production / cloisonné** — un seul port exposé sur l'hôte, le frontend. La base, MinIO et l'API ne sont joignables que depuis l'intérieur du réseau Docker :
-
-```bash
-make up-prod
-```
-
-### Architecture réseau
-
-Deux réseaux Docker isolent les services :
-
-- `internal` (marqué `internal: true`, sans accès externe) porte **PostgreSQL**, **MinIO** et le **backend**. Les conteneurs s'y parlent par leur nom DNS, mais rien n'y est routable depuis l'extérieur.
-- `web` relie le **frontend** au **backend**. Seul le frontend y publie un port sur l'hôte.
-
-Le backend n'a donc aucun port exposé : il est atteint uniquement via le proxy Nginx du frontend, qui relaie `/api` vers `backend:8000`. La doc interactive de l'API reste accessible derrière ce proxy.
-
-| Service | Dev (`make up`) | Prod (`make up-prod`) |
-|---------|-----------------|------------------------|
-| Frontend (cockpit) | http://localhost:8080 | http://localhost:8080 |
-| Doc API (via proxy) | http://localhost:8080/docs | http://localhost:8080/docs |
-| API directe | http://localhost:8000/docs | non exposée |
-| Console MinIO | http://localhost:9001 | non exposée |
-| PostgreSQL | 127.0.0.1:5432 | non exposée |
-
-> Le mode dev charge automatiquement `docker-compose.override.yml`, qui rouvre les ports d'admin (bindés sur `127.0.0.1`, donc inaccessibles depuis le réseau). Le mode prod ignore cet override.
-
-Cibles utiles :
+Prérequis : Docker, Docker Compose, Make.
 
 ```bash
-make help      # liste toutes les commandes
-make logs      # suit les logs en direct
-make health    # teste frontend + API + doc à travers le proxy
-make ps        # état des conteneurs
-make seed      # re-peuple les données de démo
-make psql      # session psql sur la base
-make down      # arrête (conserve les données)
-make clean     # arrête et supprime les volumes
+cp .env.example .env          # ajuster les secrets (SEED_DEFAULT_PASSWORD, APP_*_PASSWORD…)
+make bootstrap                # premier démarrage complet : stack + schéma + comptes de démo
+make init-vault               # (avant le dépôt de preuves) descellement + transit + KEK
 ```
 
-> Avant un déploiement réel, éditez `.env` pour changer les mots de passe PostgreSQL et MinIO, et passez `SEED_ON_START=0`.
+`make bootstrap` enchaîne `up` (certificat TLS dev généré au besoin), l'attente de la
+disponibilité de PostgreSQL, `migrate` (schéma Alembic) et `seed` (référentiels +
+comptes de démonstration). Idempotent : peut être relancé sans dommage.
 
-## Démarrage manuel (dev sans Docker)
+Équivalent manuel, étape par étape :
 
-### Backend
 ```bash
-cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-python -m app.seed          # peuple des données de démo (SQLite)
-uvicorn app.main:app --reload
+make up                       # démarre toute la pile
+make migrate                  # applique le schéma (rôle app_migrator)
+make seed                     # référentiels + organisation démo + comptes
 ```
-API sur http://localhost:8000 — doc interactive sur http://localhost:8000/docs
 
-### Frontend
+Accès : `https://localhost/` — comptes de démonstration (mot de passe `ChangeMe!2026`,
+TOTP à enrôler) : `admin@purple.local`, `auditeur@purple.local`, `ciso@purple.local`.
+
+Import de la maquette de démonstration :
+
 ```bash
-cd frontend
-npm install
-npm run dev
-```
-UI sur http://localhost:5173 (proxy /api vers le backend en 8000)
-
----
-
-## Architecture cible (production)
-
-```
-Frontend (React) ── Backend (FastAPI) ── PostgreSQL
-                              │
-                              ├── MinIO (S3) ........ Evidence Vault
-                              ├── Keycloak .......... AuthN/AuthZ
-                              ├── Celery / Redis .... jobs async
-                              └── Grafana ........... reporting
+make import-maquette FILE=export.json
 ```
 
-## Évolutions v2 (préparées dans le code)
+## Tests
 
-- Import automatique du framework ATT&CK depuis MITRE
-- Connecteurs Jira / ServiceNow / SIEM / BAS (Picus, AttackIQ)
-- Heatmap ATT&CK par application
-- Couverture par groupe de menaces (APT29, FIN7, Scattered Spider…)
-- Génération de rapports PDF
+```bash
+make test            # suite complète (unitaires + sécurité)
+make test-security   # familles bloquantes : isolation RLS, matrice RBAC, sas,
+                     # immuabilité du journal, crypto-shredding, exposition réseau
+```
+
+Les tests d'isolation RLS s'exécutent contre une vraie base PostgreSQL migrée
+(`TEST_DATABASE_URL`), et prouvent notamment qu'une connexion sans contexte ne voit
+aucune ligne et qu'une écriture hors périmètre est rejetée par la clause `WITH CHECK`.
+
+## Structure
+
+```
+backend/            API FastAPI, workers Celery, migrations, tests
+  app/
+    security/       matrice RBAC, moteur can() 5 portes, contexte, jetons, OIDC, MFA
+    journal/        journal chaîné (tamper-evident)
+    storage/        chiffrement enveloppe, Vault, MinIO (WORM)
+    models/         ORM (métier + sécurité + preuves)
+    api/routes/     auth, entités (CRUD générique), preuves, livrables, admin
+    workers/        sas d'ingestion (antivirus, type réel, chiffrement, WORM), jobs
+    deliverables/   génération de livrables HTML→PDF (bandeaux TLP)
+  sql/              roles.sql (rôles PG) + schema_evidence.sql (DDL preuves + RLS)
+  migrations/       Alembic (schéma initial complet)
+frontend/           Vue 3 + Vite (tokens DA repris verbatim)
+deploy/             nginx (reverse proxy unique), keycloak (realm), vault
+scripts/            check_ports.py, backup.sh, restore.sh
+docs/               runbook Vault, guide utilisateur
+.github/workflows/  CI (lint, tests, sécurité, exposition réseau)
+```
+
+## Décisions d'architecture (DAT)
+
+D1 Python/FastAPI/SQLAlchemy async · D2 Vue 3 + réemploi des tokens DA ·
+D3 Docker Compose (Kubernetes hors périmètre) · D4 rôle géré dans le produit (l'IdP
+authentifie seulement) · D5 MFA globale pour les rôles opérationnels + step-up sur les
+actions à haut risque · D6 droits Manager en lecture seule sur Ressources/Applications/
+Actions · D7 Keycloak embarqué (OIDC + PKCE) · D8 sur-chiffrement côté client reporté.
+
+## Documentation
+
+| Document | Objet |
+|---|---|
+| `docs/deploiement.md` | Déploiement en production (secrets, ordre d'installation, intégrations, TLS, montée de version) |
+| `docs/exploitation.md` | Exploitation courante (synchro référentiels, sauvegarde, vérification du journal, réponse à incident, crypto-shredding) |
+| `docs/runbook-vault.md` | Vault en détail (descellement, rotation KEK, crypto-shredding) |
+| `docs/guide-utilisateur.md` | Prise en main par rôle et parcours métier |
+| `docs/validation.md` | Preuves d'exécution — couverture des tests |
+| `docs/RECETTE.md` | Recette et durcissement |
+
+## Licence
+
+Projet interne. Voir les conditions du contrat de prestation.

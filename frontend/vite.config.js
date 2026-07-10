@@ -1,13 +1,16 @@
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import vue from '@vitejs/plugin-vue'
 
+// En production, Nginx (reverse proxy unique) route /api, /storage et /idp.
+// En dev, on proxifie vers l'API locale.
 export default defineConfig({
-  plugins: [react()],
+  plugins: [vue()],
   server: {
     port: 5173,
     proxy: {
-      // Toutes les requêtes /api sont relayées vers le backend FastAPI
-      '/api': 'http://localhost:8000',
+      '/api': { target: 'http://localhost:8000', changeOrigin: true },
+      '/storage': { target: 'http://localhost:9000', changeOrigin: true },
     },
   },
+  build: { outDir: 'dist', sourcemap: false },
 })

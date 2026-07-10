@@ -1,0 +1,78 @@
+[project]
+name = "purple-cockpit-api"
+version = "1.0.0"
+description = "API de pilotage Purple Team — défense en profondeur (RBAC/RLS/chiffrement/journal)"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.111",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "email-validator>=2.1",
+    "sqlalchemy[asyncio]>=2.0.30",
+    "asyncpg>=0.29",
+    "psycopg[binary]>=3.1",
+    "alembic>=1.13",
+    "celery[redis]>=5.4",
+    "redis>=5.0",
+    "httpx>=0.27",
+    "pyjwt>=2.8",
+    "argon2-cffi>=23.1",
+    "pyotp>=2.9",
+    "cryptography>=42.0",
+    "minio>=7.2",
+    "hvac>=2.3",
+    "clamd>=1.0.2",
+    "authlib>=1.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=5.0",
+    "pyyaml>=6.0",
+    "stix2>=3.0",
+    "ruff>=0.5",
+    "mypy>=1.10",
+    "testcontainers[postgres]>=4.5",
+]
+render = [
+    "playwright>=1.44",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-q"
+# Rend `tests.conftest` importable quel que soit le mode d'installation du paquet
+# (editable en dev local, normal dans l'image de test) — sans __init__.py ni hack.
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["B008", "UP042"]  # B008: Depends() en défaut = idiome FastAPI ; UP042: str+Enum délibéré
+
+[tool.ruff.lint.per-file-ignores]
+# Les tests lèvent volontairement des exceptions larges (AES-GCM / triggers PG)
+# et utilisent le format %s pour les littéraux de tableaux PostgreSQL.
+"tests/*" = ["B017", "UP031", "E501"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+warn_unused_ignores = false
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.setuptools.package-data]
+app = ["data/*.json"]
