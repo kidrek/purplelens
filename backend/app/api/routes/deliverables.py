@@ -46,32 +46,133 @@ async def generate(
     ) as session:
         org = (
             await session.execute(
-                text("SELECT nom, code FROM organisation WHERE id = :id"),
+                text(
+                    "SELECT nom, code, siren, secteur, referent_interne "
+                    "FROM organisation WHERE id = :id"
+                ),
                 {"id": str(payload.client_id)},
             )
-        ).first()
+        ).mappings().first()
         if org is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, detail="client_unknown")
+        client = dict(org)
 
-        audit_name = "—"
+        # Prestataire : l'organisation de rôle 'prestataire' (celle des auditeurs).
+        # Sous RLS, elle peut être hors du périmètre de l'appelant : les gabarits
+        # tolèrent None (nom générique en repli).
+        presta_row = (
+            await session.execute(
+                text(
+                    "SELECT nom, siren, secteur, referent_interne FROM organisation "
+                    "WHERE role = 'prestataire' AND deleted_at IS NULL "
+                    "ORDER BY created_at LIMIT 1"
+                )
+            )
+        ).mappings().first()
+        prestataire = dict(presta_row) if presta_row else None
+
+        audit: dict = {}
+        engagement: dict = {}
+        scenario: dict | None = None
+        applications: list[dict] = []
+        auditeurs: list[dict] = []
+        actions: list[dict] = []
         findings: list[dict] = []
         evidence: list[dict] = []
+
         if payload.audit_id:
-            audit = (
+            audit_row = (
                 await session.execute(
-                    text("SELECT nom FROM audit WHERE id = :id"), {"id": str(payload.audit_id)}
+                    text(
+                        "SELECT nom, categorie, type_test, scenario_id, applications, "
+                        "auditeurs, environnement, date_debut, date_fin, statut, tlp, "
+                        "engagement, referentiels_methodo "
+                        "FROM audit WHERE id = :id AND deleted_at IS NULL"
+                    ),
+                    {"id": str(payload.audit_id)},
                 )
-            ).first()
-            audit_name = audit.nom if audit else "—"
+            ).mappings().first()
+            if audit_row is None:
+                raise HTTPException(status.HTTP_404_NOT_FOUND, detail="audit_unknown")
+            audit = dict(audit_row)
+            engagement = audit.get("engagement") or {}
+
+            # Scénario émulé (catalogue CTI) — métadonnées de menace.
+            if audit.get("scenario_id"):
+                scn = (
+                    await session.execute(
+                        text(
+                            "SELECT nom, objectif, acteur_emule, type_engagement, "
+                            "sophistication, techniques FROM scenario "
+                            "WHERE id = :id AND deleted_at IS NULL"
+                        ),
+                        {"id": str(audit["scenario_id"])},
+                    )
+                ).mappings().first()
+                scenario = dict(scn) if scn else None
+
+            # Applications ciblées (UUID[] de l'audit).
+            if audit.get("applications"):
+                applications = [
+                    dict(r)
+                    for r in (
+                        await session.execute(
+                            text(
+                                "SELECT nom, version, criticite, exposition, stack "
+                                "FROM application WHERE id = ANY(:ids) AND deleted_at IS NULL "
+                                "ORDER BY nom"
+                            ),
+                            {"ids": [str(i) for i in audit["applications"]]},
+                        )
+                    ).mappings().all()
+                ]
+
+            # Équipe d'audit assignée (ressources humaines → cahier §5.A).
+            if audit.get("auditeurs"):
+                auditeurs = [
+                    dict(r)
+                    for r in (
+                        await session.execute(
+                            text(
+                                "SELECT nom, role, competences, contact FROM ressource "
+                                "WHERE id = ANY(:ids) AND deleted_at IS NULL ORDER BY nom"
+                            ),
+                            {"ids": [str(i) for i in audit["auditeurs"]]},
+                        )
+                    ).mappings().all()
+                ]
+
+            # Actions d'audit par phase PTES (traçabilité de la mission).
+            actions = [
+                dict(r)
+                for r in (
+                    await session.execute(
+                        text(
+                            "SELECT ptes_phase, titre, technique_attack, outil, resultat "
+                            "FROM audit_action WHERE audit_id = :a AND deleted_at IS NULL "
+                            "ORDER BY horodatage_debut NULLS LAST, created_at"
+                        ),
+                        {"a": str(payload.audit_id)},
+                    )
+                ).mappings().all()
+            ]
+
+            # Vulnérabilités de la mission (celles rattachées à l'audit + celles du
+            # client non rattachées), enrichies EPSS/KEV quand disponible.
             findings = [
                 dict(r)
                 for r in (
                     await session.execute(
                         text(
-                            "SELECT titre, cvss_score, severite, sla_niveau FROM vulnerability "
-                            "WHERE client_id = :c AND deleted_at IS NULL ORDER BY cvss_score DESC"
+                            "SELECT v.titre, v.cve, v.cvss_score, v.severite, v.sla_niveau, "
+                            "v.statut, round(e.epss_score, 3) AS epss, e.kev "
+                            "FROM vulnerability v "
+                            "LEFT JOIN vulnerability_enrichment e ON e.vulnerability_id = v.id "
+                            "WHERE v.client_id = :c AND v.deleted_at IS NULL "
+                            "AND (v.audit_id = :a OR v.audit_id IS NULL) "
+                            "ORDER BY v.cvss_score DESC NULLS LAST"
                         ),
-                        {"c": str(payload.client_id)},
+                        {"c": str(payload.client_id), "a": str(payload.audit_id)},
                     )
                 ).mappings().all()
             ]
@@ -90,16 +191,20 @@ async def generate(
 
         if payload.type == "engagement":
             content = deliverable_service.render_engagement_letter(
-                client_name=org.nom, audit_name=audit_name, tlp=payload.tlp,
-                scope="Périmètre défini dans le bloc engagement de l'audit.",
-                dates="Fenêtre définie dans l'audit.",
+                client=client, prestataire=prestataire, audit=audit,
+                engagement=engagement, scenario=scenario,
+                applications=applications, auditeurs=auditeurs, tlp=payload.tlp,
             )
         elif payload.type == "nda":
-            content = deliverable_service.render_nda(client_name=org.nom, tlp=payload.tlp)
+            content = deliverable_service.render_nda(
+                client=client, prestataire=prestataire, engagement=engagement,
+                audit=audit or None, tlp=payload.tlp,
+            )
         elif payload.type == "rapport":
             content = deliverable_service.render_ptes_report(
-                client_name=org.nom, audit_name=audit_name, tlp=payload.tlp,
-                findings=findings, evidence=evidence,
+                client=client, prestataire=prestataire, audit=audit,
+                scenario=scenario, applications=applications, auditeurs=auditeurs,
+                actions=actions, findings=findings, evidence=evidence, tlp=payload.tlp,
             )
         else:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="unknown_type")
@@ -115,8 +220,8 @@ async def generate(
             ) from None
 
         deliverable_id = uuid.uuid4()
-        bucket = minio_client.evidence_bucket(org.code)
-        key = f"client/{org.code}/deliverables/{deliverable_id}.pdf"
+        bucket = minio_client.evidence_bucket(client["code"])
+        key = f"client/{client['code']}/deliverables/{deliverable_id}.pdf"
         lock_until = minio_client.default_lock_until(365)
         minio_client.put_locked_object(bucket, key, pdf_bytes, lock_until)
 
@@ -134,7 +239,7 @@ async def generate(
             {
                 "id": str(deliverable_id), "client": str(payload.client_id),
                 "audit": str(payload.audit_id) if payload.audit_id else None,
-                "type": payload.type, "titre": f"{payload.type} — {org.nom}",
+                "type": payload.type, "titre": f"{payload.type} — {client['nom']}",
                 "langue": payload.langue, "tlp": payload.tlp, "key": key,
                 "meta": f'{{"findings": {len(findings)}}}',
             },
