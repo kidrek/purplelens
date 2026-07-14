@@ -115,11 +115,23 @@ def presign_download(bucket: str, key: str, *, origin: str) -> str:
 
 def put_locked_object(bucket: str, key: str, data: bytes, lock_until: datetime) -> None:
     """Écrit l'objet chiffré avec Object Lock mode compliance (personne, pas même un
-    admin MinIO, ne peut l'altérer/supprimer avant échéance)."""
+    admin MinIO, ne peut l'altérer/supprimer avant échéance).
+
+    Ceinture + bretelles : le bucket cible doit exister AVANT le put. Le provisioning
+    nominal (ensure_buckets à la création du client / au bootstrap) peut avoir échoué
+    ou être en retard ; on crée donc le bucket manquant à la volée. L'Object Lock ne
+    s'activant QU'À la création (jamais a posteriori), on le crée impérativement avec
+    object_lock=True — un bucket sans lock trahirait la garantie WORM. Un bucket
+    préexistant est laissé intact (s'il avait été créé sans lock, le put ci-dessous
+    échouerait, ce qui est le bon comportement : mieux vaut rejeter que stocker sans
+    immuabilité)."""
     import io
 
+    mc = client()
+    if not mc.bucket_exists(bucket):
+        mc.make_bucket(bucket, object_lock=True)  # WORM impératif — jamais sans lock
     retention = Retention(COMPLIANCE, retain_until_date=lock_until)
-    client().put_object(
+    mc.put_object(
         bucket,
         key,
         io.BytesIO(data),
@@ -130,6 +142,36 @@ def put_locked_object(bucket: str, key: str, data: bytes, lock_until: datetime) 
 
 def default_lock_until(days: int) -> datetime:
     return datetime.now(UTC) + timedelta(days=days)
+
+
+# ── Ancres WORM du journal (durcissement P1) ────────────────────────────────
+def ensure_anchor_bucket() -> None:
+    """Crée (idempotent) le bucket d'ancres du journal AVEC Object Lock (WORM)."""
+    mc = client()
+    if not mc.bucket_exists(settings.journal_anchor_bucket):
+        mc.make_bucket(settings.journal_anchor_bucket, object_lock=True)
+
+
+def put_anchor(key: str, data: bytes, lock_until: datetime) -> None:
+    """Écrit une ancre immuable (Object Lock COMPLIANCE) dans le bucket d'ancres."""
+    put_locked_object(settings.journal_anchor_bucket, key, data, lock_until)
+
+
+def latest_anchor() -> bytes | None:
+    """Renvoie l'ancre la plus récente (seq max), ou None si aucune. Les clés sont
+    préfixées par le seq zero-paddé : le max lexicographique = l'ancre la plus récente."""
+    mc = client()
+    if not mc.bucket_exists(settings.journal_anchor_bucket):
+        return None
+    keys = [
+        o.object_name
+        for o in mc.list_objects(
+            settings.journal_anchor_bucket, prefix="journal-head/", recursive=True
+        )
+    ]
+    if not keys:
+        return None
+    return read_object(settings.journal_anchor_bucket, max(keys))
 
 
 def read_object(bucket: str, key: str) -> bytes:

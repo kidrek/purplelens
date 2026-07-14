@@ -41,6 +41,8 @@
     "step_up": "Ré-authentification requise pour cette action.",
     "theme_light": "Clair",
     "theme_dark": "Sombre",
+    "theme_toggle": "Basculer clair / sombre",
+    "lang": "Langue",
     "menu": "Menu",
     "detail": "Détail",
     "edit": "Éditer",
@@ -64,7 +66,43 @@
     "stored": "Stockée (WORM)",
     "rejected": "Rejetée",
     "download": "Télécharger",
-    "note": "Les binaires ne transitent jamais par l'API : téléchargement par URL présignée à durée courte, après triple contrôle serveur."
+    "download_failed": "Échec du téléchargement.",
+    "secret_masked": "Contient des secrets — non téléchargeable en clair",
+    "mfa_required": "Preuve sensible (TLP:RED/AMBER) : le MFA est requis. Enrôlez d'abord votre authentificateur.",
+    "mfa_account_link": "Mon compte",
+    "step_up_prompt": "Saisissez votre code TOTP pour déverrouiller cette preuve sensible.",
+    "step_up_confirm": "Confirmer",
+    "totp_refused": "Code TOTP refusé.",
+    "note": "Les binaires ne transitent jamais par l'API : téléchargement par URL présignée à durée courte, après triple contrôle serveur.",
+    "view_grid": "Grille",
+    "view_table": "Tableau",
+    "col_org": "Organisation",
+    "col_app": "Application",
+    "col_audit": "Audit",
+    "col_uploader": "Auditeur",
+    "col_file": "Nom du fichier",
+    "col_date": "Date d'upload",
+    "col_hash": "Empreinte SHA-256",
+    "col_tlp": "TLP",
+    "filters_title": "Filtres",
+    "filter_date_from": "Uploadée depuis le",
+    "filter_date_to": "Uploadée jusqu'au",
+    "filter_reset": "Réinitialiser",
+    "filter_no_match": "Aucune preuve ne correspond aux filtres.",
+    "filter_count": "{shown} / {total} preuve(s) affichée(s)"
+  },
+  "upload": {
+    "title": "Attacher une preuve",
+    "drop": "Sélectionner un fichier…",
+    "hint": "PNG, JPEG, PDF… (max 200 Mo)",
+    "upload": "Uploader",
+    "attach": "Attacher une preuve",
+    "new": "+ Preuve",
+    "select_audit": "Veuillez d'abord choisir un audit dans la liste ci-dessus.",
+    "too_large": "Le fichier dépasse la limite de 200 Mo.",
+    "requires_audit": "Rattachez ce constat à un audit avant d'y joindre une preuve.",
+    "mfa_notice": "Les preuves TLP:RED/AMBER exigent le MFA — au dépôt comme au téléchargement.",
+    "mfa_required": "Dépôt refusé : une preuve sensible (TLP:RED/AMBER) exige le MFA. Enrôlez-le dans « Mon compte »."
   },
   "navgroup": {
     "pilotage": "Pilotage",
@@ -114,7 +152,93 @@
     },
     "cockpit": {
       "eyebrow": "Pilotage",
-      "title": "Cockpit"
+      "title": "Cockpit",
+      "loading": "Chargement…",
+      "kpi": {
+        "detection": "Taux de détection moyen",
+        "detectionFoot": "{caught} / {tested} étapes couvertes",
+        "blind": "Angles morts",
+        "blindFoot": "étapes jouées sans télémétrie",
+        "sla": "Criticals hors SLA",
+        "slaFoot": "P1 au-delà de l'échéance",
+        "audits": "Audits",
+        "auditsFoot": "{n} exercice(s) Purple"
+      },
+      "tacticsPanel": {
+        "title": "Couverture par tactique MITRE",
+        "note": "dernier run par audit · ordre kill-chain",
+        "cellTitle": "{detected}/{total} techniques détectées",
+        "covered": "couvert",
+        "partial": "partiel",
+        "gap": "écart"
+      },
+      "tactics": {
+        "reconnaissance": "Recon",
+        "resource-development": "Ressources",
+        "initial-access": "Accès initial",
+        "execution": "Exécution",
+        "persistence": "Persistance",
+        "privilege-escalation": "Élév. privilèges",
+        "defense-evasion": "Évasion",
+        "credential-access": "Identifiants",
+        "discovery": "Découverte",
+        "lateral-movement": "Latéralisation",
+        "collection": "Collecte",
+        "command-and-control": "C2",
+        "exfiltration": "Exfiltration",
+        "impact": "Impact"
+      },
+      "trend": {
+        "title": "Tendance du taux de détection",
+        "note": "dernier run par audit, cumulé",
+        "pointTitle": "{caught}/{tested} · {audits} audits"
+      },
+      "posture": {
+        "title": "Posture agrégée",
+        "method": "dernier run par audit",
+        "matrixLink": "Matrice ATT&CK →",
+        "testedN": "étapes testées",
+        "prev": "Prévention",
+        "alert": "Alerting",
+        "logged": "Journalisé",
+        "blind": "Angle mort",
+        "empty": "Aucun exercice joué sur ce périmètre."
+      },
+      "blindPanel": {
+        "title": "Angles morts par tactique",
+        "totalLabel": "techniques sans télémétrie, à couvrir en priorité",
+        "hint": "Un angle mort = une source de télémétrie manquante (≠ règle d'alerting manquante, qui relève du journalisé). C'est le levier le plus direct du prochain cycle.",
+        "empty": "Aucun angle mort — toutes les étapes jouées ont laissé une trace."
+      },
+      "vulns": {
+        "title": "Vulnérabilités par sévérité",
+        "all": "Voir tout ({n}) →",
+        "critique": "Critique",
+        "haute": "Haute",
+        "moyenne": "Moyenne",
+        "basse": "Basse"
+      },
+      "auditTypes": {
+        "title": "Audits par type",
+        "empty": "Aucun audit."
+      },
+      "journal": {
+        "title": "Journal — derniers événements",
+        "all": "Journal complet →",
+        "seq": "#",
+        "event": "Événement",
+        "actor": "Acteur",
+        "action": "Action",
+        "entity": "Entité",
+        "time": "Horodatage",
+        "actions": {
+          "create": "Création",
+          "update": "Mise à jour",
+          "delete": "Suppression",
+          "archive": "Archivage",
+          "import": "Import"
+        }
+      }
     },
     "deliverables": {
       "eyebrow": "Production",
@@ -315,7 +439,8 @@
     "tags": "Étiquettes",
     "analysis": "Analyse",
     "recommendations": "Recommandations",
-    "referentiels": "À propos des référentiels"
+    "referentiels": "À propos des référentiels",
+    "evidence": "Preuves"
   },
   "av": {
     "apps": "applications",

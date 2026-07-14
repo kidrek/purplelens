@@ -4,6 +4,7 @@ import { api, ApiError } from '../api/client'
 import DetailDrawer from './DetailDrawer.vue'
 import EngagementForm from './EngagementForm.vue'
 import EntityForm from './EntityForm.vue'
+import AttckTtpMatrix from './AttckTtpMatrix.vue'
 import { ENTITY_FIELDS } from '../fields'
 import { useRefNames } from '../composables/useRefNames'
 import { useLabels } from '../composables/useLabels'
@@ -32,6 +33,7 @@ const audit = ref(props.record)
 const actions = ref([])
 const milestones = ref([])
 const exercices = ref([])
+const vulns = ref([])
 const deliverables = ref([])
 const scenario = ref(null) // scénario CTI rattaché (pour ses TTP)
 const names = ref({ orgs: {}, apps: {}, ressources: {}, scenarios: {} })
@@ -46,11 +48,12 @@ async function loadAll() {
   const id = props.record.id
   try {
     // Enregistrement rechargé (la ligne de liste peut être partielle/stale).
-    const [full, acts, miles, exos, delivs, orgs, apps, ress, scens] = await Promise.all([
+    const [full, acts, miles, exos, vulnz, delivs, orgs, apps, ress, scens] = await Promise.all([
       api.get(`/audits/${id}`).catch(() => props.record),
       safeList('audit_actions', `?audit_id=${id}`),
       safeList('audit_milestones', `?audit_id=${id}`),
       safeList('exercices', `?audit_id=${id}`),
+      safeList('vulnerabilities', `?audit_id=${id}`),
       safeList('deliverables', `?audit_id=${id}`),
       safeList('organisations'),
       safeList('applications'),
@@ -61,6 +64,7 @@ async function loadAll() {
     actions.value = acts
     milestones.value = miles
     exercices.value = exos
+    vulns.value = vulnz
     deliverables.value = delivs
     names.value = { orgs: toMap(orgs), apps: toMap(apps), ressources: toMap(ress), scenarios: toMap(scens) }
     // Scénario CTI rattaché → ses techniques ATT&CK (TTP) affichées dans le drawer.
@@ -202,12 +206,35 @@ const engagementDefaults = computed(() => {
   }
 })
 
-// Ajout d'une action de test depuis le drawer (comme la maquette « + Ajouter une action »).
+// Ajout / édition / suppression d'une action de test depuis le drawer (le serveur reste
+// l'autorité : un rôle sans droit E/S reçoit un 403 surfacé, cf. matrice RBAC).
 const actionOpen = ref(false)
+const editingAction = ref(null) // action en cours d'édition, ou null
+function editAction(a) { editingAction.value = a }
 async function onActionSaved() {
   actionOpen.value = false
+  editingAction.value = null
   actions.value = await safeList('audit_actions', `?audit_id=${props.record.id}`)
 }
+async function delAction(a) {
+  if (!window.confirm('Supprimer cette action de test ? Action journalisée.')) return
+  try {
+    await api.remove('audit_actions', a.id)
+    actions.value = await safeList('audit_actions', `?audit_id=${props.record.id}`)
+  } catch (e) {
+    window.alert(e instanceof ApiError && e.status === 403
+      ? 'Action refusée (droits ou cloisonnement).' : (e.message || 'Erreur.'))
+  }
+}
+
+// Ajout d'une vulnérabilité liée à l'audit (client/audit pré-remplis et figés).
+const vulnOpen = ref(false)
+async function onVulnSaved() {
+  vulnOpen.value = false
+  vulns.value = await safeList('vulnerabilities', `?audit_id=${props.record.id}`)
+}
+const SEV_TONE = { critique: 'red', haute: 'amber', moyenne: 'cyan', basse: 'green' }
+const sevPill = (s) => SEV_TONE[s] || 'gray'
 
 // Génération de livrables ancrée sur l'audit (client/audit/TLP pré-remplis).
 // Le serveur décide (can() + cloisonnement) ; le binaire ne transite jamais par l'API.
@@ -218,6 +245,7 @@ const DELIVERABLE_TYPES = [
 ]
 const genBusy = ref(null)
 const genMsg = ref(null)
+const genLangue = ref('fr') // langue de génération des livrables (fr/en)
 async function generateDeliverable(type) {
   genMsg.value = null
   genBusy.value = type
@@ -226,7 +254,7 @@ async function generateDeliverable(type) {
       client_id: audit.value.client_id,
       audit_id: props.record.id,
       type,
-      langue: 'fr',
+      langue: genLangue.value,
       tlp: audit.value.tlp || 'AMBER',
     })
     genMsg.value = { kind: 'ok', text: `Livrable généré (${DELIVERABLE_LABELS[type] || type}).` }
@@ -356,10 +384,7 @@ const fmtDate = (iso) => (iso ? String(iso).slice(0, 10) : '—')
           <dt v-if="scenario.sophistication">Sophistication</dt>
           <dd v-if="scenario.sophistication">{{ scenario.sophistication }}</dd>
         </dl>
-        <div class="ttps">
-          <span v-for="ttp in scenarioTTPs" :key="ttp" class="chip mono">{{ refLabel('attack', ttp) }}</span>
-          <span v-if="!scenarioTTPs.length" class="faint">Aucune technique renseignée pour ce scénario.</span>
-        </div>
+        <AttckTtpMatrix :techniques="scenarioTTPs" />
       </section>
 
       <!-- Engagement (PTES pré-engagement) -->
@@ -422,7 +447,7 @@ const fmtDate = (iso) => (iso ? String(iso).slice(0, 10) : '—')
           <button class="btn slim" @click="actionOpen = true">+ Ajouter une action</button>
         </div>
         <table v-if="actions.length" class="dense">
-          <thead><tr><th>Phase</th><th>Titre</th><th>ATT&amp;CK</th><th>Résultat</th></tr></thead>
+          <thead><tr><th>Phase</th><th>Titre</th><th>ATT&amp;CK</th><th>Résultat</th><th class="act-col"></th></tr></thead>
           <tbody>
             <tr v-for="a in actions" :key="a.id">
               <td><span class="pill pill-violet">{{ enumLabel(a.ptes_phase) }}</span></td>
@@ -430,10 +455,35 @@ const fmtDate = (iso) => (iso ? String(iso).slice(0, 10) : '—')
               <td class="mono">{{ a.technique_attack ? refLabel('attack', a.technique_attack) : '—' }}</td>
               <td><span v-if="a.resultat" :class="['pill','pill-'+statutPill(a.resultat)]">{{ enumLabel(a.resultat) }}</span>
                 <span v-else class="faint">—</span></td>
+              <td class="row-act">
+                <button class="btn slim" title="Modifier" @click="editAction(a)">✎</button>
+                <button class="btn slim danger" title="Supprimer" @click="delAction(a)">Suppr.</button>
+              </td>
             </tr>
           </tbody>
         </table>
         <p v-else class="faint">Aucune action.</p>
+      </section>
+
+      <!-- Vulnérabilités liées à l'audit -->
+      <section class="panel">
+        <div class="p-head">Vulnérabilités <span class="count">{{ vulns.length }}</span>
+          <span class="spacer" />
+          <button class="btn slim" @click="vulnOpen = true">+ Ajouter une vulnérabilité</button>
+        </div>
+        <table v-if="vulns.length" class="dense">
+          <thead><tr><th>Titre</th><th>Sévérité</th><th>Statut</th><th>CVE</th></tr></thead>
+          <tbody>
+            <tr v-for="v in vulns" :key="v.id">
+              <td>{{ v.titre || '—' }}</td>
+              <td><span v-if="v.severite" :class="['pill','pill-'+sevPill(v.severite)]">{{ enumLabel(v.severite) }}</span>
+                <span v-else class="faint">—</span></td>
+              <td><span :class="['pill','pill-'+statutPill(v.statut)]">{{ enumLabel(v.statut) }}</span></td>
+              <td class="mono">{{ v.cve || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p v-else class="faint">Aucune vulnérabilité liée.</p>
       </section>
 
       <!-- Exercices Purple -->
@@ -455,6 +505,10 @@ const fmtDate = (iso) => (iso ? String(iso).slice(0, 10) : '—')
         <div class="p-head">Livrables <span class="count">{{ deliverables.length }}</span>
           <span class="spacer" />
           <div class="gen-btns">
+            <select v-model="genLangue" class="lang-sel" :disabled="genBusy !== null" title="Langue du livrable">
+              <option value="fr">FR</option>
+              <option value="en">EN</option>
+            </select>
             <button v-for="ty in DELIVERABLE_TYPES" :key="ty.v" class="btn slim"
                     :disabled="genBusy !== null" @click="generateDeliverable(ty.v)">
               {{ genBusy === ty.v ? 'Génération…' : '+ ' + ty.label }}
@@ -490,12 +544,38 @@ const fmtDate = (iso) => (iso ? String(iso).slice(0, 10) : '—')
       @saved="onActionSaved"
       @close="actionOpen = false"
     />
+
+    <EntityForm
+      v-if="editingAction"
+      entity="audit_actions"
+      :fields="ENTITY_FIELDS.audit_actions"
+      :record="editingAction"
+      :hidden="['audit_id', 'client_id']"
+      title="Modifier l'action de test"
+      @saved="onActionSaved"
+      @close="editingAction = null"
+    />
+
+    <EntityForm
+      v-if="vulnOpen"
+      entity="vulnerabilities"
+      :fields="ENTITY_FIELDS.vulnerabilities"
+      :prefill="{ audit_id: audit.id, client_id: audit.client_id }"
+      :hidden="['audit_id', 'client_id']"
+      evidence-upload
+      title="Nouvelle vulnérabilité"
+      @saved="onVulnSaved"
+      @close="vulnOpen = false"
+    />
   </DetailDrawer>
 </template>
 
 <style scoped>
 .stack{display:flex;flex-direction:column;gap:14px}
 .slim{padding:3px 9px;font-size:11.5px}
+.danger{color:var(--red);border-color:var(--c-red-bd)}
+.act-col{width:1%}
+.row-act{white-space:nowrap;display:flex;gap:6px;justify-content:flex-end}
 .muted{color:var(--muted);font-size:13px}
 .faint{color:var(--faint);font-size:12.5px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
@@ -508,7 +588,9 @@ const fmtDate = (iso) => (iso ? String(iso).slice(0, 10) : '—')
 .p-head{display:flex;align-items:center;gap:8px;font-family:var(--font-display);font-size:13.5px;color:var(--heading);margin-bottom:10px}
 .count{color:var(--faint);font-size:12px;font-weight:normal}
 .spacer{flex:1}
-.gen-btns{display:flex;gap:6px;flex-wrap:wrap}
+.gen-btns{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.lang-sel{border:1px solid var(--border);border-radius:var(--r-mini);background:var(--surface-2);
+  color:var(--text);font-size:11.5px;padding:3px 6px}
 .msg{padding:7px 11px;border-radius:var(--r-mini);font-size:12.5px;margin:0 0 10px}
 .msg.ok{background:var(--c-green-bg);color:var(--c-green-tx)}
 .msg.ko{background:var(--c-red-bg);color:var(--c-red-tx)}

@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { api, ApiError } from '../api/client'
 import EntityForm from '../components/EntityForm.vue'
 import { fieldsFor } from '../fields'
@@ -9,7 +9,6 @@ import { fieldsFor } from '../fields'
 // Actions et jalons sont scopés à l'audit (client_id/audit_id imposés via prefill).
 // Le serveur reste l'autorité : chaque écriture repasse par can() + RLS.
 const route = useRoute()
-const router = useRouter()
 const id = route.params.id
 
 const PTES_ORDER = [

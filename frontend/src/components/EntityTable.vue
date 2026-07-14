@@ -7,6 +7,7 @@ import { fieldsFor } from '../fields'
 import EntityForm from './EntityForm.vue'
 import EntityDrawer from './EntityDrawer.vue'
 import { useUiStore } from '../stores/ui'
+import { useAuthStore } from '../stores/auth'
 
 // Table générique éditable : liste /{entity} et permet créer / éditer / supprimer
 // via un formulaire piloté par le schéma (fields.js). Le serveur a déjà filtré les
@@ -15,6 +16,7 @@ const props = defineProps({
   entity: { type: String, required: true },
   columns: { type: Array, required: true },     // [{ key, label, pill?, tlp? }]
   editable: { type: Boolean, default: true },   // false => lecture seule (ex. hors droits)
+  allowCreate: { type: Boolean, default: true }, // false => pas de bouton « + Nouveau » (édition/suppr. conservées)
   title: { type: String, default: '' },
   detailRoute: { type: Function, default: null }, // (row) => '/audits/<id>' pour ouvrir un détail
   // Actions personnalisées par ligne : [{ label, fn }] où fn(row) est appelé au clic.
@@ -27,6 +29,7 @@ const props = defineProps({
 const { t } = useI18n()
 const { fieldLabel, enumLabel } = useLabels()
 const ui = useUiStore()
+const auth = useAuthStore()
 const rows = ref([])
 const loading = ref(true)
 // Filtre de périmètre client (multi-clients) : n'affiche que les lignes du client actif,
@@ -71,8 +74,20 @@ function openCreate() { editing.value = null; formOpen.value = true }
 function openEdit(row) { editing.value = row; formOpen.value = true }
 
 async function onSaved() {
+  const wasCreate = editing.value === null
   formOpen.value = false
   editing.value = null
+  // Création d'une organisation par un rôle scopé : le serveur vient d'élargir le
+  // client_scope du créateur (app_user.client_scope). On rafraîchit la session pour
+  // émettre un nouveau token portant ce scope à jour — la nouvelle organisation
+  // devient visible sans reconnexion. Non bloquant : à défaut, elle apparaîtra à la
+  // prochaine connexion.
+  if (wasCreate && props.entity === 'organisations') {
+    try {
+      await api.refresh()
+      await auth.fetchMe()
+    } catch { /* silencieux : le scope se mettra à jour au prochain login */ }
+  }
   await load()
 }
 
@@ -94,7 +109,7 @@ defineExpose({ load })
 <template>
   <div>
     <div class="toolbar">
-      <button v-if="canEdit" class="btn btn-primary" @click="openCreate">+ {{ t('common.new') }}</button>
+      <button v-if="canEdit && allowCreate" class="btn btn-primary" @click="openCreate">+ {{ t('common.new') }}</button>
       <button class="btn" @click="load">{{ t('common.refresh') }}</button>
     </div>
 

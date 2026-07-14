@@ -87,6 +87,40 @@ async def test_attack_matrix_aggregates_coverage():
 
 
 @pytest.mark.asyncio
+async def test_multi_tactic_technique_spans_columns():
+    """Une technique multi-tactiques apparaît dans CHAQUE colonne (alignement Navigator).
+
+    Les KPIs restent comptés une seule fois malgré la présence dans plusieurs colonnes.
+    """
+    from sqlalchemy import text
+
+    from app.api.routes.analytics import compute_attack_matrix
+    from app.db.session import service_session
+
+    tag = uuid.uuid4().hex[:3]
+    t_multi = f"T6{tag}"
+
+    async with service_session("admin_service") as s:
+        await s.execute(text(
+            "INSERT INTO ref_attack_technique (id, ext_id, name, tactic, data) VALUES "
+            "(gen_random_uuid(), :m, 'Multi', 'persistence', CAST(:d AS jsonb)) "
+            "ON CONFLICT (ext_id) DO NOTHING"
+        ), {"m": t_multi,
+            "d": '{"tactics": ["persistence", "privilege-escalation", "defense-evasion"]}'})
+
+        matrix = await compute_attack_matrix(s)
+        cols_with = [col["tactic"] for col in matrix["tactics"]
+                     if any(t["ext_id"] == t_multi for t in col["techniques"])]
+        assert set(cols_with) == {"persistence", "privilege-escalation", "defense-evasion"}
+        # Comptée une seule fois dans le total de référence (pas d'inflation multi-colonnes).
+        occurrences = sum(1 for col in matrix["tactics"]
+                          for t in col["techniques"] if t["ext_id"] == t_multi)
+        assert occurrences == 3  # présence dans 3 colonnes, un seul objet logique
+
+        await s.execute(text("DELETE FROM ref_attack_technique WHERE ext_id=:m"), {"m": t_multi})
+
+
+@pytest.mark.asyncio
 async def test_subtechnique_rolls_up_to_parent():
     """Une activité sur une sous-technique rend le parent « couvert » (cumul Navigator)."""
     from sqlalchemy import text

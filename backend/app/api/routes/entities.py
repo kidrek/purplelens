@@ -10,11 +10,11 @@ Aucune décision d'autorisation n'est laissée au client (invariant DAT §2.2).
 """
 from __future__ import annotations
 
+import logging
 import uuid
 
-import logging
-
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from app.api import service
@@ -59,6 +59,29 @@ async def _provision_client_bucket(code: str | None) -> None:
             "provisioning MinIO échoué pour l'organisation %s — bucket manquant, "
             "relancer `python -m app.storage.bootstrap`", code, exc_info=True
         )
+
+
+async def _grow_creator_scope(session, ctx: SecurityContext, new_org_id: str) -> None:
+    """Ajoute l'organisation nouvellement créée au client_scope du créateur en base.
+
+    Un rôle scopé (client_scope non vide, ex. auditeur assigné à des clients précis)
+    ne verrait sinon plus jamais cette organisation : le client_scope est figé dans le
+    JWT depuis la connexion, jamais recalculé dynamiquement. Effectif à la PROCHAINE
+    connexion (le token en cours reste celui déjà émis). Rôles multi-clients
+    (client_scope vide = tous) : rien à faire, déjà couverts.
+    """
+    if not ctx.client_scope:
+        return
+    # Bind des uuid.UUID natifs (asyncpg les mappe sur le type uuid) : pas de cast
+    # `::uuid` inline, qui entrerait en collision avec la syntaxe de paramètre `:nom`
+    # de SQLAlchemy text().
+    await session.execute(
+        text(
+            "UPDATE app_user SET client_scope = array_append(client_scope, :oid)"
+            " WHERE id = :uid AND NOT (:oid = ANY(client_scope))"
+        ),
+        {"oid": uuid.UUID(str(new_org_id)), "uid": uuid.UUID(str(ctx.user_id))},
+    )
 
 
 def _register(spec: EntitySpec) -> None:
@@ -114,6 +137,8 @@ def _register(spec: EntitySpec) -> None:
                 obj = await service.create_entity(session, spec, payload, actor_id=ctx.user_id)
                 await session.flush()
                 result = _serialize(obj)
+                if entity == "organisations":
+                    await _grow_creator_scope(session, ctx, str(result["id"]))
         except IntegrityError as exc:
             # Doctrine : jamais de 500 opaque ; détail précis côté serveur seulement
             # (DAT §2.4 — la réponse ne porte pas d'information exploitable).

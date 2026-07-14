@@ -43,8 +43,25 @@ def issue_access_token(
 
 
 def decode_access_token(token: str) -> dict:
+    """Décode et vérifie un access token.
+
+    Durci (spec v2 §1.3) : l'algorithme est épinglé (pas de « alg=none » ni de
+    substitution), et les claims structurants sont EXIGÉS — un jeton sans `exp`
+    (donc sans expiration) ou sans `iat`/`iss`/`sub` est rejeté au lieu d'être
+    accepté avec des valeurs implicites. `iss` et `exp` sont vérifiés activement.
+    """
     return jwt.decode(
-        token, settings.jwt_signing_key, algorithms=[ALGORITHM], issuer="purple-cockpit"
+        token,
+        settings.jwt_signing_key,
+        algorithms=[ALGORITHM],
+        issuer="purple-cockpit",
+        options={
+            "require": ["exp", "iat", "iss", "sub"],
+            "verify_signature": True,
+            "verify_exp": True,
+            "verify_iat": True,
+            "verify_iss": True,
+        },
     )
 
 

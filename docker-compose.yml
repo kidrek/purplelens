@@ -85,6 +85,11 @@ services:
     networks: [internal]
     env_file: [.env]
     environment:
+      # Secrets forts fournis par le .env (make secrets, dont dépend `make test*`).
+      # Aucun secret figé ici : la cible `secrets` matérialise le garde-fou de config.py.
+      # Rate-limiting désactivé pour le runner : la suite in-process enchaîne de
+      # nombreux logins depuis une seule IP, ce qui saturerait les compteurs (flag, pas un secret).
+      RATE_LIMIT_ENABLED: "false"
       DATABASE_URL: "postgresql+asyncpg://app_api:${APP_API_PASSWORD:-api}@postgres:5432/${POSTGRES_DB:-purple}"
       # Tests d'isolation RLS (bout en bout, rôle app_api NOBYPASSRLS) :
       TEST_DATABASE_URL: "postgresql://app_api:${APP_API_PASSWORD:-api}@postgres:5432/${POSTGRES_DB:-purple}"
@@ -93,6 +98,23 @@ services:
       - ./docker-compose.yml:/docker-compose.yml:ro
     depends_on:
       postgres: {condition: service_healthy}
+
+  # ── Lint frontend conteneurisé (make lint) — aucun Node requis sur l'hôte ───
+  frontend-lint:
+    profiles: ["test"]
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: deps
+    image: purple/frontend-deps:dev
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      # Volume anonyme : préserve le node_modules installé dans l'image (étage
+      # `deps`) au lieu de le masquer par le bind mount du répertoire hôte.
+      - /app/node_modules
+    command: ["npm", "run", "lint"]
+    networks: [internal]
 
   # ── Workers Celery : sas d'ingestion + jobs (files séparées) ─────────────
   worker:

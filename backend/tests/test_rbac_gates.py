@@ -40,6 +40,35 @@ def test_multiclient_admin_sees_any_client():
     assert d.allowed
 
 
+def test_gate2_mfa_required_to_create_red_evidence():
+    """Cohérence upload/download : déposer une preuve TLP:RED sans session MFA est
+    refusé par la porte 2 (comme sa relecture), pour ne pas créer une preuve qu'on ne
+    pourrait de toute façon jamais relire."""
+    cid = "aaaaaaaa-0000-0000-0000-000000000001"
+    auditeur = make_ctx("auditeur", client_scope=[cid], mfa=False)
+    record = {"client_id": cid, "tlp": "RED", "pap": "RED"}
+    d = can(auditeur, Action.C, "evidence", record)
+    assert not d.allowed and d.reason == "gate2_mfa_required"
+
+
+def test_gate2_mfa_session_allows_red_evidence_create():
+    """Avec une session MFA, la création d'une preuve RED passe la porte 2."""
+    cid = "aaaaaaaa-0000-0000-0000-000000000001"
+    auditeur = make_ctx("auditeur", client_scope=[cid], mfa=True)
+    record = {"client_id": cid, "tlp": "RED", "pap": "RED"}
+    d = can(auditeur, Action.C, "evidence", record)
+    assert d.allowed
+
+
+def test_green_evidence_create_needs_no_mfa():
+    """Une preuve TLP:GREEN n'est pas sensible : dépôt possible sans MFA (porte 2 inerte)."""
+    cid = "aaaaaaaa-0000-0000-0000-000000000001"
+    auditeur = make_ctx("auditeur", client_scope=[cid], mfa=False)
+    record = {"client_id": cid, "tlp": "GREEN", "pap": "GREEN"}
+    d = can(auditeur, Action.C, "evidence", record)
+    assert d.allowed
+
+
 def test_gate5_tlp_pap_blocks_incompatible_evidence():
     """Preuve RED consultée avec un contexte incompatible → porte 5 refuse."""
     ciso = make_ctx("ciso")

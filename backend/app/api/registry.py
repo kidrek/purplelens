@@ -138,12 +138,16 @@ REGISTRY: dict[str, EntitySpec] = {
         writable=("client_id", "source_attack_step_id", "technique_attack",
                   "mesure_d3fend", "description", "priorite", "statut", "regle_sigma",
                   "gap_decouvert_le"),
+        # reference = TICK_{AAAAMM}-{NN}_{CLIENT}_{APP}_{TECHNIQUE} (dérivé serveur, figé)
+        auto=("reference", "period", "seq"),
     ),
     "scenarios": EntitySpec(
         "scenarios", Scenario, client_field=None,  # CTI global — hors RLS client
         writable=("nom", "objectif", "acteur_emule", "type_engagement", "sophistication",
                   "ioc", "ioa", "references", "source_id", "credibilite",
                   "tlp", "pap", "notes"),
+        # nom descriptif saisi ; reference = SCEN_{AAAAMM}-{NN} (dérivé serveur, figé)
+        auto=("reference", "period", "seq"),
         order_by="nom",
     ),
     "scenario_steps": EntitySpec(

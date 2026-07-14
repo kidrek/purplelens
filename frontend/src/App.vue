@@ -8,6 +8,7 @@ import { api } from './api/client'
 import { icons } from './icons'
 import { NAV_GROUPS } from './nav'
 import CommandPalette from './components/CommandPalette.vue'
+import CorpusArticleDrawer from './components/CorpusArticleDrawer.vue'
 
 const auth = useAuthStore()
 const ui = useUiStore()
@@ -87,8 +88,15 @@ async function doLogout() {
         <option value="">{{ t('common.all_clients') }}</option>
         <option v-for="c in ui.clients" :key="c.id" :value="c.id">{{ c.nom }}</option>
       </select>
-      <button class="btn ghost" @click="locale = locale === 'fr' ? 'en' : 'fr'">{{ locale.toUpperCase() }}</button>
-      <button class="btn ghost" @click="ui.toggleTheme()">{{ ui.theme === 'dark' ? t('common.theme_dark') : t('common.theme_light') }}</button>
+      <!-- Toggles langue + thème — contrôles de la maquette (lang-toggle / icon-btn) -->
+      <div class="lang-toggle" role="group" :aria-label="t('common.lang')">
+        <button :class="{ on: locale === 'fr' }" @click="locale = 'fr'">FR</button>
+        <button :class="{ on: locale === 'en' }" @click="locale = 'en'">EN</button>
+      </div>
+      <button class="icon-btn" @click="ui.toggleTheme()" :aria-label="t('common.theme_toggle')" :title="t('common.theme_toggle')">
+        <svg v-if="ui.theme === 'dark'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8 6 18M18 6l1.8-1.8"/></svg>
+        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 14.5A8 8 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z"/></svg>
+      </button>
       <RouterLink class="who" to="/account" title="Mon compte (MFA)">
         {{ auth.user?.display_name }} · <span class="pill pill-violet">{{ auth.role }}</span>
         <span v-if="!auth.user?.mfa" class="pill pill-amber">MFA</span>
@@ -122,6 +130,9 @@ async function doLogout() {
       ref="palette" :is-admin="isAdmin"
       :on-toggle-theme="() => ui.toggleTheme()" :on-logout="doLogout"
     />
+
+    <!-- Drawer d'article corpus global (⌘K) : superposé à la page courante, sans navigation -->
+    <CorpusArticleDrawer v-if="ui.articleSlug" :slug="ui.articleSlug" @close="ui.closeArticle()" />
   </div>
 
   <RouterView v-else />
@@ -142,6 +153,19 @@ async function doLogout() {
 .spacer{flex:1}
 .who{color:var(--muted);font-size:12px;display:flex;align-items:center;gap:6px}
 .btn.ghost{background:transparent;border-color:var(--border-2)}
+
+/* Toggles langue + thème (maquette, DA §0.3) */
+.icon-btn{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid var(--border-field);border-radius:8px;background:var(--field);color:var(--muted);
+  cursor:pointer;transition:border-color var(--t),color var(--t)}
+.icon-btn:hover{border-color:var(--violet);color:var(--violet-accent,var(--violet))}
+.icon-btn svg{width:17px;height:17px}
+.lang-toggle{height:34px;display:inline-flex;align-items:center;border:1px solid var(--border-field);
+  border-radius:8px;background:var(--field);overflow:hidden}
+.lang-toggle button{padding:0 10px;height:100%;font-size:11.5px;font-weight:600;color:var(--faint);
+  background:transparent;border:0;cursor:pointer;font-family:inherit;
+  transition:background var(--t-fast),color var(--t-fast)}
+.lang-toggle button.on{background:var(--violet-soft);color:var(--nav-active-text)}
 
 /* Déclencheur de recherche (topbar) */
 .search-trigger{
@@ -182,8 +206,8 @@ async function doLogout() {
 .content{flex:1;overflow:auto;padding:18px 22px 40px}
 
 /* Hamburger — masqué par défaut, visible seulement en dessous de 860px.
-   (.icon-btn n'existe qu'en scoped local à EntityForm.vue : on définit ici
-   un style autonome plutôt que d'en dépendre.) */
+   (style autonome, historiquement antérieur au .icon-btn local ci-dessus ;
+   il diffère par le display:none par défaut.) */
 .hamburger{
   display:none;flex:0 0 auto;width:34px;height:34px;align-items:center;justify-content:center;
   border:1px solid var(--border-field);border-radius:8px;background:var(--field);color:var(--muted);

@@ -51,6 +51,9 @@ export const api = {
   login: (email, password, otp) =>
     request('POST', '/auth/login', { email, password, totp: otp }),
   logout: () => request('POST', '/auth/logout'),
+  // Rotation du refresh token → nouvel access token portant le client_scope à jour
+  // (relu en base). Sert à refléter un scope élargi sans imposer une reconnexion.
+  refresh: () => request('POST', '/auth/refresh'),
   stepUp: (otp) => request('POST', '/auth/step-up', { totp: otp }),
   oidcStart: () => request('GET', '/auth/oidc/start'),
 
@@ -61,4 +64,9 @@ export const api = {
 
   journal: () => request('GET', '/journal'),
   journalVerify: () => request('GET', '/journal/verify'),
+
+  // Initialisation d'une preuve → renvoie une URL présignée d'upload (PresignedUpload).
+  // Le binaire ne transite pas par l'API : le caller fait un PUT direct vers MinIO,
+  // puis appelle /evidence/{id}/ingest pour déclencher le sas (cahier §6quater).
+  initEvidence: (payload) => request('POST', '/evidence', payload),
 }

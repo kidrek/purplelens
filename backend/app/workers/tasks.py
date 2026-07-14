@@ -17,17 +17,20 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from datetime import UTC, datetime
 
 from sqlalchemy import text
 
 from app.config import settings
+from app.journal import anchor as journal_anchor_mod
 from app.journal.chain import GENESIS, compute_hash
 from app.storage import crypto, minio_client, vault_client
 from app.workers.celery_app import celery_app
 from app.workers.db_sync import service_session_sync
 
 _UTC = UTC
+_log = logging.getLogger(__name__)
 
 # Signatures de fichiers autorisées (préfixe binaire → type). Liste blanche : ce qui
 # n'est pas reconnu comme une preuve visuelle/document légitime est rejeté.
@@ -153,59 +156,79 @@ def ingest_evidence(self, evidence_id: str, quarantine_key: str) -> dict:
         # 4. Empreinte du clair
         sha_plain = hashlib.sha256(data).hexdigest()
 
-        # 5. Déballage DEK (Vault)
+        # 5. Déballage DEK (Vault) — wrapped_dek = octets UTF-8 du jeton « vault:vN:<b64> »
         dek_row = session.execute(
-            text("SELECT encode(wrapped_dek, 'base64') AS w FROM audit_dek WHERE id = :id"),
+            text("SELECT wrapped_dek AS w FROM audit_dek WHERE id = :id"),
             {"id": str(ev.dek_id)},
         ).first()
         if dek_row is None or dek_row.w is None:
             _reject(session, evidence_id, "dek_missing", quarantine_key)
             return {"evidence_id": evidence_id, "status": "rejected"}
-        dek = vault_client.unwrap_dek(ev.client_code, dek_row.w.replace("\n", ""))
+        wrapped = dek_row.w.decode("utf-8") if isinstance(dek_row.w, (bytes, bytearray)) else str(dek_row.w)
 
-        # 6. Chiffrement AES-256-GCM
-        aad = crypto.build_aad(evidence_id, str(ev.audit_id), sha_plain)
-        nonce = crypto.new_nonce()
-        blob, nonce = crypto.encrypt(dek, data, aad, nonce)  # blob = chiffré + tag GCM
-        del dek  # effacement de la référence à la clé en clair
+        # Étapes 5(unwrap)–10 : crypto + WORM + journal + statut final. Un échec ici
+        # (Vault indisponible, bucket WORM manquant, incident MinIO/PostgreSQL) laissait
+        # AUPARAVANT la preuve bloquée en 'quarantined' — l'exception non rattrapée
+        # provoquait un rollback et, avec max_retries=0, aucun état terminal n'était posé.
+        # On bascule désormais explicitement en 'rejected' (transaction propre) : l'état
+        # terminal est sans ambiguïté et le motif est tracé au journal.
+        try:
+            dek = vault_client.unwrap_dek(ev.client_code, wrapped)
 
-        # 7. Empreinte du chiffré
-        sha_cipher = hashlib.sha256(blob).hexdigest()
+            # 6. Chiffrement AES-256-GCM
+            aad = crypto.build_aad(evidence_id, str(ev.audit_id), sha_plain)
+            nonce = crypto.new_nonce()
+            blob, nonce = crypto.encrypt(dek, data, aad, nonce)  # blob = chiffré + tag GCM
+            del dek  # effacement de la référence à la clé en clair
 
-        # 8. PUT MinIO + Object Lock (WORM)
-        bucket = minio_client.evidence_bucket(ev.client_code)
-        key = minio_client.object_key(ev.client_code, str(ev.audit_id), evidence_id)
-        lock_until = minio_client.default_lock_until(3650)  # 10 ans (rétention par défaut)
-        minio_client.put_locked_object(bucket, key, blob, lock_until)
+            # 7. Empreinte du chiffré
+            sha_cipher = hashlib.sha256(blob).hexdigest()
 
-        # 9. Scellement journal
-        journal_id = _seal(
-            session, event_type="evidence.stored", subject=evidence_id,
-            client_id=str(ev.client_id),
-            detail={"sha256_plaintext": sha_plain, "sha256_ciphertext": sha_cipher,
-                    "bucket": bucket, "object_key": key, "detected_mime": detected},
-        )
+            # 8. PUT MinIO + Object Lock (WORM)
+            bucket = minio_client.evidence_bucket(ev.client_code)
+            key = minio_client.object_key(ev.client_code, str(ev.audit_id), evidence_id)
+            lock_until = minio_client.default_lock_until(3650)  # 10 ans (rétention par défaut)
+            minio_client.put_locked_object(bucket, key, blob, lock_until)
 
-        # 10. Statut final (les triggers WORM figent désormais les champs de custody)
-        session.execute(
-            text(
-                """
-                UPDATE evidence SET
-                  ingest_status='stored', detected_mime=:mime, sha256_plaintext=:sp,
-                  sha256_ciphertext=:sc, bucket=:bucket, object_key=:key,
-                  nonce=:nonce, av_verdict=:av, size_bytes=:size,
-                  stored_at=now(), journal_entry_id=:jid,
-                  object_lock_until=:lock, retention_until=:lock, updated_at=now()
-                WHERE id=:id
-                """
-            ),
-            {
-                "mime": detected, "sp": sha_plain, "sc": sha_cipher, "bucket": bucket,
-                "key": key, "nonce": nonce, "av": verdict, "size": len(data),
-                "jid": journal_id, "lock": lock_until, "id": evidence_id,
-            },
-        )
-        minio_client.purge_quarantine(quarantine_key)
+            # 9. Scellement journal
+            journal_id = _seal(
+                session, event_type="evidence.stored", subject=evidence_id,
+                client_id=str(ev.client_id),
+                detail={"sha256_plaintext": sha_plain, "sha256_ciphertext": sha_cipher,
+                        "bucket": bucket, "object_key": key, "detected_mime": detected},
+            )
+
+            # 10. Statut final (les triggers WORM figent désormais les champs de custody)
+            session.execute(
+                text(
+                    """
+                    UPDATE evidence SET
+                      ingest_status='stored', detected_mime=:mime, sha256_plaintext=:sp,
+                      sha256_ciphertext=:sc, bucket=:bucket, object_key=:key,
+                      nonce=:nonce, av_verdict=:av, size_bytes=:size,
+                      stored_at=now(), journal_entry_id=:jid,
+                      object_lock_until=:lock, retention_until=:lock, updated_at=now()
+                    WHERE id=:id
+                    """
+                ),
+                {
+                    "mime": detected, "sp": sha_plain, "sc": sha_cipher, "bucket": bucket,
+                    "key": key, "nonce": nonce, "av": verdict, "size": len(data),
+                    "jid": journal_id, "lock": lock_until, "id": evidence_id,
+                },
+            )
+            minio_client.purge_quarantine(quarantine_key)
+        except Exception as exc:
+            # On ne relève plus l'exception (sinon rollback + quarantine bloquée) : on
+            # repart d'une transaction saine puis on scelle un rejet motivé.
+            _log.error(
+                "Ingestion échouée (evidence %s) aux étapes crypto/WORM : %s",
+                evidence_id, exc, exc_info=True,
+            )
+            session.rollback()
+            _reject(session, evidence_id, f"ingest_failed:{type(exc).__name__}", quarantine_key)
+            return {"evidence_id": evidence_id, "status": "rejected",
+                    "error": type(exc).__name__}
 
     return {"evidence_id": evidence_id, "status": "stored", "sha256": sha_plain}
 
@@ -292,3 +315,60 @@ def journal_verify() -> dict:
                 break
             prev = r.curr_hash
     return {"intact": break_at is None, "break_at_seq": break_at}
+
+
+@celery_app.task(name="app.workers.tasks.journal_anchor")
+def journal_anchor() -> dict:
+    """Ancre la tête de chaîne courante du journal dans le bucket WORM (durcissement P1).
+
+    L'ancre (seq + curr_hash) devient immuable hors PostgreSQL : une réécriture ultérieure
+    de l'historique ne pourra plus correspondre à l'ancre → falsification détectable."""
+    minio_client.ensure_anchor_bucket()
+    with service_session_sync("job_integrity") as session:
+        head = session.execute(
+            text("SELECT seq, curr_hash, created_at FROM journal ORDER BY seq DESC LIMIT 1")
+        ).first()
+        if head is None:
+            return {"anchored": False, "reason": "empty_journal"}
+        count = session.execute(text("SELECT count(*) FROM journal")).scalar_one()
+        anchored_at = datetime.now(_UTC)
+        payload = journal_anchor_mod.build_anchor_payload(
+            seq=head.seq, curr_hash=head.curr_hash, count=int(count),
+            sealed_at_iso=head.created_at.isoformat(), anchored_at_iso=anchored_at.isoformat(),
+        )
+        key = journal_anchor_mod.anchor_object_key(head.seq, anchored_at)
+        minio_client.put_anchor(
+            key,
+            journal_anchor_mod.serialize(payload),
+            minio_client.default_lock_until(settings.default_retention_days),
+        )
+        # Trace l'ancrage dans le journal lui-même (l'ancre pinne l'état PRÉ-scellement).
+        _seal(session, event_type="journal.anchored", subject=str(head.seq),
+              detail={"curr_hash": head.curr_hash, "count": int(count), "object": key})
+    return {"anchored": True, "seq": head.seq, "object": key}
+
+
+@celery_app.task(name="app.workers.tasks.journal_anchor_verify")
+def journal_anchor_verify() -> dict:
+    """Confronte la dernière ancre WORM à l'état courant du journal en base.
+
+    Une incohérence (entrée réécrite, historique tronqué) est la preuve d'une altération
+    survenue HORS de l'application ; elle est scellée pour alerte."""
+    raw = minio_client.latest_anchor()
+    if raw is None:
+        return {"verified": False, "reason": "no_anchor"}
+    anchor = journal_anchor_mod.deserialize(raw)
+    with service_session_sync("job_integrity") as session:
+        current_max_seq = session.execute(
+            text("SELECT max(seq) FROM journal")
+        ).scalar_one()
+        hash_at_seq = session.execute(
+            text("SELECT curr_hash FROM journal WHERE seq = :s"), {"s": anchor.get("seq")}
+        ).scalar_one_or_none()
+        ok, reason = journal_anchor_mod.check_anchor_consistency(
+            anchor, current_max_seq=current_max_seq, hash_at_anchor_seq=hash_at_seq
+        )
+        if not ok:
+            _seal(session, event_type="journal.anchor_mismatch", subject=str(anchor.get("seq")),
+                  detail={"reason": reason, "anchored_hash": anchor.get("curr_hash")})
+    return {"verified": ok, "reason": reason, "anchored_seq": anchor.get("seq")}

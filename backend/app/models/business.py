@@ -189,6 +189,11 @@ class DetectionTicket(UUIDMixin, TimestampMixin, SoftDeleteMixin, Base):
     __tablename__ = "detection_ticket"
 
     client_id: Mapped[uuid.UUID] = _uuid_fk("organisation.id", nullable=False, index=True)
+    # Référence métier auto-générée et figée : TICK_{AAAAMM}-{NN}_{CLIENT}_{APP}_{TECHNIQUE}
+    # (client/app de l'audit lié via source_attack_step_id). period/seq figés à la création.
+    reference: Mapped[str | None] = mapped_column(Text)
+    period: Mapped[str | None] = mapped_column(String(8))
+    seq: Mapped[int | None] = mapped_column(Integer)
     source_attack_step_id: Mapped[uuid.UUID | None] = _uuid_fk("attack_step.id", nullable=True)
     technique_attack: Mapped[str | None] = mapped_column(String(16))
     mesure_d3fend: Mapped[list] = mapped_column(JSONB, default=list, server_default=text("'[]'::jsonb"))
@@ -282,7 +287,11 @@ class SlaRule(UUIDMixin, TimestampMixin, Base):
 class Scenario(UUIDMixin, TimestampMixin, SoftDeleteMixin, Base):
     __tablename__ = "scenario"
 
-    nom: Mapped[str] = mapped_column(Text, nullable=False)
+    nom: Mapped[str] = mapped_column(Text, nullable=False)  # descriptif, saisi (ex. « Émulation FIN7 »)
+    # Référence métier auto-générée et figée : SCEN_{AAAAMM}-{NN} (catalogue CTI global, sans client).
+    reference: Mapped[str | None] = mapped_column(Text)
+    period: Mapped[str | None] = mapped_column(String(8))
+    seq: Mapped[int | None] = mapped_column(Integer)
     objectif: Mapped[str | None] = mapped_column(Text)
     acteur_emule: Mapped[str | None] = mapped_column(Text)
     type_engagement: Mapped[str | None] = mapped_column(String(16))

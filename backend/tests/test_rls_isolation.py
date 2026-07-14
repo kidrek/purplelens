@@ -83,6 +83,24 @@ def test_empty_scope_with_role_sees_all(two_clients):
         assert [r[0] for r in cur.fetchall()] == ["AUD-TA", "AUD-TB"]
 
 
+@pytest.mark.parametrize("role", ["auditeur", "ciso", "voc", "cert"])
+def test_empty_scope_non_global_role_sees_nothing(two_clients, role):
+    """Durcissement P1 (fail-closed) : un rôle cloisonné dont le scope est accidentellement
+    VIDE ne voit AUCUNE ligne — l'absence de scope n'est jamais « tous les clients »."""
+    with _conn() as c, c.cursor() as cur:
+        _set_ctx(cur, role, "")  # scope vide + rôle non global
+        cur.execute("SELECT count(*) FROM audit WHERE nom LIKE 'AUD-T%'")
+        assert cur.fetchone()[0] == 0
+
+
+def test_empty_scope_manager_still_sees_all(two_clients):
+    """Contre-épreuve : manager (rôle global, spec §2.1) conserve la vue multi-clients."""
+    with _conn() as c, c.cursor() as cur:
+        _set_ctx(cur, "manager", "")
+        cur.execute("SELECT nom FROM audit WHERE nom LIKE 'AUD-T%' ORDER BY nom")
+        assert [r[0] for r in cur.fetchall()] == ["AUD-TA", "AUD-TB"]
+
+
 def test_with_check_blocks_cross_client_insert(two_clients):
     """La clause WITH CHECK empêche d'écrire dans un client hors scope."""
     a, b = two_clients
@@ -94,6 +112,60 @@ def test_with_check_blocks_cross_client_insert(two_clients):
                 " VALUES (gen_random_uuid(),%s,'PIRATE','Purple','planifie','AMBER',now(),now())",
                 (b,),
             )
+
+
+def test_scoped_role_can_insert_new_organisation():
+    """Une organisation neuve n'existe dans AUCUN scope par construction (0009) — seul
+    un contexte de sécurité établi est exigé à l'INSERT, pas l'appartenance au scope."""
+    new_id = str(uuid.uuid4())
+    with _conn() as c, c.cursor() as cur:
+        _set_ctx(cur, "auditeur", "{%s}" % str(uuid.uuid4()))  # scope à un tout autre client
+        cur.execute(
+            "INSERT INTO organisation (id,nom,code,role,tlp_defaut,statut,created_at,updated_at)"
+            " VALUES (%s,'Org Test','ORGTEST','client','AMBER','actif',now(),now())",
+            (new_id,),
+        )
+    with _conn() as c, c.cursor() as cur:
+        _set_ctx(cur, "admin", "")
+        cur.execute("DELETE FROM organisation WHERE id = %s", (new_id,))
+
+
+def test_no_context_cannot_insert_organisation():
+    """Fail-closed : sans contexte de sécurité établi, l'INSERT sur organisation est refusé."""
+    with _conn() as c, c.cursor() as cur:
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            cur.execute(
+                "INSERT INTO organisation (id,nom,code,role,tlp_defaut,statut,created_at,updated_at)"
+                " VALUES (gen_random_uuid(),'Org Sans Contexte','NOCTX','client','AMBER','actif',now(),now())"
+            )
+
+
+@pytest.mark.parametrize("role", ["voc", "ciso", "cert", "manager"])
+def test_non_creator_role_cannot_insert_organisation(role):
+    """Défense en profondeur (0010) : un rôle authentifié mais NON créateur d'organisation
+    (matrice : seuls admin/auditeur ont organisations:C) est refusé par la RLS à l'INSERT,
+    même si la porte 3 (matrice) était contournée. La couche 2 n'est jamais plus large
+    que la couche 1."""
+    with _conn() as c, c.cursor() as cur:
+        _set_ctx(cur, role, "")  # contexte établi, scope global — mais rôle non créateur
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            cur.execute(
+                "INSERT INTO organisation (id,nom,code,role,tlp_defaut,statut,created_at,updated_at)"
+                " VALUES (gen_random_uuid(),'Org Interdite','FORBID','client','AMBER','actif',now(),now())"
+            )
+
+
+def test_admin_can_insert_organisation():
+    """Contre-épreuve : le rôle admin (créateur autorisé) peut bien insérer (0010)."""
+    new_id = str(uuid.uuid4())
+    with _conn() as c, c.cursor() as cur:
+        _set_ctx(cur, "admin", "")
+        cur.execute(
+            "INSERT INTO organisation (id,nom,code,role,tlp_defaut,statut,created_at,updated_at)"
+            " VALUES (%s,'Org Admin','ORGADM','client','AMBER','actif',now(),now())",
+            (new_id,),
+        )
+        cur.execute("DELETE FROM organisation WHERE id = %s", (new_id,))
 
 
 def test_journal_is_append_only():

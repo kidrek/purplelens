@@ -39,7 +39,10 @@ async def compute_attack_matrix(s: AsyncSession) -> dict:
     posé en amont). Fonction pure d'agrégation → testable directement.
     """
     ref = (await s.execute(text(
-        "SELECT ext_id, name, tactic FROM ref_attack_technique"
+        "SELECT ext_id, name, tactic, "
+        "COALESCE((SELECT array_agg(x) FROM jsonb_array_elements_text(data->'tactics') x), "
+        "ARRAY[]::text[]) AS tactics "
+        "FROM ref_attack_technique"
     ))).all()
     steps = (await s.execute(text(
         "SELECT technique, verdict, count(*) c FROM attack_step "
@@ -66,7 +69,7 @@ async def compute_attack_matrix(s: AsyncSession) -> dict:
 
     def _entry(code: str) -> dict:
         return tech.setdefault(code, {
-            "ext_id": code, "name": None, "tactic": None,
+            "ext_id": code, "name": None, "tactic": None, "tactics": [],
             "steps": 0, "vulns": 0, "tickets": 0, "actions": 0, "scenarios": 0,
             "verdicts": {}, "best_verdict": None,
         })
@@ -75,6 +78,9 @@ async def compute_attack_matrix(s: AsyncSession) -> dict:
         e = _entry(r.ext_id)
         e["name"] = r.name
         e["tactic"] = r.tactic
+        # Toutes les tactiques rattachées (multi-tactiques ATT&CK) ; repli sur la
+        # tactique primaire pour les référentiels mono-tactique historiques.
+        e["tactics"] = list(r.tactics) if r.tactics else ([r.tactic] if r.tactic else [])
     for r in steps:
         e = _entry(r.technique)
         e["steps"] += r.c
@@ -138,9 +144,19 @@ async def compute_attack_matrix(s: AsyncSession) -> dict:
             return (_TACTIC_ORDER.index(t), t)
         return (len(_TACTIC_ORDER), t or "non-mappée")
 
+    # Placement multi-tactiques : une technique parente apparaît dans CHAQUE colonne à
+    # laquelle elle (ou l'une de ses sous-techniques) se rattache — fidèle au Navigator.
+    # Le même objet est référencé dans plusieurs listes ; les KPIs restent comptés une
+    # seule fois (agrégés sur `parents.values()`).
     tactics: dict[str, list] = {}
     for e in parents.values():
-        tactics.setdefault(e["tactic"] or "non-mappée", []).append(e)
+        tacs = list(e.get("tactics") or ([e["tactic"]] if e.get("tactic") else []))
+        for st in e.get("subtechniques", []):
+            for t in (st.get("tactics") or ([st["tactic"]] if st.get("tactic") else [])):
+                if t not in tacs:
+                    tacs.append(t)
+        for t in (tacs or ["non-mappée"]):
+            tactics.setdefault(t, []).append(e)
     ordered = sorted(tactics.items(), key=lambda kv: _tactic_key(kv[0]))
 
     # ── KPIs au niveau parent (avec cumul) : chiffres lisibles quel que soit le
@@ -190,16 +206,27 @@ async def compute_cockpit(s, client_id: str | None = None) -> dict:
     Regroupe : posture des verdicts, taux de détection, angles morts, vulnérabilités
     (dont criticals hors SLA), audits par type, et un aperçu du journal.
 
+    La posture (verdicts, taux de détection, angles morts) est mesurée sur le POOL du
+    dernier exercice (run) de chaque audit — méthode unique, identique à celle de la
+    tendance : les runs anciens d'un même audit ne comptent pas.
+
     `client_id` (optionnel) restreint l'agrégation à un client précis, à l'intérieur du
     périmètre RLS déjà appliqué (confort des rôles multi-clients).
     """
     cf = " AND client_id = :cid" if client_id else ""
     p = {"cid": client_id} if client_id else {}
 
-    # Posture des verdicts (étapes d'attaque).
+    # Pool « dernier run par audit » : même critère de date que la tendance.
+    last_run_pool = (
+        "SELECT DISTINCT ON (audit_id) id FROM purple_exercise "
+        f"WHERE deleted_at IS NULL{cf} "
+        "ORDER BY audit_id, coalesce(date, created_at::date) DESC, created_at DESC"
+    )
+
+    # Posture des verdicts (étapes d'attaque du dernier run de chaque audit).
     verdict_rows = (await s.execute(text(
         "SELECT verdict, count(*) c FROM attack_step "
-        f"WHERE true{cf} GROUP BY verdict"
+        f"WHERE exercise_id IN ({last_run_pool}){cf} GROUP BY verdict"
     ), p)).all()
     verdicts = {r.verdict: r.c for r in verdict_rows}
     tested = sum(v for k, v in verdicts.items() if k != "not_tested")
@@ -207,11 +234,14 @@ async def compute_cockpit(s, client_id: str | None = None) -> dict:
     blind = verdicts.get("no_telemetry", 0)
     detection_rate = round(caught / tested * 100) if tested else None
 
-    # Angles morts : techniques restées sans télémétrie (attaque non vue).
-    blind_tech = (await s.execute(text(
-        "SELECT technique, count(*) c FROM attack_step "
-        f"WHERE verdict = 'no_telemetry' AND technique IS NOT NULL{cf} "
-        "GROUP BY technique ORDER BY c DESC LIMIT 8"
+    # Angles morts par tactique (maquette §panel.blind) : mêmes runs poolés, regroupés
+    # par tactique du référentiel ; restitués plus bas en ordre kill-chain (inconnues en fin).
+    blind_tac_rows = (await s.execute(text(
+        "SELECT coalesce(r.tactic, '?') AS tactic, count(*) c "
+        "FROM attack_step a LEFT JOIN ref_attack_technique r ON r.ext_id = a.technique "
+        f"WHERE a.verdict = 'no_telemetry' AND a.exercise_id IN ({last_run_pool})"
+        f"{cf.replace('client_id', 'a.client_id')} "
+        "GROUP BY 1"
     ), p)).all()
 
     # Vulnérabilités : total, par sévérité, et criticals hors SLA.
@@ -248,13 +278,16 @@ async def compute_cockpit(s, client_id: str | None = None) -> dict:
     ), p)).all()
 
     # ── Couverture par tactique MITRE (ordre kill-chain) ──────────────────────
-    # Pour chaque tactique : techniques jouées (distinct) et détectées. La tactique
-    # vient du référentiel ; l'ordre suit la kill-chain (accès initial → impact).
+    # Pour chaque tactique : techniques TESTÉES (distinct) et détectées, sur le pool
+    # du dernier run par audit — même photographie que la posture et les angles morts.
+    # Une technique jamais testée ne crée pas de tactique dans la bande.
     tac_rows = (await s.execute(text(
         "SELECT r.tactic, a.technique, "
         " bool_or(a.verdict IN ('prevented','alerted','logged')) AS detected "
         "FROM attack_step a JOIN ref_attack_technique r ON r.ext_id = a.technique "
-        f"WHERE a.technique IS NOT NULL{cf.replace('client_id', 'a.client_id')} "
+        "WHERE a.technique IS NOT NULL AND a.verdict != 'not_tested' "
+        f"AND a.exercise_id IN ({last_run_pool})"
+        f"{cf.replace('client_id', 'a.client_id')} "
         "GROUP BY r.tactic, a.technique"
     ), p)).all()
     by_tac: dict[str, dict] = {}
@@ -274,6 +307,12 @@ async def compute_cockpit(s, client_id: str | None = None) -> dict:
                       "gap" if v["det"] == 0 else "partial"),
         }
         for t, v in sorted(by_tac.items(), key=lambda kv: _tac_rank(kv[0]))
+    ]
+
+    # Angles morts par tactique, ordre kill-chain ('?' et inconnues en fin).
+    blind_tactics = [
+        {"tactic": r.tactic, "count": r.c}
+        for r in sorted(blind_tac_rows, key=lambda r: _tac_rank(r.tactic))
     ]
 
     # ── Tendance du taux de détection ─────────────────────────────────────────
@@ -342,7 +381,7 @@ async def compute_cockpit(s, client_id: str | None = None) -> dict:
             "tested": tested,
             "caught": caught,
         },
-        "blind_techniques": [{"technique": r.technique, "count": r.c} for r in blind_tech],
+        "blind_tactics": blind_tactics,
         "vulnerabilities": {
             "total": vuln_total,
             "by_severity": {r.severite: r.c for r in sev_rows},

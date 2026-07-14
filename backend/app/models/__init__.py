@@ -24,10 +24,12 @@ from app.models.evidence import (  # noqa: F401
     AuditDek,
     Evidence,
     EvidenceAccess,
+    RefAttackGroup,
     RefAttackTechnique,
     RefCapec,
     RefCwe,
     RefD3fend,
+    RefMispActor,
     RefOwasp,
 )
 from app.models.security import AppUser, Journal, RefreshToken  # noqa: F401
@@ -45,5 +47,6 @@ CLIENT_SCOPED_TABLES = [
 CLIENT_UNSCOPED_TABLES = [
     "scenario", "scenario_step", "corpus_article", "sla_rule",
     "ref_attack_technique", "ref_d3fend", "ref_owasp", "ref_cwe", "ref_capec",
+    "ref_attack_group", "ref_misp_actor",
     "app_user", "refresh_token", "journal",
 ]

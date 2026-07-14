@@ -27,8 +27,15 @@ class SecurityContext:
 
     @property
     def is_multi_client(self) -> bool:
-        """admin et manager sont toujours multi-clients (spec v2 §2.1)."""
-        return self.role in {"admin", "manager"} or not self.client_scope
+        """Vrai si le rôle opère de droit sur TOUS les clients (spec v2 §2.1).
+
+        Durcissement P1 (fail-closed) : un scope vide ne confère PLUS l'accès global
+        à un rôle non habilité — seuls les rôles de GLOBAL_SCOPE_ROLES (admin, manager,
+        rôles de service) sont multi-clients. Un auditeur/ciso/voc/cert au scope vide
+        n'est donc pas multi-client (et ne voit rien — cf. RLS et porte 4)."""
+        from app.security.matrix import GLOBAL_SCOPE_ROLES
+
+        return self.role in GLOBAL_SCOPE_ROLES
 
     def step_up_fresh(self, max_age_seconds: int) -> bool:
         """Vrai si la dernière authentification est assez récente (porte 2, step-up)."""

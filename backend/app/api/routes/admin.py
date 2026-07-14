@@ -16,7 +16,7 @@ from app.db.session import auth_session, rls_session, service_session
 from app.journal.chain import append as journal_append
 from app.journal.chain import verify_chain
 from app.security.context import SecurityContext
-from app.security.matrix import ROLES, Action
+from app.security.matrix import GLOBAL_SCOPE_ROLES, ROLES, Action
 from app.security.passwords import hash_password
 from app.security.rbac import get_security_context, require, require_step_up
 
@@ -30,6 +30,16 @@ async def read_journal(
     offset: int = Query(0, ge=0),
     ctx: SecurityContext = Depends(require("journal", Action.L)),
 ):
+    # Le journal est une chaîne GLOBALE (hors RLS client — CLIENT_UNSCOPED_TABLES).
+    # Durcissement P2 : on filtre en applicatif pour qu'un rôle cloisonné ne voie QUE
+    # les entrées de son périmètre (évite la fuite inter-tenant des event/subject/detail).
+    # Les rôles globaux (admin/manager/service) voient toute la chaîne.
+    params: dict = {"l": limit, "o": offset}
+    scope_filter = ""
+    if ctx.role not in GLOBAL_SCOPE_ROLES:
+        # Fail-closed cohérent avec la porte 4 : un scope vide ne voit rien.
+        scope_filter = "WHERE client_id = ANY(CAST(:scope AS uuid[]))"
+        params["scope"] = list(ctx.client_scope)
     async with rls_session(
         user_id=ctx.user_id, role=ctx.role, client_scope=ctx.client_scope
     ) as session:
@@ -38,9 +48,9 @@ async def read_journal(
                 text(
                     "SELECT seq, id, event_type, actor_id, actor_label, client_id, "
                     "subject, detail, curr_hash, created_at FROM journal "
-                    "ORDER BY seq DESC LIMIT :l OFFSET :o"
+                    f"{scope_filter} ORDER BY seq DESC LIMIT :l OFFSET :o"
                 ),
-                {"l": limit, "o": offset},
+                params,
             )
         ).mappings().all()
     return {"items": [dict(r) for r in rows], "limit": limit, "offset": offset}

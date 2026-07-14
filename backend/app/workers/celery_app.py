@@ -48,6 +48,16 @@ celery_app.conf.beat_schedule = {
         "task": "app.workers.tasks.journal_verify",
         "schedule": crontab(hour=3, minute=30),
     },
+    # Ancrage WORM de la tête de chaîne (durcissement P1) — toutes les 6 h.
+    "journal-anchor": {
+        "task": "app.workers.tasks.journal_anchor",
+        "schedule": crontab(minute=0, hour="*/6"),
+    },
+    # Confrontation quotidienne de la dernière ancre à l'état du journal en base.
+    "journal-anchor-verify": {
+        "task": "app.workers.tasks.journal_anchor_verify",
+        "schedule": crontab(hour=4, minute=0),
+    },
 }
 
 # Alias attendu par la ligne de commande du compose (`-A app.workers.celery_app.celery`).

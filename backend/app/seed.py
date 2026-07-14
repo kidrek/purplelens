@@ -22,8 +22,9 @@ from app.security.passwords import hash_password
 
 
 async def seed_reference() -> None:
-    """Charge tous les catalogues de référence (ATT&CK, D3FEND, OWASP, CWE, CAPEC)
-    depuis le socle embarqué — mêmes données que la page Paramètres. Idempotent."""
+    """Charge tous les catalogues de référence (ATT&CK, D3FEND, OWASP, CWE, CAPEC,
+    ATT&CK Groups, MISP Actors) depuis le socle embarqué — mêmes données que la page
+    Paramètres. Idempotent."""
     from app.reference.catalogs import CATALOGS, import_catalog
 
     async with service_session("admin_service") as session:

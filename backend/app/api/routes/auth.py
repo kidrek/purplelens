@@ -25,10 +25,13 @@ from app.schemas.auth import (
     WhoAmI,
 )
 from app.security.context import SecurityContext
-from app.security.mfa import new_secret, provisioning_uri, verify_totp
+from app.security.mfa import consume_totp, new_secret, provisioning_uri
 from app.security.oidc import authorization_url, exchange_code, generate_pkce, userinfo
+from app.security.oidc_state import pop_pkce, store_pkce
 from app.security.passwords import verify_password
+from app.security.ratelimit import rate_limit
 from app.security.rbac import get_security_context
+from app.security.secret_box import decrypt_secret, encrypt_secret
 from app.security.tokens import (
     issue_access_token,
     issue_refresh_token,
@@ -38,9 +41,8 @@ from app.security.tokens import (
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-# Magasin PKCE éphémère. En production : Redis avec TTL (voir docs/runbook).
-# Le state OIDC ne doit jamais fuiter côté client au-delà de son usage anti-CSRF.
-_PKCE_STORE: dict[str, str] = {}
+# État PKCE/state OIDC : stocké dans Redis avec TTL (voir security/oidc_state.py),
+# jamais en mémoire in-process (survie multi-worker + expiration automatique).
 _REFRESH_COOKIE = "pc_refresh"
 
 
@@ -61,14 +63,19 @@ def _user_scope(row) -> list[str]:
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(payload: LocalLoginRequest, response: Response, request: Request):
+async def login(
+    payload: LocalLoginRequest,
+    response: Response,
+    request: Request,
+    _rl: None = Depends(rate_limit("login", limit=10, window=60)),
+):
     """Connexion par compte local (repli). Argon2id + TOTP si MFA enrôlée."""
     async with auth_session() as session:
         row = (
             await session.execute(
                 text(
                     "SELECT id, email, role, client_scope, status, password_hash, "
-                    "totp_secret, mfa_enrolled, display_name "
+                    "totp_secret, mfa_enrolled, last_totp_step, display_name "
                     "FROM app_user WHERE lower(email)=lower(:e)"
                 ),
                 {"e": payload.email},
@@ -91,12 +98,20 @@ async def login(payload: LocalLoginRequest, response: Response, request: Request
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="invalid_credentials")
 
         if row.mfa_enrolled:
-            if not payload.totp or not row.totp_secret or not verify_totp(row.totp_secret, payload.totp):
+            step = consume_totp(
+                decrypt_secret(row.totp_secret), payload.totp or "", row.last_totp_step
+            )
+            if step is None:
                 await journal_append(
                     session, event_type="auth.login.denied", actor_id=str(row.id),
                     detail={"reason": "mfa_required_or_invalid"},
                 )
                 raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="mfa_required")
+            # Anti-rejeu : marque ce pas TOTP comme consommé (rejeu du même code refusé).
+            await session.execute(
+                text("UPDATE app_user SET last_totp_step=:s WHERE id=:id"),
+                {"s": step, "id": str(row.id)},
+            )
 
         auth_time = int(time.time())
         scope = _user_scope(row)
@@ -122,7 +137,7 @@ async def oidc_start():
     """Démarre le flux OIDC+PKCE : renvoie l'URL d'autorisation Keycloak."""
     verifier, challenge = generate_pkce()
     state = secrets.token_urlsafe(24)
-    _PKCE_STORE[state] = verifier  # associé au state, consommé une seule fois au callback
+    await store_pkce(state, verifier)  # associé au state, consommé une seule fois au callback
     url = await authorization_url(state=state, code_challenge=challenge)
     return OidcStart(authorization_url=url, state=state)
 
@@ -134,7 +149,7 @@ async def oidc_callback(code: str, state: str, response: Response):
     Le rôle vient du PRODUIT (table app_user), jamais de l'IdP (D4) : Keycloak ne
     fait qu'authentifier. Un `sub` inconnu → compte à provisionner par un admin.
     """
-    verifier = _PKCE_STORE.pop(state, None)
+    verifier = await pop_pkce(state)
     if verifier is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="invalid_state")
 
@@ -208,7 +223,12 @@ async def oidc_callback(code: str, state: str, response: Response):
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh(request: Request, response: Response, body: RefreshRequest | None = None):
+async def refresh(
+    request: Request,
+    response: Response,
+    body: RefreshRequest | None = None,
+    _rl: None = Depends(rate_limit("refresh", limit=30, window=60)),
+):
     """Rotation du refresh token. Rejeu détecté → toute la famille est brûlée."""
     raw = (body.refresh_token if body else None) or request.cookies.get(_REFRESH_COOKIE)
     if not raw:
@@ -226,12 +246,22 @@ async def refresh(request: Request, response: Response, body: RefreshRequest | N
         row = (
             await session.execute(
                 text(
-                    "SELECT id, email, role, client_scope, mfa_enrolled, display_name "
+                    "SELECT id, email, role, client_scope, status, mfa_enrolled, display_name "
                     "FROM app_user WHERE id = :id"
                 ),
                 {"id": user_id},
             )
         ).first()
+        # Le compte doit TOUJOURS être actif à la rotation : un compte désactivé/supprimé
+        # (ou dont le rôle a été révoqué) ne doit pas pouvoir prolonger sa session. On brûle
+        # alors la famille de refresh tokens et on refuse (durcissement P2).
+        if row is None or row.status != "active":
+            await revoke_user_tokens(session, user_id=user_id)
+            await journal_append(
+                session, event_type="auth.refresh.denied", actor_id=user_id,
+                detail={"reason": "account_inactive"},
+            )
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="account_inactive")
         auth_time = int(time.time())
         scope = _user_scope(row)
         access = issue_access_token(
@@ -251,6 +281,7 @@ async def step_up(
     payload: StepUpRequest,
     response: Response,
     ctx: SecurityContext = Depends(get_security_context),
+    _rl: None = Depends(rate_limit("stepup", limit=10, window=60)),
 ):
     """Réauthentification MFA : réémet un access token à `auth_time` frais.
 
@@ -261,17 +292,28 @@ async def step_up(
     async with auth_session() as session:
         row = (
             await session.execute(
-                text("SELECT totp_secret, mfa_enrolled FROM app_user WHERE id = :id"),
+                text(
+                    "SELECT totp_secret, mfa_enrolled, last_totp_step "
+                    "FROM app_user WHERE id = :id"
+                ),
                 {"id": ctx.user_id},
             )
         ).first()
-        if not row or not row.mfa_enrolled or not row.totp_secret \
-                or not verify_totp(row.totp_secret, payload.totp):
+        step = (
+            consume_totp(decrypt_secret(row.totp_secret), payload.totp, row.last_totp_step)
+            if row and row.mfa_enrolled and row.totp_secret
+            else None
+        )
+        if step is None:
             await journal_append(
                 session, event_type="auth.stepup.denied", actor_id=ctx.user_id,
                 detail={"reason": "invalid_totp"},
             )
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="invalid_totp")
+        await session.execute(
+            text("UPDATE app_user SET last_totp_step=:s WHERE id=:id"),
+            {"s": step, "id": ctx.user_id},
+        )
 
         auth_time = int(time.time())
         access = issue_access_token(
@@ -307,7 +349,7 @@ async def mfa_enroll(ctx: SecurityContext = Depends(get_security_context)):
     async with auth_session() as session:
         await session.execute(
             text("UPDATE app_user SET totp_secret=:s, updated_at=now() WHERE id=:id"),
-            {"s": secret, "id": ctx.user_id},
+            {"s": encrypt_secret(secret), "id": ctx.user_id},  # jamais en clair au repos (P2)
         )
         await journal_append(
             session, event_type="auth.mfa.enroll_started", actor_id=ctx.user_id,
@@ -337,21 +379,31 @@ async def mfa_confirm(
         row = (
             await session.execute(
                 text(
-                    "SELECT id, email, role, client_scope, display_name, totp_secret "
-                    "FROM app_user WHERE id=:id AND status='active'"
+                    "SELECT id, email, role, client_scope, display_name, totp_secret, "
+                    "last_totp_step FROM app_user WHERE id=:id AND status='active'"
                 ),
                 {"id": ctx.user_id},
             )
         ).first()
-        if row is None or not row.totp_secret or not verify_totp(row.totp_secret, payload.totp):
+        step = (
+            consume_totp(decrypt_secret(row.totp_secret), payload.totp, row.last_totp_step)
+            if row and row.totp_secret
+            else None
+        )
+        if step is None:
             await journal_append(
                 session, event_type="auth.mfa.enroll_failed", actor_id=ctx.user_id,
                 detail={"reason": "invalid_code"},
             )
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="invalid_totp")
+        # Active la MFA et consomme d'emblée ce pas TOTP (le code de confirmation ne peut
+        # être rejoué comme code de connexion).
         await session.execute(
-            text("UPDATE app_user SET mfa_enrolled=true, updated_at=now() WHERE id=:id"),
-            {"id": ctx.user_id},
+            text(
+                "UPDATE app_user SET mfa_enrolled=true, last_totp_step=:s, "
+                "updated_at=now() WHERE id=:id"
+            ),
+            {"s": step, "id": ctx.user_id},
         )
         auth_time = int(time.time())
         scope = _user_scope(row)

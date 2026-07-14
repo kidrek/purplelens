@@ -41,6 +41,8 @@
     "step_up": "Re-authentication required for this action.",
     "theme_light": "Light",
     "theme_dark": "Dark",
+    "theme_toggle": "Toggle light / dark",
+    "lang": "Language",
     "menu": "Menu",
     "detail": "Details",
     "edit": "Edit",
@@ -64,7 +66,42 @@
     "stored": "Stored (WORM)",
     "rejected": "Rejected",
     "download": "Download",
-    "note": "Binaries never transit the API: download via short-lived presigned URL after a server-side triple check."
+    "download_failed": "Download failed.",
+    "secret_masked": "Contains secrets — not downloadable in clear",
+    "mfa_required": "Sensitive evidence (TLP:RED/AMBER) requires MFA. Enrol your authenticator first.",
+    "mfa_account_link": "My account",
+    "step_up_prompt": "Enter your TOTP code to unlock this sensitive evidence.",
+    "step_up_confirm": "Confirm",
+    "totp_refused": "TOTP code rejected.",
+    "note": "Binaries never transit the API: download via short-lived presigned URL after a server-side triple check.",
+    "view_grid": "Grid",
+    "view_table": "Table",
+    "col_org": "Organisation",
+    "col_app": "Application",
+    "col_audit": "Audit",
+    "col_uploader": "Auditor",
+    "col_file": "File name",
+    "col_date": "Upload date",
+    "col_hash": "SHA-256 digest",
+    "col_tlp": "TLP",
+    "filters_title": "Filters",
+    "filter_date_from": "Uploaded from",
+    "filter_date_to": "Uploaded until",
+    "filter_reset": "Reset",
+    "filter_no_match": "No evidence matches the filters.",
+    "filter_count": "{shown} / {total} evidence shown"
+  },
+  "upload": {
+    "title": "Attach evidence",
+    "drop": "Select a file…",
+    "hint": "PNG, JPEG, PDF… (max 200 MB)",
+    "upload": "Upload",
+    "attach": "Attach evidence",
+    "new": "+ Evidence",
+    "too_large": "File exceeds the 200 MB limit.",
+    "requires_audit": "Link this finding to an audit before attaching evidence.",
+    "mfa_notice": "TLP:RED/AMBER evidence requires MFA — to upload and to download.",
+    "mfa_required": "Upload denied: sensitive evidence (TLP:RED/AMBER) requires MFA. Enrol it in \"My account\"."
   },
   "navgroup": {
     "pilotage": "Operations",
@@ -114,7 +151,93 @@
     },
     "cockpit": {
       "eyebrow": "Steering",
-      "title": "Cockpit"
+      "title": "Cockpit",
+      "loading": "Loading…",
+      "kpi": {
+        "detection": "Average detection rate",
+        "detectionFoot": "{caught} / {tested} steps covered",
+        "blind": "Blind spots",
+        "blindFoot": "played steps without telemetry",
+        "sla": "Criticals past SLA",
+        "slaFoot": "P1 past due date",
+        "audits": "Audits",
+        "auditsFoot": "{n} Purple exercise(s)"
+      },
+      "tacticsPanel": {
+        "title": "Coverage by MITRE tactic",
+        "note": "latest run/audit · kill-chain order",
+        "cellTitle": "{detected}/{total} techniques detected",
+        "covered": "covered",
+        "partial": "partial",
+        "gap": "gap"
+      },
+      "tactics": {
+        "reconnaissance": "Recon",
+        "resource-development": "Resources",
+        "initial-access": "Initial access",
+        "execution": "Execution",
+        "persistence": "Persistence",
+        "privilege-escalation": "Priv. escalation",
+        "defense-evasion": "Defense evasion",
+        "credential-access": "Credentials",
+        "discovery": "Discovery",
+        "lateral-movement": "Lateral movement",
+        "collection": "Collection",
+        "command-and-control": "C2",
+        "exfiltration": "Exfiltration",
+        "impact": "Impact"
+      },
+      "trend": {
+        "title": "Detection rate trend",
+        "note": "latest run per audit, cumulative",
+        "pointTitle": "{caught}/{tested} · {audits} audits"
+      },
+      "posture": {
+        "title": "Aggregate posture",
+        "method": "latest run/audit",
+        "matrixLink": "ATT&CK matrix →",
+        "testedN": "tested steps",
+        "prev": "Prevention",
+        "alert": "Alerting",
+        "logged": "Logged",
+        "blind": "Blind spot",
+        "empty": "No exercise played on this scope."
+      },
+      "blindPanel": {
+        "title": "Blind spots by tactic",
+        "totalLabel": "techniques without telemetry, to cover first",
+        "hint": "A blind spot = a missing telemetry source (≠ a missing alerting rule, which is the \"logged\" case). It's the most direct lever for the next cycle.",
+        "empty": "No blind spot — every played step left a trace."
+      },
+      "vulns": {
+        "title": "Vulnerabilities by severity",
+        "all": "See all ({n}) →",
+        "critique": "Critical",
+        "haute": "High",
+        "moyenne": "Medium",
+        "basse": "Low"
+      },
+      "auditTypes": {
+        "title": "Audits by type",
+        "empty": "No audit."
+      },
+      "journal": {
+        "title": "Journal — latest events",
+        "all": "Full journal →",
+        "seq": "#",
+        "event": "Event",
+        "actor": "Actor",
+        "action": "Action",
+        "entity": "Entity",
+        "time": "Timestamp",
+        "actions": {
+          "create": "Create",
+          "update": "Update",
+          "delete": "Delete",
+          "archive": "Archive",
+          "import": "Import"
+        }
+      }
     },
     "deliverables": {
       "eyebrow": "Production",
@@ -316,7 +439,8 @@
     "tags": "Tags",
     "analysis": "Analysis",
     "recommendations": "Recommendations",
-    "referentiels": "About the reference frameworks"
+    "referentiels": "About the reference frameworks",
+    "evidence": "Evidence"
   },
   "av": {
     "apps": "applications",

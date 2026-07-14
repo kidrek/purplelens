@@ -6,26 +6,54 @@ de matrice (C sur `deliverables`) ; le rendu masque les preuves secrètes (porte
 """
 from __future__ import annotations
 
+import base64
 import logging
 import uuid
 from datetime import UTC
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from sqlalchemy import text
 
 from app.config import settings
-from app.db.session import rls_session
+from app.db.session import rls_session, service_session
 from app.deliverables import service as deliverable_service
 from app.journal.chain import append as journal_append
 from app.security.context import SecurityContext
 from app.security.matrix import Action
 from app.security.rbac import require
-from app.storage import minio_client
+from app.storage import crypto, minio_client, vault_client
 
 router = APIRouter(prefix="/api/deliverables", tags=["deliverables"])
 _UTC = UTC
 _log = logging.getLogger(__name__)
+
+
+def _build_previews(client_code: str, wrapped_by_dek: dict[str, str], items: list[dict]) -> dict[str, str]:
+    """Déchiffre les preuves image candidates → data URI base64 (bloquant, threadpool).
+
+    La DEK d'audit est déballée une fois par `dek_id` (cache) puis réutilisée. Une
+    preuve qui échoue (objet manquant, tag GCM invalide) est simplement ignorée."""
+    dek_cache: dict[str, bytes] = {}
+    out: dict[str, str] = {}
+    for e in items:
+        did = str(e["dek_id"])
+        wrapped = wrapped_by_dek.get(did)
+        if not wrapped:
+            continue
+        if did not in dek_cache:
+            dek_cache[did] = vault_client.unwrap_dek(client_code, wrapped)
+        try:
+            blob = minio_client.read_object(e["bucket"], e["object_key"])
+            aad = crypto.build_aad(str(e["id"]), str(e["audit_id"]), e["sha256_plaintext"])
+            plain = crypto.decrypt(dek_cache[did], blob, aad, bytes(e["nonce"]))
+        except Exception:  # pragma: no cover
+            _log.warning("aperçu preuve %s indisponible", e.get("id"), exc_info=True)
+            continue
+        b64 = base64.b64encode(plain).decode("ascii")
+        out[str(e["id"])] = f"data:{e['detected_mime']};base64,{b64}"
+    return out
 
 
 class DeliverableRequest(BaseModel):
@@ -39,6 +67,7 @@ class DeliverableRequest(BaseModel):
 @router.post("/generate", status_code=status.HTTP_201_CREATED)
 async def generate(
     payload: DeliverableRequest,
+    request: Request,
     ctx: SecurityContext = Depends(require("deliverables", Action.C)),
 ):
     async with rls_session(
@@ -164,10 +193,17 @@ async def generate(
                 for r in (
                     await session.execute(
                         text(
-                            "SELECT v.titre, v.cve, v.cvss_score, v.severite, v.sla_niveau, "
-                            "v.statut, round(e.epss_score, 3) AS epss, e.kev "
+                            "SELECT v.id, v.titre, v.cve, v.cwe, v.severite, v.cvss_score, "
+                            "v.cvss_vector, v.sla_niveau, v.sla_echeance, v.statut, "
+                            "v.description, v.recommandation, v.impact_metier, "
+                            "v.exploitabilite, v.owasp_top10, v.phase_decouverte, "
+                            "v.preuve_exploitation, v.techniques, v.d3fend, v.tlp, "
+                            "round(e.epss_score, 3) AS epss, e.epss_percentile, e.kev, "
+                            "e.kev_ransomware, e.ssvc_decision, e.vex_status, "
+                            "r.nom AS decouvreur_nom "
                             "FROM vulnerability v "
                             "LEFT JOIN vulnerability_enrichment e ON e.vulnerability_id = v.id "
+                            "LEFT JOIN ressource r ON r.id = v.decouvreur_id "
                             "WHERE v.client_id = :c AND v.deleted_at IS NULL "
                             "AND (v.audit_id = :a OR v.audit_id IS NULL) "
                             "ORDER BY v.cvss_score DESC NULLS LAST"
@@ -181,30 +217,94 @@ async def generate(
                 for r in (
                     await session.execute(
                         text(
-                            "SELECT original_filename, caption, contains_secrets FROM evidence "
-                            "WHERE audit_id = :a AND ingest_status = 'stored' AND deleted_at IS NULL"
+                            "SELECT e.id, e.finding_id, e.audit_id, e.original_filename, "
+                            "e.caption, e.contains_secrets, e.detected_mime, "
+                            "e.sha256_plaintext, e.size_bytes, e.uploaded_at, e.bucket, "
+                            "e.object_key, e.nonce, e.dek_id, "
+                            "COALESCE(u.display_name, u.email) AS uploaded_by_name "
+                            "FROM evidence e LEFT JOIN app_user u ON u.id = e.uploaded_by "
+                            "WHERE e.audit_id = :a AND e.ingest_status = 'stored' "
+                            "AND e.deleted_at IS NULL ORDER BY e.uploaded_at"
                         ),
                         {"a": str(payload.audit_id)},
                     )
                 ).mappings().all()
             ]
 
+            # Aperçus d'images inline (preuves déchiffrées dans le rapport — DAT §2.6 :
+            # « preuves inline déchiffrées », accès tracés). Preuves NON secrètes, de
+            # type image, sous la limite de taille. La DEK (audit_dek) est lue sous rôle
+            # de service (frontière crypto interdite aux rôles interactifs).
+            previews: dict[str, str] = {}
+            img_candidates = [
+                e for e in evidence
+                if not e.get("contains_secrets")
+                and str(e.get("detected_mime") or "").startswith("image/")
+                and e.get("size_bytes") and e["size_bytes"] <= settings.evidence_preview_max_bytes
+                and e.get("dek_id") and e.get("bucket") and e.get("object_key")
+                and e.get("nonce") and e.get("sha256_plaintext")
+            ]
+            if img_candidates:
+                dek_ids = {str(e["dek_id"]) for e in img_candidates}
+                wrapped_by_dek: dict[str, str] = {}
+                async with service_session("admin_service") as svc:
+                    for did in dek_ids:
+                        drow = (
+                            await svc.execute(
+                                text("SELECT wrapped_dek FROM audit_dek WHERE id = :id"),
+                                {"id": did},
+                            )
+                        ).first()
+                        if drow is not None and drow.wrapped_dek is not None:
+                            wrapped_by_dek[did] = (
+                                drow.wrapped_dek.decode("utf-8")
+                                if isinstance(drow.wrapped_dek, (bytes, bytearray))
+                                else str(drow.wrapped_dek)
+                            )
+                previews = await run_in_threadpool(
+                    _build_previews, client["code"], wrapped_by_dek, img_candidates
+                )
+                # Traçabilité custody : chaque preuve effectivement inlinée est un accès
+                # déchiffré, journalisé nominativement (evidence_access, purpose report_render).
+                ip = request.client.host if request.client else None
+                for e in img_candidates:
+                    if str(e["id"]) not in previews:
+                        continue
+                    await session.execute(
+                        text(
+                            "INSERT INTO evidence_access (id, evidence_id, client_id, "
+                            "actor_user_id, actor_label, purpose, granted, ip, created_at) "
+                            "VALUES (gen_random_uuid(), :ev, :cl, :actor, :label, "
+                            "'report_render', true, :ip, now())"
+                        ),
+                        {"ev": str(e["id"]), "cl": str(payload.client_id),
+                         "actor": ctx.user_id, "label": ctx.email, "ip": ip},
+                    )
+                    await journal_append(
+                        session, event_type="evidence.access.granted", actor_id=ctx.user_id,
+                        client_id=str(payload.client_id), subject=str(e["id"]),
+                        detail={"purpose": "report_render", "delivery": "inline"},
+                    )
+
         if payload.type == "engagement":
             content = deliverable_service.render_engagement_letter(
                 client=client, prestataire=prestataire, audit=audit,
                 engagement=engagement, scenario=scenario,
                 applications=applications, auditeurs=auditeurs, tlp=payload.tlp,
+                langue=payload.langue,
             )
         elif payload.type == "nda":
             content = deliverable_service.render_nda(
                 client=client, prestataire=prestataire, engagement=engagement,
-                audit=audit or None, tlp=payload.tlp,
+                audit=audit or None, tlp=payload.tlp, langue=payload.langue,
             )
         elif payload.type == "rapport":
             content = deliverable_service.render_ptes_report(
                 client=client, prestataire=prestataire, audit=audit,
                 scenario=scenario, applications=applications, auditeurs=auditeurs,
                 actions=actions, findings=findings, evidence=evidence, tlp=payload.tlp,
+                langue=payload.langue, previews=previews,
+                preview_max_bytes=settings.evidence_preview_max_bytes,
             )
         else:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="unknown_type")

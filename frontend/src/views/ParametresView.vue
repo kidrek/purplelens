@@ -15,7 +15,7 @@ const catalogs = ref([])
 const loading = ref(true)
 const busy = ref(null) // id en cours d'import, ou 'all'
 const syncBusy = ref(null) // id en cours de sync en ligne
-const SYNCABLE = ['attack', 'd3fend'] // catalogues synchronisables depuis MITRE
+const SYNCABLE = ['attack', 'd3fend', 'attack_groups', 'misp_actors'] // catalogues synchronisables en ligne
 const msg = ref(null)
 
 const isAdmin = computed(() => auth.role === 'admin')
@@ -30,6 +30,10 @@ const META = {
            en: ['CAPEC', 'Common attack patterns (subset).'] },
   attack: { fr: ['MITRE ATT&CK Enterprise', 'Socle de techniques adverses par tactique.'],
             en: ['MITRE ATT&CK Enterprise', 'Baseline of adversary techniques by tactic.'] },
+  attack_groups: { fr: ['MITRE ATT&CK Groups', 'Acteurs de la menace et leurs TTPs connues (relations « uses »).'],
+                   en: ['MITRE ATT&CK Groups', 'Threat actors and their known TTPs (via "uses" relationships).'] },
+  misp_actors: { fr: ['MISP Threat Actors', 'Acteurs de la menace et synonymes (galaxie MISP).'],
+                 en: ['MISP Threat Actors', 'Threat actors and synonyms (MISP galaxy).'] },
   d3fend: { fr: ['MITRE D3FEND', 'Contre-mesures défensives (socle).'],
             en: ['MITRE D3FEND', 'Defensive countermeasures (baseline).'] },
 }
@@ -90,8 +94,14 @@ async function importAll() {
   if (!isAdmin.value) return
   busy.value = 'all'; msg.value = null
   try {
-    await api.post('/reference/import-all')
-    msg.value = { kind: 'ok', text: 'Tous les référentiels ont été actualisés.' }
+    const r = await api.post('/reference/import-all')
+    const imp = r.imported || {}
+    const up = Object.values(imp).filter((x) => x?.source === 'upstream').length
+    const fb = Object.values(imp).filter((x) => x?.source === 'fallback').length
+    msg.value = up
+      ? { kind: fb ? 'warn' : 'ok',
+          text: `Référentiels synchronisés — ${up} depuis MITRE en ligne${fb ? `, ${fb} en repli sur le socle (source injoignable)` : ''}.` }
+      : { kind: 'warn', text: 'Sources MITRE injoignables — tous les catalogues rechargés depuis le socle embarqué.' }
     await load()
   } catch (e) {
     msg.value = { kind: 'ko', text: e instanceof ApiError && e.status === 403 ? 'Réservé à l’administrateur.' : (e.message || 'Erreur.') }
@@ -115,7 +125,8 @@ onMounted(load)
     <!-- Synchroniser tout -->
     <div class="ref-sync panel">
       <div class="sync-txt">
-        <b>Tout synchroniser</b> — recharge l'ensemble des catalogues depuis le socle embarqué.
+        <b>Tout synchroniser</b> — ATT&CK, D3FEND, ATT&CK Groups et MISP Actors depuis les sources
+        en ligne (repli sur le socle si hors-ligne), OWASP / CWE / CAPEC depuis le socle embarqué.
       </div>
       <button class="btn btn-primary" :disabled="!isAdmin || busy" @click="importAll">
         <span v-if="busy === 'all'" class="spin"></span>
@@ -167,8 +178,9 @@ onMounted(load)
 
       <div class="ref-note">
         Socle embarqué (fonctionne hors-ligne). OWASP Top 10 et CWE Top 25 sont complets ;
-        ATT&CK, D3FEND et CAPEC sont des sous-ensembles courants. Une synchronisation en
-        ligne depuis les sources MITRE amont reste une évolution possible.
+        le socle ATT&CK, D3FEND et CAPEC est un sous-ensemble courant. ATT&CK et D3FEND
+        peuvent être synchronisés à leur catalogue MITRE complet via « Sync en ligne » (ou
+        « Tout synchroniser »), avec repli automatique sur le socle si la source est injoignable.
       </div>
     </template>
   </div>

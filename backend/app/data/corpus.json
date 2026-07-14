@@ -4887,5 +4887,192 @@
    "livrables": [],
    "refs": []
   }
+ },
+ {
+  "slug": "corp-mgr-cycle-purple",
+  "nature": "processus",
+  "profils": [
+   "mgr",
+   "aud",
+   "cti"
+  ],
+  "titre_fr": "Cycle Purple Team — 6 phases & entités",
+  "titre_en": "Purple Team cycle — 6 phases & entities",
+  "gabarit": false,
+  "controles_iso": [
+   "A.8.16",
+   "A.5.35"
+  ],
+  "contenu": {
+   "type": "methodo",
+   "resume": {
+    "fr": "La boucle d'amélioration continue du Purple Team : des actifs à la détection mesurée, en six phases outillées — chacune mobilise des entités précises de la plateforme et produit un artefact.",
+    "en": "The Purple Team continuous-improvement loop: from assets to measured detection, in six tooled phases — each engages specific platform entities and produces an artifact."
+   },
+   "objectif": {
+    "fr": "Donner la vue d'ensemble du cycle : quelle phase produit quoi, avec quelles entités, et comment les écarts mesurés nourrissent le tour suivant.",
+    "en": "Give the big picture of the cycle: which phase produces what, with which entities, and how measured gaps feed the next round."
+   },
+   "quand": {
+    "fr": "À lire avant de piloter sa première campagne Purple, puis comme référence : chaque exercice de la page « Exercices Purple » traverse ces six phases.",
+    "en": "Read before steering your first Purple campaign, then as a reference: every exercise on the “Purple exercises” page goes through these six phases."
+   },
+   "outil": {
+    "fr": "Page Exercices Purple · audits & scénarios CTI · tickets de détection · matrice ATT&CK",
+    "en": "Purple exercises page · audits & CTI scenarios · detection tickets · ATT&CK matrix"
+   },
+   "hds": "SSI / MII",
+   "source": {
+    "label": "Purple Team Exercise Framework (PTEF)",
+    "url": "https://github.com/scythe-io/purple-team-exercise-framework"
+   },
+   "keypoints": [
+    {
+     "fr": "Chaque phase produit un artefact vérifiable (bloc engagement, scénario rattaché, actions horodatées, verdicts, tickets Sigma, KPI) : pas d'artefact, pas de phase.",
+     "en": "Each phase produces a verifiable artifact (engagement block, linked scenario, timestamped actions, verdicts, Sigma tickets, KPIs): no artifact, no phase."
+    },
+    {
+     "fr": "Le cycle est une boucle, pas une ligne : les écarts mesurés en phase 6 deviennent les scénarios prioritaires du tour suivant.",
+     "en": "The cycle is a loop, not a line: gaps measured in phase 6 become the priority scenarios of the next round."
+    },
+    {
+     "fr": "Les phases s'alignent sur PTES : du pre-engagement au reporting, le cycle Purple est un engagement PTES instrumenté pour la détection.",
+     "en": "The phases map onto PTES: from pre-engagement to reporting, the Purple cycle is a PTES engagement instrumented for detection."
+    }
+   ],
+   "pieges": [
+    {
+     "fr": "Sauter la phase de cadrage : sans règles d'engagement écrites, l'exercice Purple reste juridiquement une intrusion.",
+     "en": "Skipping the scoping phase: without written rules of engagement, the Purple exercise legally remains an intrusion."
+    },
+    {
+     "fr": "Mesurer sans re-jouer : un ticket clos ne vaut rien tant que la technique n'a pas été re-testée avec un verdict amélioré.",
+     "en": "Measuring without replaying: a closed ticket is worthless until the technique has been replayed with an improved verdict."
+    }
+   ],
+   "etapes": [
+    {
+     "texte": {
+      "fr": "Cadrer — actifs & engagement",
+      "en": "Scope — assets & engagement"
+     },
+     "description": {
+      "fr": "Sélectionner la cible, affecter l'équipe et poser les règles d'engagement PTES. Entités : Organisation · Application · Ressources R/B/P. Produit : bloc engagement (RoE, périmètre).",
+      "en": "Pick the target, assign the team and set the PTES rules of engagement. Entities: Organization · Application · R/B/P resources. Artifact: engagement block (RoE, scope)."
+     },
+     "decision": {
+      "fr": "PTES : Pre-engagement",
+      "en": "PTES: Pre-engagement"
+     }
+    },
+    {
+     "texte": {
+      "fr": "Modéliser — menace émulée",
+      "en": "Model — emulated threat"
+     },
+     "description": {
+      "fr": "Choisir un scénario CTI : chaîne d'étapes ATT&CK et contre-mesures D3FEND attendues. Entités : Scénario CTI · ATT&CK · D3FEND. Produit : scénario rattaché à l'audit (scenario_id).",
+      "en": "Pick a CTI scenario: ATT&CK step chain and expected D3FEND countermeasures. Entities: CTI scenario · ATT&CK · D3FEND. Artifact: scenario linked to the audit (scenario_id)."
+     },
+     "decision": {
+      "fr": "PTES : Threat Modeling",
+      "en": "PTES: Threat Modeling"
+     }
+    },
+    {
+     "texte": {
+      "fr": "Exécuter — audit sur cible",
+      "en": "Run — audit on target"
+     },
+     "description": {
+      "fr": "Dérouler l'audit qui émule le scénario : actions de test horodatées, par phase PTES. Entités : Audit · Purple · AuditActions. Produit : actions taggées outil · technique · preuve.",
+      "en": "Run the audit that emulates the scenario: timestamped test actions, per PTES phase. Entities: Audit · Purple · AuditActions. Artifact: actions tagged tool · technique · proof."
+     },
+     "decision": {
+      "fr": "PTES : Intelligence → Exploitation",
+      "en": "PTES: Intelligence → Exploitation"
+     }
+    },
+    {
+     "texte": {
+      "fr": "Confronter — Attack ↔ Defense",
+      "en": "Confront — Attack ↔ Defense"
+     },
+     "description": {
+      "fr": "Boucle Red↔Blue par étape : chaque technique jouée est détectée… ou passe en angle mort. Entités : AttackChain · DefenseObservation. Produit : étape détectée / angle mort.",
+      "en": "Red↔Blue loop per step: each played technique is detected… or becomes a blind spot. Entities: AttackChain · DefenseObservation. Artifact: step detected / blind spot."
+     },
+     "decision": {
+      "fr": "PTES : Post-exploitation — décision : angle mort ?",
+      "en": "PTES: Post-exploitation — decision: blind spot?"
+     }
+    },
+    {
+     "texte": {
+      "fr": "Corriger — détection & remédiation",
+      "en": "Remediate — detection & remediation"
+     },
+     "description": {
+      "fr": "Un contournement crée un ticket de détection (Sigma). Une découverte devient une vulnérabilité priorisée. Entités : DetectionTicket · Règle Sigma · Vulnérabilité · SLA. Produit : ticket auto bypass → Sigma, SLA P1–P4.",
+      "en": "A bypass opens a detection ticket (Sigma). A finding becomes a prioritized vulnerability. Entities: DetectionTicket · Sigma rule · Vulnerability · SLA. Artifact: auto ticket bypass → Sigma, SLA P1–P4."
+     },
+     "decision": {
+      "fr": "PTES : Remédiation",
+      "en": "PTES: Remediation"
+     }
+    },
+    {
+     "texte": {
+      "fr": "Mesurer — KPI & couverture",
+      "en": "Measure — KPI & coverage"
+     },
+     "description": {
+      "fr": "Consolider MTTD/MTTR/Coverage/Bypass et la matrice ATT&CK 3 couches. Entités : KPI Purple · Matrice ATT&CK. Produit : écarts → prochains scénarios.",
+      "en": "Consolidate MTTD/MTTR/Coverage/Bypass and the 3-layer ATT&CK matrix. Entities: Purple KPIs · ATT&CK matrix. Artifact: gaps → next scenarios."
+     },
+     "decision": {
+      "fr": "PTES : Reporting",
+      "en": "PTES: Reporting"
+     }
+    }
+   ],
+   "prose": [],
+   "table": null,
+   "loop": {
+    "fr": "↺ boucle d'amélioration continue : les écarts mesurés en phase 6 nourrissent les scénarios de la phase 2 du tour suivant.",
+    "en": "↺ continuous-improvement loop: gaps measured in phase 6 feed the phase-2 scenarios of the next round."
+   },
+   "aller": [
+    {
+     "label": {
+      "fr": "PTEF — Purple Team Exercise Framework",
+      "en": "PTEF — Purple Team Exercise Framework"
+     },
+     "url": "https://github.com/scythe-io/purple-team-exercise-framework"
+    },
+    {
+     "label": {
+      "fr": "MITRE ATT&CK",
+      "en": "MITRE ATT&CK"
+     },
+     "url": "https://attack.mitre.org"
+    },
+    {
+     "label": {
+      "fr": "MITRE D3FEND",
+      "en": "MITRE D3FEND"
+     },
+     "url": "https://d3fend.mitre.org"
+    }
+   ],
+   "lies": [
+    "corp-mgr-exercice",
+    "corp-cti-scenario",
+    "corp-cti-detection",
+    "corp-aud-cadrage"
+   ],
+   "livrables": [],
+   "refs": []
+  }
  }
 ]

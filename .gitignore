@@ -7,3 +7,6 @@ dist/
 .env
 *.zip
 .git*
+docker-compose.override.yml
+CLAUDE.md
+.claude

@@ -28,6 +28,9 @@ class AppUser(UUIDMixin, TimestampMixin, Base):
     # Repli comptes locaux (Argon2id) — désactivés par défaut
     password_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
     totp_secret: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Anti-rejeu TOTP : dernier pas de temps (30 s) accepté ; un code de pas ≤ celui-ci
+    # est refusé (durcissement P1). NULL = aucun code encore consommé.
+    last_totp_step: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 

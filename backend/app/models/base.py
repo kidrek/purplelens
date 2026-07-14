@@ -7,7 +7,7 @@ réservée au crypto-shredding des preuves.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, func, text
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
@@ -27,12 +27,22 @@ class UUIDMixin:
     )
 
 
+def _utcnow() -> datetime:
+    return datetime.now(UTC)
+
+
 class TimestampMixin:
+    # default= côté Python (en plus du server_default) : évite que SQLAlchemy n'ajoute
+    # un RETURNING implicite pour relire ces colonnes après l'INSERT. Pour les tables
+    # dont la colonne de cloisonnement RLS est leur propre id (ex. organisation), ce
+    # RETURNING exige aussi que la ligne neuve satisfasse la politique SELECT — hors
+    # d'atteinte par construction pour une ligne qui vient de naître.
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True), default=_utcnow, server_default=func.now(), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow,
+        server_default=func.now(), server_onupdate=func.now(), nullable=False,
     )
 
 

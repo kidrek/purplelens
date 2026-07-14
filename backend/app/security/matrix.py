@@ -31,6 +31,13 @@ SERVICE_ROLES: tuple[str, ...] = (
     "admin_service",
 )
 
+# Rôles autorisés à opérer sur TOUS les clients quand leur scope est vide (spec v2 §2.1).
+# admin/manager sont multi-clients par doctrine ; les rôles de service ont un périmètre
+# transverse assumé (jobs, rendu). Pour TOUT autre rôle (auditeur, ciso, voc, cert), un
+# scope vide est un ÉCART fail-closed : il ne doit RIEN voir, jamais tout (durcissement P1).
+# Cette liste est la source unique ; la RLS (app_role_spans_all_clients) en est le miroir SQL.
+GLOBAL_SCOPE_ROLES: frozenset[str] = frozenset({"admin", "manager"}) | frozenset(SERVICE_ROLES)
+
 # Les 13 entités métier + les 2 entités de preuves (spec v2 §3.1).
 ENTITIES: tuple[str, ...] = (
     "organisations",
@@ -137,10 +144,10 @@ MATRIX: dict[str, dict[str, frozenset[Action]]] = {
     },
     "auditeur": {
         # LCES Audits, Exercices, Actions, Attaques, Vulnérabilités, Tickets ;
-        # LC Livrables ; L Applications, Organisations, Scénarios.
-        "organisations": _a(L),
-        "applications": _a(L),
-        "ressources": _a(L),
+        # LC Livrables, Applications, Organisations, Ressources ; L Scénarios.
+        "organisations": _a(L, C),
+        "applications": _a(L, C),
+        "ressources": _a(L, C),
         "audits": _a(L, C, E, S),
         "audit_actions": _a(L, C, E, S),
 "audit_milestones": _a(L, C, E, S),

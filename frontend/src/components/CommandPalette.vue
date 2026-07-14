@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { NAV_FLAT } from '../nav'
 import { useCorpus } from '../composables/useCorpus'
+import { useUiStore } from '../stores/ui'
 
 // Palette de commandes globale (⌘K / Ctrl+K). Recherche floue sur les destinations de
 // navigation + quelques actions + les articles du corpus (DA §4.6 : "les articles de
@@ -16,8 +17,9 @@ const props = defineProps({
 })
 
 const router = useRouter()
+const ui = useUiStore()
 const { t, locale } = useI18n()
-const { corpusRows, preloadCorpus, tr } = useCorpus()
+const { corpusRows, preloadCorpus } = useCorpus()
 
 const open = ref(false)
 const q = ref('')
@@ -40,7 +42,8 @@ const commands = computed(() => {
     group: 'corp',
     label: locale.value === 'en' && r.titre_en ? r.titre_en : r.titre_fr,
     hint: t('corpus.cmdHint'),
-    run: () => router.push({ path: '/bibliotheque', query: { open: r.slug } }),
+    // Ouvre le drawer d'article global (App.vue) sur la page courante, sans navigation.
+    run: () => ui.openArticle(r.slug),
   }))
   return [...nav, ...acts, ...corp]
 })

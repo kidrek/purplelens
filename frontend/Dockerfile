@@ -1,9 +1,17 @@
-# Étage 1 — build du bundle Vite.
-FROM node:20-alpine AS build
+# syntax=docker/dockerfile:1.4
+# Étage 0 — dépendances Node seules (réutilisé par le build ET le lint conteneurisé,
+# make lint — aucun outillage Node requis sur l'hôte).
+FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package.json ./
 # package-lock absent en dev : on installe sans lock strict.
-RUN npm install --no-audit --no-fund
+# Cache BuildKit du dossier de cache npm : les paquets déjà téléchargés sont réutilisés
+# d'un build à l'autre (les rebuilds après un changement de package.json passent de
+# ~13 min à quelques secondes). N'affecte pas le PREMIER build (cache froid).
+RUN --mount=type=cache,target=/root/.npm npm install --no-audit --no-fund
+
+# Étage 1 — build du bundle Vite.
+FROM deps AS build
 COPY . .
 RUN npm run build
 

@@ -60,6 +60,29 @@ def test_auditeur_can_create_evidence_but_not_access_log():
     assert not allowed("auditeur", "evidence_access", Action.L)
 
 
+def test_admin_cannot_create_evidence():
+    """Admin : L E S sur evidence, PAS de Create (dépôt réservé à l'Auditeur, §3.1)."""
+    assert MATRIX["admin"]["evidence"] == frozenset({Action.L, Action.E, Action.S})
+
+
+def test_auditeur_can_create_applications():
+    """Auditeur : L C sur applications (peut référencer une application découverte en
+    audit), mais pas d'édition/suppression (cahier des charges v2, tableau RBAC)."""
+    assert MATRIX["auditeur"]["applications"] == frozenset({Action.L, Action.C})
+
+
+def test_auditeur_can_create_organisations():
+    """Auditeur : L C sur organisations (peut référencer un client découvert en audit),
+    mais pas d'édition/suppression (cahier des charges v2, tableau RBAC)."""
+    assert MATRIX["auditeur"]["organisations"] == frozenset({Action.L, Action.C})
+
+
+def test_auditeur_can_create_ressources():
+    """Auditeur : L C sur ressources (peut référencer une ressource découverte en
+    audit), mais pas d'édition/suppression (cahier des charges v2, tableau RBAC)."""
+    assert MATRIX["auditeur"]["ressources"] == frozenset({Action.L, Action.C})
+
+
 def test_voc_owns_vulnerabilities_only():
     """VOC : LCES sur vulnérabilités, mais pas de validation (V réservée manager/ciso/admin)."""
     for a in (Action.L, Action.C, Action.E, Action.S):

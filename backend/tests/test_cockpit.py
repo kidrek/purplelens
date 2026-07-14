@@ -62,6 +62,53 @@ async def test_cockpit_detection_rate_and_blind_spots():
 
 
 @pytest.mark.asyncio
+async def test_cockpit_posture_uses_last_run_per_audit():
+    """La posture ne compte que le dernier run de chaque audit (pool maquette).
+
+    Un run ancien plein d'angles morts ne doit plus peser une fois rejoué :
+    seules les étapes du run le plus récent alimentent verdicts/KPI/angles morts.
+    """
+    from sqlalchemy import text
+
+    from app.api.routes.analytics import compute_cockpit
+    from app.db.session import service_session
+
+    async with service_session("admin_service") as s:
+        cid = str(uuid.uuid4())
+        await s.execute(text("INSERT INTO organisation (id,nom,code,role,tlp_defaut,statut,created_at,updated_at) "
+                             "VALUES (:c,'Lr','LRX','client','AMBER','actif',now(),now())"), {"c": cid})
+        aud = str(uuid.uuid4())
+        await s.execute(text("INSERT INTO audit (id,client_id,nom,categorie,statut,tlp,created_at,updated_at) "
+                             "VALUES (:a,:c,'A','Purple','en_cours','AMBER',now(),now())"), {"a": aud, "c": cid})
+        old_ex, new_ex = str(uuid.uuid4()), str(uuid.uuid4())
+        await s.execute(text("INSERT INTO purple_exercise (id,audit_id,client_id,nom,date,statut,tlp,created_at,updated_at) VALUES "
+                             "(:o,:a,:c,'Run 1',current_date - 30,'clos','AMBER',now(),now()), "
+                             "(:n,:a,:c,'Run 2',current_date,'en_cours','AMBER',now(),now())"),
+                        {"o": old_ex, "n": new_ex, "a": aud, "c": cid})
+        # Run ancien : 2 angles morts. Run récent : 1 prévenu + 1 alerté.
+        await s.execute(text("INSERT INTO attack_step (id,exercise_id,client_id,ordre,technique,verdict,created_at,updated_at) VALUES "
+                             "(gen_random_uuid(),:o,:c,1,'T9201','no_telemetry',now(),now()), "
+                             "(gen_random_uuid(),:o,:c,2,'T9202','no_telemetry',now(),now()), "
+                             "(gen_random_uuid(),:n,:c,1,'T9201','prevented',now(),now()), "
+                             "(gen_random_uuid(),:n,:c,2,'T9202','alerted',now(),now())"),
+                        {"o": old_ex, "n": new_ex, "c": cid})
+
+        d = await compute_cockpit(s, client_id=cid)
+        # Seul le run récent compte : 2 testées, 2 couvertes, 100 %, zéro angle mort.
+        assert d["posture"]["tested"] == 2
+        assert d["posture"]["caught"] == 2
+        assert d["posture"]["verdicts"].get("no_telemetry", 0) == 0
+        assert d["kpis"]["detection_rate"] == 100
+        assert d["kpis"]["blind_spots"] == 0
+        assert d["blind_tactics"] == []
+
+        for t in ("attack_step", "purple_exercise", "audit"):
+            await s.execute(text(f"DELETE FROM {t} WHERE client_id=:c"), {"c": cid})
+        await s.execute(text("DELETE FROM organisation WHERE id=:c"), {"c": cid})
+        await s.commit()
+
+
+@pytest.mark.asyncio
 async def test_cockpit_tactic_coverage_and_trend():
     """Bande kill-chain (états par tactique) et tendance de détection présentes."""
     from sqlalchemy import text
@@ -77,25 +124,37 @@ async def test_cockpit_tactic_coverage_and_trend():
         await s.execute(text(
             "INSERT INTO ref_attack_technique (id,ext_id,name,tactic,data) VALUES "
             "(gen_random_uuid(),'T9101','A','initial-access','{}'), "
-            "(gen_random_uuid(),'T9102','B','impact','{}') ON CONFLICT (ext_id) DO NOTHING"))
+            "(gen_random_uuid(),'T9102','B','impact','{}'), "
+            "(gen_random_uuid(),'T9103','C','discovery','{}'), "
+            "(gen_random_uuid(),'T9104','D','execution','{}') ON CONFLICT (ext_id) DO NOTHING"))
         aud = str(uuid.uuid4())
         await s.execute(text(
             "INSERT INTO audit (id,client_id,nom,categorie,statut,tlp,created_at,updated_at) "
             "VALUES (:a,:c,'A','Purple','en_cours','AMBER',now(),now())"), {"a": aud, "c": cid})
-        ex = str(uuid.uuid4())
+        ex, old_ex = str(uuid.uuid4()), str(uuid.uuid4())
         await s.execute(text(
-            "INSERT INTO purple_exercise (id,audit_id,client_id,nom,date,statut,tlp,created_at,updated_at) "
-            "VALUES (:e,:a,:c,'E',current_date,'en_cours','AMBER',now(),now())"), {"e": ex, "a": aud, "c": cid})
-        # initial-access détecté ; impact joué mais sans télémétrie -> écart.
+            "INSERT INTO purple_exercise (id,audit_id,client_id,nom,date,statut,tlp,created_at,updated_at) VALUES "
+            "(:e,:a,:c,'E',current_date,'en_cours','AMBER',now(),now()), "
+            "(:o,:a,:c,'E-old',current_date - 30,'clos','AMBER',now(),now())"),
+            {"e": ex, "o": old_ex, "a": aud, "c": cid})
+        # Run courant : initial-access détecté ; impact joué mais sans télémétrie -> écart ;
+        # execution jamais testée (not_tested) -> absente de la bande.
+        # Run ancien : discovery testée mais rejouée depuis -> absente de la bande.
         await s.execute(text(
             "INSERT INTO attack_step (id,exercise_id,client_id,ordre,technique,verdict,created_at,updated_at) VALUES "
             "(gen_random_uuid(),:e,:c,1,'T9101','alerted',now(),now()), "
-            "(gen_random_uuid(),:e,:c,2,'T9102','no_telemetry',now(),now())"), {"e": ex, "c": cid})
+            "(gen_random_uuid(),:e,:c,2,'T9102','no_telemetry',now(),now()), "
+            "(gen_random_uuid(),:e,:c,3,'T9104','not_tested',now(),now()), "
+            "(gen_random_uuid(),:o,:c,1,'T9103','alerted',now(),now())"), {"e": ex, "o": old_ex, "c": cid})
 
         d = await compute_cockpit(s, client_id=cid)
         tc = {t["tactic"]: t for t in d["tactic_coverage"]}
         assert tc["initial-access"]["state"] == "detected"
         assert tc["impact"]["state"] == "gap"
+        # Étape non testée : sa tactique n'apparaît pas dans la couverture.
+        assert "execution" not in tc
+        # Technique testée seulement dans un run ancien du même audit : hors pool.
+        assert "discovery" not in tc
         # Ordre kill-chain : initial-access avant impact.
         order = [t["tactic"] for t in d["tactic_coverage"]]
         assert order.index("initial-access") < order.index("impact")
@@ -103,9 +162,11 @@ async def test_cockpit_tactic_coverage_and_trend():
         assert d["trend"], "tendance vide"
         last = d["trend"][-1]
         assert last["tested"] == 2 and last["caught"] == 1 and last["pct"] == 50
+        # Angles morts par tactique : l'étape impact sans télémétrie, ordre kill-chain.
+        assert d["blind_tactics"] == [{"tactic": "impact", "count": 1}]
 
         for t in ("attack_step", "purple_exercise", "audit"):
             await s.execute(text(f"DELETE FROM {t} WHERE client_id=:c"), {"c": cid})
         await s.execute(text("DELETE FROM organisation WHERE id=:c"), {"c": cid})
-        await s.execute(text("DELETE FROM ref_attack_technique WHERE ext_id IN ('T9101','T9102')"))
+        await s.execute(text("DELETE FROM ref_attack_technique WHERE ext_id IN ('T9101','T9102','T9103','T9104')"))
         await s.commit()

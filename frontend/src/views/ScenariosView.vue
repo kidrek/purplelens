@@ -7,6 +7,7 @@ import { api, ApiError } from '../api/client'
 const { t } = useI18n()
 
 const cols = [
+  { key: 'reference', label: 'Référence' },
   { key: 'nom', label: 'Nom' },
   { key: 'acteur_emule', label: 'Acteur émulé' },
   { key: 'type_engagement', label: 'Engagement' },

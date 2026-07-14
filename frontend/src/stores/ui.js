@@ -8,6 +8,7 @@ export const useUiStore = defineStore('ui', {
     activeClient: null, // id du client filtré (rôles multi-clients)
     clients: [], // organisations client accessibles
     toast: null,
+    articleSlug: null, // article corpus ouvert en drawer global (⌘K), sans navigation
   }),
   getters: {
     // Suffixe de requête pour filtrer par client actif (ou chaîne vide).
@@ -23,6 +24,8 @@ export const useUiStore = defineStore('ui', {
       this.setTheme(this.theme === 'dark' ? 'light' : 'dark')
     },
     setClients(list) { this.clients = list },
+    openArticle(slug) { this.articleSlug = slug },
+    closeArticle() { this.articleSlug = null },
     setActiveClient(id) { this.activeClient = id || null },
     notify(message, kind = 'info') {
       this.toast = { message, kind, at: Date.now() }

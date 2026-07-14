@@ -11,6 +11,7 @@ intégraux. Une synchronisation en ligne depuis les sources amont reste une évo
 """
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from sqlalchemy import text
@@ -30,6 +31,11 @@ CATALOGS: list[dict[str, Any]] = [
      "table": "ref_attack_technique", "has_tactic": True, "source": "attack.mitre.org"},
     {"id": "d3fend", "group": "d3fend", "badge": "D3FEND", "tone": "green",
      "table": "ref_d3fend", "has_tactic": False, "has_category": True, "source": "d3fend.mitre.org"},
+    # Acteurs de la menace — le `data` JSONB porte aliases + techniques ATT&CK connues.
+    {"id": "attack_groups", "group": "attack", "badge": "ATT&CK Groups", "tone": "red",
+     "table": "ref_attack_group", "has_tactic": False, "has_data": True, "source": "attack.mitre.org"},
+    {"id": "misp_actors", "group": "attack", "badge": "MISP Actors", "tone": "amber",
+     "table": "ref_misp_actor", "has_tactic": False, "has_data": True, "source": "misp-galaxy"},
 ]
 _BY_ID = {c["id"]: c for c in CATALOGS}
 
@@ -146,9 +152,34 @@ _D3FEND = [
     ("D3-PMAD", "Protocol Metadata Anomaly Detection", "Detect"),
 ]
 
+# Acteurs de la menace — socle embarqué (offline-first). Format : (ext_id, nom officiel,
+# alias/synonymes, techniques). Les techniques sont volontairement restreintes aux ext_id
+# présents dans `_ATTACK` ci-dessus pour rester cohérentes hors-ligne (la synchro en ligne
+# apporte la couverture complète depuis les relations `uses` du bundle enterprise-attack).
+_ATTACK_GROUPS = [
+    ("G0016", "APT29", ["Cozy Bear", "The Dukes", "Nobelium", "Midnight Blizzard"],
+     ["T1566", "T1566.001", "T1078", "T1059", "T1059.001", "T1027", "T1071.001", "T1105", "T1003"]),
+    ("G0046", "FIN7", ["Carbon Spider", "Carbanak", "Sangria Tempest"],
+     ["T1566", "T1204", "T1059", "T1053", "T1547", "T1005", "T1105", "T1027"]),
+    ("G0007", "APT28", ["Fancy Bear", "Sofacy", "Sednit", "Forest Blizzard"],
+     ["T1595", "T1566", "T1078", "T1059", "T1110", "T1003", "T1071", "T1041"]),
+]
+
+# MISP Galaxy threat-actor — socle. Mêmes techniques restreintes au socle `_ATTACK`.
+# Les alias permettent la fusion/dédup avec les groupes MITRE (ex. « Cozy Bear » ⇄ APT29).
+_MISP_ACTORS = [
+    ("misp-cozy-bear", "Cozy Bear", ["APT29", "The Dukes", "Nobelium"],
+     ["T1566", "T1059", "T1078"]),
+    ("misp-carbanak", "Carbanak", ["FIN7", "Carbon Spider", "Anunak"],
+     ["T1566", "T1204", "T1059", "T1105"]),
+    ("misp-lazarus", "Lazarus Group", ["Hidden Cobra", "APT38", "Zinc"],
+     ["T1566", "T1059", "T1105", "T1486"]),
+]
+
 _DATA = {
     "owasp": _OWASP, "cwe": _CWE, "capec": _CAPEC,
     "attack": _ATTACK, "d3fend": _D3FEND,
+    "attack_groups": _ATTACK_GROUPS, "misp_actors": _MISP_ACTORS,
 }
 
 
@@ -161,13 +192,16 @@ async def import_catalog(session: AsyncSession, cid: str) -> int:
     rows = _DATA[cid]
     table = cat["table"]
     if cat["has_tactic"]:
+        # Le socle est mono-tactique ; on l'écrit sous forme de liste `data.tactics`
+        # (même schéma que la synchro en ligne multi-tactiques) pour un affichage uniforme.
         for ext_id, name, tactic in rows:
             await session.execute(text(
                 f"INSERT INTO {table} (id, ext_id, name, tactic, data) "
-                "VALUES (gen_random_uuid(), :e, :n, :t, '{}') "
+                "VALUES (gen_random_uuid(), :e, :n, :t, CAST(:d AS jsonb)) "
                 "ON CONFLICT (ext_id) DO UPDATE SET name = EXCLUDED.name, "
-                "tactic = EXCLUDED.tactic, updated_at = now()"
-            ), {"e": ext_id, "n": name, "t": tactic})
+                "tactic = EXCLUDED.tactic, data = EXCLUDED.data, updated_at = now()"
+            ), {"e": ext_id, "n": name, "t": tactic,
+                "d": json.dumps({"tactics": [tactic] if tactic else []})})
     elif cat.get("has_category"):
         for ext_id, name, category in rows:
             await session.execute(text(
@@ -176,6 +210,16 @@ async def import_catalog(session: AsyncSession, cid: str) -> int:
                 "ON CONFLICT (ext_id) DO UPDATE SET name = EXCLUDED.name, "
                 "category = EXCLUDED.category, updated_at = now()"
             ), {"e": ext_id, "n": name, "c": category})
+    elif cat.get("has_data"):
+        # Acteurs de la menace : le socle porte (ext_id, nom, alias, techniques) → data JSONB.
+        for ext_id, name, aliases, techniques in rows:
+            await session.execute(text(
+                f"INSERT INTO {table} (id, ext_id, name, data) "
+                "VALUES (gen_random_uuid(), :e, :n, CAST(:d AS jsonb)) "
+                "ON CONFLICT (ext_id) DO UPDATE SET name = EXCLUDED.name, "
+                "data = EXCLUDED.data, updated_at = now()"
+            ), {"e": ext_id, "n": name, "d": json.dumps(
+                {"aliases": list(aliases), "techniques": list(techniques), "source": cat["source"]})})
     else:
         for ext_id, name in rows:
             await session.execute(text(

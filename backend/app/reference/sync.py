@@ -11,6 +11,7 @@ URLs et délai configurables (instances miroir / air-gap possibles).
 """
 from __future__ import annotations
 
+import json
 import re
 from typing import Any
 
@@ -47,7 +48,14 @@ _STD_TACTICS = {
 
 
 def parse_attack(bundle: dict) -> list[dict]:
-    """Extrait les techniques ATT&CK actives d'un bundle STIX → [{ext_id, name, tactic}]."""
+    """Extrait les techniques ATT&CK actives d'un bundle STIX → [{ext_id, name, tactic, tactics}].
+
+    Une technique ATT&CK relève souvent de PLUSIEURS tactiques (ex. T1078 « Valid Accounts »
+    → initial-access, persistence, privilege-escalation, defense-evasion). On conserve
+    l'ensemble des tactiques standard rattachées (`tactics`) afin que la matrice affiche la
+    technique dans chaque colonne concernée, comme le Navigator officiel. `tactic` reste la
+    tactique primaire (première rattachée) pour la rétro-compatibilité.
+    """
     out: list[dict] = []
     for o in bundle.get("objects", []):
         if not isinstance(o, dict) or o.get("type") != "attack-pattern":
@@ -61,9 +69,13 @@ def parse_attack(bundle: dict) -> list[dict]:
             continue
         phases = [p.get("phase_name") for p in o.get("kill_chain_phases", [])
                   if isinstance(p, dict) and p.get("kill_chain_name") == "mitre-attack"]
-        # Préférer une tactique du jeu standard (regroupement de matrice propre).
-        tactic = next((p for p in phases if p in _STD_TACTICS), phases[0] if phases else None)
-        out.append({"ext_id": ext_id, "name": o.get("name") or ext_id, "tactic": tactic})
+        # Toutes les tactiques du jeu standard (ordre du bundle préservé, dédupliqué) ;
+        # repli sur la première phase brute si aucune n'est standard.
+        tactics = list(dict.fromkeys(p for p in phases if p in _STD_TACTICS))
+        if not tactics and phases:
+            tactics = [phases[0]]
+        out.append({"ext_id": ext_id, "name": o.get("name") or ext_id,
+                    "tactic": tactics[0] if tactics else None, "tactics": tactics})
     return out
 
 
@@ -100,6 +112,92 @@ def parse_d3fend(doc: dict) -> list[dict]:
     return out
 
 
+def _attack_ext_id(o: dict) -> str | None:
+    return next((r.get("external_id") for r in o.get("external_references", [])
+                 if isinstance(r, dict) and r.get("source_name") == "mitre-attack"
+                 and r.get("external_id")), None)
+
+
+def parse_attack_groups(bundle: dict) -> list[dict]:
+    """Extrait les acteurs (intrusion-set) et leurs TTPs du bundle enterprise-attack.
+
+    Le même bundle STIX que `parse_attack` contient les groupes (`intrusion-set`) et les
+    relations `intrusion-set --uses--> attack-pattern`. On en dérive, par acteur :
+    { ext_id (Gxxxx), name, data:{aliases, techniques} } — techniques dédupliquées, ordre
+    des relations préservé. Groupes/relations révoqués ou dépréciés ignorés.
+    """
+    groups: dict[str, dict] = {}       # id STIX intrusion-set -> acteur
+    tech_by_stix: dict[str, str] = {}  # id STIX attack-pattern -> ext_id technique
+    for o in bundle.get("objects", []):
+        if not isinstance(o, dict) or o.get("revoked") or o.get("x_mitre_deprecated"):
+            continue
+        t = o.get("type")
+        if t == "intrusion-set":
+            ext_id = _attack_ext_id(o)
+            if not ext_id:
+                continue
+            name = o.get("name") or ext_id
+            aliases = [a for a in (o.get("aliases") or o.get("x_mitre_aliases") or [])
+                       if isinstance(a, str) and a and a != name]
+            groups[o.get("id")] = {"ext_id": ext_id, "name": name,
+                                   "aliases": list(dict.fromkeys(aliases)), "techniques": []}
+        elif t == "attack-pattern":
+            ext_id = _attack_ext_id(o)
+            if ext_id and o.get("id"):
+                tech_by_stix[o["id"]] = ext_id
+    for o in bundle.get("objects", []):
+        if not isinstance(o, dict) or o.get("type") != "relationship":
+            continue
+        if o.get("relationship_type") != "uses" or o.get("revoked"):
+            continue
+        src, tgt = o.get("source_ref"), o.get("target_ref")
+        g = groups.get(src) if isinstance(src, str) else None
+        tech = tech_by_stix.get(tgt) if isinstance(tgt, str) else None
+        if g and tech and tech not in g["techniques"]:
+            g["techniques"].append(tech)
+    return [{"ext_id": g["ext_id"], "name": g["name"],
+             "data": {"aliases": g["aliases"], "techniques": g["techniques"]}}
+            for g in groups.values()]
+
+
+def _norm(s: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", (s or "").lower())
+
+
+def parse_misp_actors(doc: dict, groups: list[dict] | None = None) -> list[dict]:
+    """Extrait les acteurs du cluster MISP Galaxy `threat-actor` → [{ext_id, name, data}].
+
+    MISP fournit l'identité de l'acteur et ses synonymes ; les TTPs ATT&CK sont résolues en
+    croisant nom/alias avec les groupes MITRE (`groups`, issus de `parse_attack_groups`).
+    Sans correspondance MITRE, `techniques` reste vide (partiel honnête — l'acteur enrichit
+    tout de même le nommage et les alias pour la recherche fusionnée).
+    """
+    index: dict[str, list[str]] = {}
+    for g in (groups or []):
+        techs = g.get("data", {}).get("techniques", [])
+        for key in [g.get("name", ""), *g.get("data", {}).get("aliases", [])]:
+            index.setdefault(_norm(key), []).extend(techs)
+    out: list[dict] = []
+    for v in doc.get("values", []):
+        if not isinstance(v, dict):
+            continue
+        name = v.get("value")
+        if not name:
+            continue
+        meta = v.get("meta") or {}
+        aliases = list(dict.fromkeys(
+            a for a in (meta.get("synonyms") or []) if isinstance(a, str) and a and a != name))
+        techniques: list[str] = []
+        for key in [name, *aliases]:
+            for t in index.get(_norm(key), []):
+                if t not in techniques:
+                    techniques.append(t)
+        ext_id = str(v.get("uuid") or _norm(name))[:64]
+        out.append({"ext_id": ext_id, "name": name,
+                    "data": {"aliases": aliases, "techniques": techniques}})
+    return out
+
+
 async def fetch_attack(url: str | None = None, timeout: float | None = None) -> list[dict]:
     return parse_attack(await _fetch_json(url or settings.attack_stix_url, timeout))
 
@@ -108,10 +206,25 @@ async def fetch_d3fend(url: str | None = None, timeout: float | None = None) -> 
     return parse_d3fend(await _fetch_json(url or settings.d3fend_ontology_url, timeout))
 
 
+async def fetch_attack_groups(url: str | None = None, timeout: float | None = None) -> list[dict]:
+    return parse_attack_groups(await _fetch_json(url or settings.attack_stix_url, timeout))
+
+
+async def fetch_misp_actors(url: str | None = None, timeout: float | None = None) -> list[dict]:
+    # Le mapping acteur→TTPs vient des groupes MITRE : on récupère aussi le bundle ATT&CK.
+    doc = await _fetch_json(url or settings.misp_threat_actor_url, timeout)
+    groups = parse_attack_groups(await _fetch_json(settings.attack_stix_url, timeout))
+    return parse_misp_actors(doc, groups)
+
+
 # Catalogues synchronisables en ligne et leur source.
 SYNCABLE = {
     "attack": {"fetch": fetch_attack, "table": "ref_attack_technique", "has_tactic": True},
     "d3fend": {"fetch": fetch_d3fend, "table": "ref_d3fend", "has_tactic": False},
+    "attack_groups": {"fetch": fetch_attack_groups, "table": "ref_attack_group",
+                      "has_tactic": False, "has_data": True, "source": "attack.mitre.org"},
+    "misp_actors": {"fetch": fetch_misp_actors, "table": "ref_misp_actor",
+                    "has_tactic": False, "has_data": True, "source": "misp-galaxy"},
 }
 
 
@@ -129,13 +242,25 @@ async def sync_catalog(session, catalog_id: str) -> int:
     rows = await spec["fetch"]()
     table = spec["table"]
     for r in rows:
-        if spec["has_tactic"]:
+        if spec.get("has_data"):
+            data = r.get("data") or {}
+            await session.execute(text(
+                f"INSERT INTO {table} (id, ext_id, name, data) "
+                "VALUES (gen_random_uuid(), :e, :n, CAST(:d AS jsonb)) "
+                "ON CONFLICT (ext_id) DO UPDATE SET name = EXCLUDED.name, "
+                "data = EXCLUDED.data, updated_at = now()"
+            ), {"e": r["ext_id"], "n": r["name"][:255], "d": json.dumps({
+                "aliases": data.get("aliases", []), "techniques": data.get("techniques", []),
+                "source": spec.get("source", "")})})
+        elif spec["has_tactic"]:
+            tactics = r.get("tactics") or ([r["tactic"]] if r.get("tactic") else [])
             await session.execute(text(
                 f"INSERT INTO {table} (id, ext_id, name, tactic, data) "
-                "VALUES (gen_random_uuid(), :e, :n, :t, '{}') "
+                "VALUES (gen_random_uuid(), :e, :n, :t, CAST(:d AS jsonb)) "
                 "ON CONFLICT (ext_id) DO UPDATE SET name = EXCLUDED.name, "
-                "tactic = EXCLUDED.tactic, updated_at = now()"
-            ), {"e": r["ext_id"], "n": r["name"][:255], "t": r.get("tactic")})
+                "tactic = EXCLUDED.tactic, data = EXCLUDED.data, updated_at = now()"
+            ), {"e": r["ext_id"], "n": r["name"][:255], "t": r.get("tactic"),
+                "d": json.dumps({"tactics": tactics})})
         else:
             await session.execute(text(
                 f"INSERT INTO {table} (id, ext_id, name, data) "

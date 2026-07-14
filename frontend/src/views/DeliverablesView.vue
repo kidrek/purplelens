@@ -35,7 +35,7 @@ const auditsForClient = computed(() =>
 async function loadRefs() {
   loading.value = true
   try {
-    ;[clients.value, audits.value, deliverables.value] = await Promise.all([
+    [clients.value, audits.value, deliverables.value] = await Promise.all([
       api.list('organisations').then(unwrap).then((l) => l.filter((o) => o.role === 'client')),
       api.list('audits').then(unwrap),
       api.list('deliverables').then(unwrap),

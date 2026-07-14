@@ -1,7 +1,7 @@
 <script setup>
 // Sélecteur TLP (ou PAP) visuel : pastilles colorées cliquables plutôt qu'un menu
 // déroulant. TLP borne la diffusion ; PAP borne les actions permises (taxonomie MISP).
-const props = defineProps({
+defineProps({
   modelValue: { type: String, default: '' },
   // 'tlp' (RED/AMBER/GREEN/CLEAR) ou 'pap' (RED/AMBER/GREEN/WHITE).
   variant: { type: String, default: 'tlp' },

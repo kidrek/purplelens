@@ -20,7 +20,7 @@ from fastapi import Depends, HTTPException, Request, status
 
 from app.config import settings
 from app.security.context import SecurityContext
-from app.security.matrix import Action, allowed
+from app.security.matrix import GLOBAL_SCOPE_ROLES, Action, allowed
 
 # Actions à haut risque exigeant une réauthentification récente (spec v2 §3.4).
 HIGH_RISK_ACTIONS: frozenset[str] = frozenset(
@@ -45,14 +45,52 @@ class Decision:
     reason: str = "ok"
 
 
+# Entités du sous-système de preuves — seules concernées par la porte 2 (MFA par-record).
+_EVIDENCE_ENTITIES: frozenset[str] = frozenset({"evidence", "evidence_access", "audit_dek"})
+
+# Sensibilités TLP exigeant une session MFA pour tout accès (porte 2, spec v2 §3.2).
+# TLP:RED et TLP:AMBER (y c. AMBER+STRICT) portent des informations dont la simple
+# lecture requiert une authentification forte ; TLP:GREEN/CLEAR ne l'exigent pas.
+_MFA_SENSITIVE_TLP: frozenset[str] = frozenset({"red", "amber"})
+
+
+def _normalize_tlp(record: dict | None) -> str:
+    """Préfixe TLP canonique en minuscules : « TLP:AMBER+STRICT » → « amber »."""
+    if not record:
+        return ""
+    tlp = str(record.get("tlp") or "").strip().lower()
+    return tlp.removeprefix("tlp:").split("+", 1)[0].strip()
+
+
+def _requires_mfa(record: dict | None) -> bool:
+    """Vrai si l'objet visé porte un TLP sensible imposant une session MFA (porte 2)."""
+    return _normalize_tlp(record) in _MFA_SENSITIVE_TLP
+
+
+def requires_fresh_stepup_for_clear(record: dict | None) -> bool:
+    """Durcissement P1 : streamer le CLAIR déchiffré d'une preuve TLP:RED exige une
+    réauthentification MFA RÉCENTE (step-up), pas seulement une session MFA. C'est la
+    friction attendue sur l'exception « binaire en clair via l'API » pour le niveau le
+    plus sensible (les `contains_secrets` restant, eux, jamais servis en clair)."""
+    return _normalize_tlp(record) == "red"
+
+
 def _tlp_pap_compatible(record: dict | None, purpose: str) -> bool:
-    """Porte 5 — contrôle de diffusion (preuves). En v1 : diffusion interne autorisée ;
-    l'inclusion au livrable des `contains_secrets` exige un masquage (géré côté générateur).
+    """Porte 5 — contrôle de diffusion (preuves).
+
+    - Rendu de livrable (`report_render`) d'un `contains_secrets` : refus tant que non masqué.
+    - Diffusion EXTERNE (`external_share`) d'un objet TLP:RED/AMBER : refusée par défaut
+      (le PAP ne permet pas la diffusion hors périmètre sans masquage explicite).
+    - Consultation interne : autorisée (la friction MFA/step-up est portée par les portes 2
+      et le contrôle step-up du download clair).
     """
     if not record:
         return True
     if purpose == "report_render" and record.get("contains_secrets"):
         # Le générateur doit masquer avant inclusion — refus tant que non masqué.
+        return bool(record.get("masked"))
+    if purpose == "external_share" and _normalize_tlp(record) in _MFA_SENSITIVE_TLP:
+        # Pas de diffusion externe d'un secret RED/AMBER sans masquage validé.
         return bool(record.get("masked"))
     return True
 
@@ -70,6 +108,19 @@ def can(
     if not ctx.user_id and not ctx.is_service:
         return Decision(False, "gate1_unauthenticated")
 
+    # Porte 2 — MFA suffisant pour la sensibilité visée. Restreinte au sous-système de
+    # PREUVES (la donnée la plus sensible) : accéder à une preuve TLP RED/AMBER exige une
+    # session forte. Le MFA global des rôles opérationnels (D5) couvre les entités métier,
+    # dont le TLP est massivement AMBER — on n'impose donc pas de MFA par-record ailleurs.
+    # Les rôles de service (non interactifs, sans MFA) en sont exemptés.
+    if (
+        entity in _EVIDENCE_ENTITIES
+        and not ctx.is_service
+        and _requires_mfa(record)
+        and not ctx.mfa
+    ):
+        return Decision(False, "gate2_mfa_required")
+
     # Porte 3 — matrice (évaluée avant le cloisonnement pour un refus net).
     if not allowed(ctx.role, entity, action):
         return Decision(False, "gate3_matrix_denied")
@@ -77,8 +128,15 @@ def can(
     # Porte 4 — cloisonnement (RESTREINT, jamais n'élargit).
     if record is not None:
         client_id = _scope_client_of(record)
-        if client_id is not None and ctx.client_scope and client_id not in ctx.client_scope:
-            return Decision(False, "gate4_client_scope")
+        if client_id is not None:
+            if ctx.client_scope:
+                # Scope explicite : le client du record DOIT y figurer.
+                if client_id not in ctx.client_scope:
+                    return Decision(False, "gate4_client_scope")
+            elif ctx.role not in GLOBAL_SCOPE_ROLES:
+                # Scope vide pour un rôle NON global = fail-closed (durcissement P1) :
+                # ne jamais interpréter l'absence de scope comme « tous les clients ».
+                return Decision(False, "gate4_empty_scope")
 
     # Porte 5 — TLP/PAP (preuves).
     if entity == "evidence" and not _tlp_pap_compatible(record, purpose):

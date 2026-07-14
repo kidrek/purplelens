@@ -45,3 +45,11 @@ def test_audit_type_prefix_map_matches_maquette():
 def test_unknown_category_defaults_to_aud_prefix():
     # Une catégorie hors énumération (données héritées) retombe sur AUD, jamais d'erreur.
     assert service._AUDIT_TYPE_CODE.get("inconnue", "AUD") == "AUD"
+
+
+def test_technique_token_keeps_dot_and_uppercases():
+    # Token de technique pour la référence de ticket (TICK_…_TECHNIQUE) : MAJ, point conservé.
+    assert service._technique_token("t1566.001") == "T1566.001"
+    assert service._technique_token("T1059") == "T1059"
+    assert service._technique_token(None) == "—"
+    assert service._technique_token("  ") == "—"

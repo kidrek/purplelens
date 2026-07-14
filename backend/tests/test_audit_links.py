@@ -42,6 +42,7 @@ _URL = os.environ.get("TEST_DATABASE_URL")
 async def test_applications_must_belong_to_audit_client():
     """Une application d'un autre client est refusée en 422 (jamais un 500)."""
     from fastapi import HTTPException
+    from sqlalchemy import text
     from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
     from app.api import service
@@ -49,6 +50,11 @@ async def test_applications_must_belong_to_audit_client():
 
     engine = create_async_engine(_URL.replace("postgresql://", "postgresql+asyncpg://"))
     async with AsyncSession(engine) as session:
+        # Contexte RLS de service : sans app.role posé, la RLS refuse tout INSERT
+        # (organisation exige un rôle créateur — cf. app_role_may_create_org).
+        await session.execute(text("SELECT set_config('app.role', 'admin_service', true)"))
+        await session.execute(text("SELECT set_config('app.user_id', '', true)"))
+        await session.execute(text("SELECT set_config('app.client_scope', '', true)"))
         client_a = Organisation(nom="ClientA", code="clia", role="client")
         client_b = Organisation(nom="ClientB", code="clib", role="client")
         session.add_all([client_a, client_b])
@@ -71,6 +77,7 @@ async def test_applications_must_belong_to_audit_client():
 @pytest.mark.anyio
 async def test_auditeurs_must_be_existing_human_resources():
     from fastapi import HTTPException
+    from sqlalchemy import text
     from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
     from app.api import service
@@ -78,6 +85,10 @@ async def test_auditeurs_must_be_existing_human_resources():
 
     engine = create_async_engine(_URL.replace("postgresql://", "postgresql+asyncpg://"))
     async with AsyncSession(engine) as session:
+        # Contexte RLS de service (cf. test ci-dessus) : requis pour l'INSERT organisation.
+        await session.execute(text("SELECT set_config('app.role', 'admin_service', true)"))
+        await session.execute(text("SELECT set_config('app.user_id', '', true)"))
+        await session.execute(text("SELECT set_config('app.client_scope', '', true)"))
         org = Organisation(nom="Presta", code="prst", role="prestataire")
         session.add(org)
         await session.flush()

@@ -30,18 +30,32 @@ CREATE OR REPLACE FUNCTION app_client_scope() RETURNS uuid[]
     )
   $$;
 
+-- Rôles autorisés à voir TOUS les clients quand leur scope est vide (miroir SQL de
+-- app.security.matrix.GLOBAL_SCOPE_ROLES). admin/manager (multi-clients par doctrine,
+-- spec v2 §2.1) + rôles de service (périmètre transverse). Durcissement P1 : pour
+-- TOUT autre rôle, un scope vide ne donne AUCUN accès (fail-closed).
+CREATE OR REPLACE FUNCTION app_role_spans_all_clients() RETURNS boolean
+  LANGUAGE sql STABLE AS $$
+    SELECT NULLIF(current_setting('app.role', true), '') IN (
+      'admin', 'manager',
+      'report_render', 'job_retention', 'job_integrity', 'admin_service'
+    )
+  $$;
+
 -- Vrai si le client passé est visible selon le scope courant.
 -- SÉCURITÉ : un contexte applicatif DOIT être établi (app.role posé). Une connexion
--- brute sur app_api, sans contexte, ne voit RIEN — sinon un scope « vide » (= tous
--- clients, pour un rôle multi-clients) serait indistinguable d'une absence de contexte.
--- Scope vide AVEC rôle posé = tous clients (dans la limite du rôle, appliquée côté API).
+-- brute sur app_api, sans contexte, ne voit RIEN.
+-- Durcissement P1 (fail-closed) : un scope VIDE n'ouvre l'accès à tous les clients que
+-- pour un rôle habilité (app_role_spans_all_clients). Un rôle scoppé (auditeur, ciso,
+-- voc, cert) dont le scope serait accidentellement vide ne voit alors RIEN — l'absence
+-- de scope n'est plus jamais interprétée comme « tous les clients ».
 CREATE OR REPLACE FUNCTION app_client_visible(cid uuid) RETURNS boolean
   LANGUAGE sql STABLE AS $$
     SELECT
       NULLIF(current_setting('app.role', true), '') IS NOT NULL
       AND (
-        cardinality(app_client_scope()) = 0
-        OR cid = ANY (app_client_scope())
+        cid = ANY (app_client_scope())
+        OR (cardinality(app_client_scope()) = 0 AND app_role_spans_all_clients())
       )
   $$;
 

@@ -99,14 +99,17 @@ const rowCount = computed(() => Math.max(0, ...matrix.value.map((c) => c.techniq
 .ttp-table{border-collapse:separate;border-spacing:0 8px;width:100%;table-layout:fixed}
 .ttp-table th{text-align:left;font-family:var(--font-eyebrow);text-transform:uppercase;letter-spacing:.03em;
   font-size:10px;color:var(--c-violet-tx);font-weight:var(--eyebrow-weight);padding:8px 10px;
-  background:transparent;border:1px solid var(--c-violet-bd);border-radius:var(--r-pill);white-space:nowrap}
+  background:transparent;border:1px solid var(--c-violet-bd);border-radius:var(--r-pill);
+  white-space:normal;line-height:1.25}
 .ttp-table thead tr{display:flex;gap:8px}
-.ttp-table th{flex:1;min-width:150px}
+/* display:flex + align-items:center → libellés courts centrés dans la hauteur commune ;
+   la hauteur d'en-tête reste identique sur toutes les colonnes (stretch des items flex). */
+.ttp-table th{flex:1;min-width:150px;display:flex;align-items:center}
 .ttp-table tbody tr{display:flex;gap:8px}
 .ttp-table td{flex:1;min-width:150px;padding:0;vertical-align:top}
 .tech-cell{display:block;background:var(--surface-3);border:1px solid var(--border);border-radius:var(--r-mini);
   padding:9px 11px;text-decoration:none;cursor:pointer;box-shadow:var(--shadow)}
 .tech-cell:hover{border-color:var(--violet-accent);background:var(--surface)}
-.tech-id{font-family:var(--font-data);font-size:11.5px;font-weight:700;color:var(--c-violet-tx)}
-.tech-name{font-size:12px;color:var(--text);margin-top:3px}
+.tech-id{font-family:var(--font-data);font-size:11px;font-weight:700;color:var(--c-violet-tx)}
+.tech-name{font-size:10.5px;color:var(--text);margin-top:3px}
 </style>

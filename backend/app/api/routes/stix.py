@@ -133,6 +133,18 @@ async def import_bundle(
                 "tlp": sc.get("tlp", "AMBER"),
                 "notes": sc.get("notes_import") or None,
             })).first()
+            # Étapes offensives : une ligne scenario_step par technique (ordre du bundle,
+            # tactique dérivée du référentiel) — sinon l'éditeur d'étapes serait vide
+            # alors que la colonne JSON `techniques` est remplie (deux stockages).
+            if sc.get("techniques"):
+                await s.execute(text(
+                    "INSERT INTO scenario_step (id, scenario_id, ordre, technique, tactique, "
+                    " created_at, updated_at) "
+                    "SELECT gen_random_uuid(), :sid, t.ord - 1, t.tech, r.tactic, now(), now() "
+                    "FROM jsonb_array_elements_text(CAST(:techs AS jsonb)) "
+                    " WITH ORDINALITY AS t(tech, ord) "
+                    "LEFT JOIN ref_attack_technique r ON r.ext_id = t.tech"
+                ), {"sid": str(row.id), "techs": json.dumps(sc["techniques"])})
             created.append(str(row.id))
         await journal_append(
             s, event_type="stix.imported", actor_id=ctx.user_id, subject="scenarios",

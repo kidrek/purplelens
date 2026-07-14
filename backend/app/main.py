@@ -38,6 +38,11 @@ async def lifespan(app: FastAPI):
     await engine.dispose()
 
 
+# En production, on n'expose ni Swagger UI ni le schéma OpenAPI (réduction de la surface
+# d'information : structure des routes, modèles, exemples). Actif en dev/test uniquement.
+_docs_url = None if settings.is_production else "/api/docs"
+_openapi_url = None if settings.is_production else "/api/openapi.json"
+
 app = FastAPI(
     title="Cockpit de Pilotage Purple Team — API",
     version="1.0.0",
@@ -47,8 +52,9 @@ app = FastAPI(
         "journal tamper-evident. Aucune décision d'autorisation côté client."
     ),
     lifespan=lifespan,
-    docs_url="/api/docs",
-    openapi_url="/api/openapi.json",
+    docs_url=_docs_url,
+    redoc_url=None,  # ReDoc jamais exposé (route hors préfixe /api)
+    openapi_url=_openapi_url,
 )
 
 # Le middleware décode le jeton et pose le contexte ; il n'autorise rien par lui-même.

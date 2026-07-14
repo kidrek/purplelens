@@ -118,3 +118,15 @@ class RefCwe(_RefBase, Base):
 
 class RefCapec(_RefBase, Base):
     __tablename__ = "ref_capec"
+
+
+# Acteurs de la menace (threat actors) — catalogue à part des techniques : `ext_id` est
+# l'identifiant de l'acteur (Gxxxx MITRE, ou identifiant MISP), `name` son nom officiel.
+# `data` JSONB porte {"aliases": [...], "techniques": ["T1566", ...], "source": ...} : les
+# TTPs connues de l'acteur (dérivées des relations `uses` du bundle ATT&CK) et ses synonymes.
+class RefAttackGroup(_RefBase, Base):
+    __tablename__ = "ref_attack_group"
+
+
+class RefMispActor(_RefBase, Base):
+    __tablename__ = "ref_misp_actor"

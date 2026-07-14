@@ -8,6 +8,8 @@ import { useLabels } from '../composables/useLabels'
 import TlpSelect from './TlpSelect.vue'
 import RefacSelect from './RefacSelect.vue'
 import StepsEditor from './StepsEditor.vue'
+import ActorTtpPicker from './ActorTtpPicker.vue'
+import EvidenceUpload from './EvidenceUpload.vue'
 
 // Formulaire modal générique. Piloté par un schéma de champs (fields.js).
 // Aucune décision d'autorisation ici : on soumet, et on affiche ce que le serveur
@@ -22,6 +24,10 @@ const props = defineProps({
   prefill: { type: Object, default: () => ({}) },
   // Clés à ne pas afficher (typiquement celles fournies par prefill).
   hidden: { type: Array, default: () => [] },
+  // Active une étape « joindre une preuve » APRÈS création (le finding_id = l'id de
+  // l'enregistrement créé n'existe qu'à ce moment). Réservé aux entités « constat »
+  // (vulnérabilités) portant un audit_id/client_id.
+  evidenceUpload: { type: Boolean, default: false },
 })
 const emit = defineEmits(['saved', 'close'])
 const { t } = useI18n()
@@ -33,6 +39,12 @@ const options = reactive({}) // key -> [{ id, label }] pour client/ref
 const busy = ref(false)
 const error = ref(null)
 const inlineBusy = ref(null) // clé du champ dont l'action en ligne est en cours
+
+// Étape « preuve » optionnelle après création (evidenceUpload).
+const phase = ref('form')          // 'form' | 'evidence'
+const createdRecord = ref(null)    // enregistrement créé (porte l'id = finding_id)
+const evidenceMsg = ref(null)
+const evidenceCount = ref(0)
 
 // Champs affichés = schéma moins les champs masqués (mais toujours soumis).
 const visibleFields = props.fields.filter((f) => !props.hidden.includes(f.key))
@@ -162,12 +174,21 @@ async function loadStepFields() {
         commande: s.commande, description: s.description,
       }))
     } catch { /* laisse le tableau tel qu'initialisé */ }
+    // Repli : certaines origines (import STIX) remplissent la colonne JSON de
+    // l'enregistrement sans créer de lignes détaillées — on synthétise alors les
+    // étapes depuis cette liste ; l'enregistrement les persistera (auto-guérison).
+    const fb = f.fallbackFrom && props.record?.[f.fallbackFrom]
+    if (!(model[f.key] || []).length && Array.isArray(fb) && fb.length) {
+      model[f.key] = fb.map((t) => ({ technique: t, tactique: '', commande: '', description: '' }))
+    }
   }
 }
 
 function buildPayload() {
   const out = {}
   for (const f of props.fields) {
+    // Champs transitoires (ex. sélecteur d'acteur) : pilotent l'UI, jamais envoyés à l'API.
+    if (f.transient) continue
     let v = model[f.key]
     if (f.type === 'tags') {
       v = String(v || '').split(',').map((s) => s.trim()).filter(Boolean)
@@ -221,6 +242,17 @@ async function runInlineAction(f) {
   }
 }
 
+// Import des TTPs d'un threat actor (ActorTtpPicker) : ajoute les techniques cochées comme
+// étapes (dédup par technique) dans le champ `steps` cible. Le nom de l'acteur est déjà écrit
+// par le v-model du champ (acteur_emule) — ici on ne gère que la chaîne d'étapes.
+function onActorImport(f, { steps }) {
+  const key = f.targetSteps || 'etapes'
+  const current = Array.isArray(model[key]) ? model[key] : []
+  const have = new Set(current.map((s) => s.technique))
+  const added = (steps || []).filter((s) => !have.has(s.technique))
+  model[key] = [...current, ...added]
+}
+
 async function submit() {
   busy.value = true
   error.value = null
@@ -233,8 +265,19 @@ async function submit() {
   }
   try {
     const payload = buildPayload()
-    if (isEdit) await api.update(props.entity, props.record.id, payload)
-    else await api.create(props.entity, payload)
+    if (isEdit) {
+      await api.update(props.entity, props.record.id, payload)
+      emit('saved')
+      return
+    }
+    const created = await api.create(props.entity, payload)
+    // Étape preuve optionnelle : on garde le tiroir ouvert avec le finding_id = id créé,
+    // au lieu de fermer immédiatement. Sinon, comportement inchangé.
+    if (props.evidenceUpload && created?.id) {
+      createdRecord.value = created
+      phase.value = 'evidence'
+      return
+    }
     emit('saved')
   } catch (e) {
     if (e instanceof ApiError && e.status === 403) error.value = 'Action refusée par le serveur (droits ou cloisonnement).'
@@ -245,13 +288,41 @@ async function submit() {
     busy.value = false
   }
 }
+
+function onEvidenceUploaded() {
+  evidenceCount.value += 1
+  evidenceMsg.value = null
+}
+
+// Fermeture du tiroir : si un enregistrement a déjà été créé (phase preuve), le parent
+// doit rafraîchir sa liste même sans clic sur « Terminer » → on émet 'saved'.
+function onDrawerClose() {
+  if (createdRecord.value) emit('saved')
+  else emit('close')
+}
 </script>
 
 <template>
   <DetailDrawer :title="title || (isEdit ? 'Modifier' : 'Nouveau')"
-                :subtitle="isEdit ? 'Édition' : 'Création'" wide @close="emit('close')">
-    <div class="grid">
-      <div v-for="f in visibleFields" :key="f.key" class="field-row" :class="{ wide: f.type === 'textarea' || f.type === 'lines' || f.type === 'steps' }">
+                :subtitle="phase === 'evidence' ? 'Preuves' : (isEdit ? 'Édition' : 'Création')" wide @close="onDrawerClose">
+    <!-- Étape preuve (après création) : joindre des preuves à l'enregistrement créé. -->
+    <div v-if="phase === 'evidence'" class="evi-phase">
+      <p class="evi-ok">✓ Enregistrement créé. Vous pouvez y joindre des preuves (optionnel).</p>
+      <EvidenceUpload
+        v-if="createdRecord && createdRecord.audit_id"
+        :audit-id="createdRecord.audit_id"
+        :client-id="createdRecord.client_id"
+        :finding-id="createdRecord.id"
+        @uploaded="onEvidenceUploaded"
+        @error="evidenceMsg = $event"
+      />
+      <p v-else class="muted">Aucun audit lié : impossible de joindre une preuve.</p>
+      <p v-if="evidenceCount" class="evi-count">{{ evidenceCount }} preuve(s) ajoutée(s).</p>
+      <p v-if="evidenceMsg" class="err">{{ evidenceMsg }}</p>
+    </div>
+
+    <div v-else class="grid">
+      <div v-for="f in visibleFields" :key="f.key" class="field-row" :class="{ wide: f.type === 'textarea' || f.type === 'lines' || f.type === 'steps' || f.type === 'actor' }">
         <label class="lbl">{{ fieldLabel(f) }}<span v-if="f.required" class="req">*</span></label>
 
         <div v-if="f.inlineAction" class="input-action">
@@ -285,6 +356,7 @@ async function submit() {
         <label v-else-if="f.type === 'bool'" class="chk"><input type="checkbox" v-model="model[f.key]" /> {{ f.checkboxLabel || 'Oui' }}</label>
         <textarea v-else-if="f.type === 'lines'" class="field" rows="4" v-model="model[f.key]" placeholder="une valeur par ligne"></textarea>
         <RefPicker v-else-if="f.type === 'refpick'" :catalog="f.catalog" :multiple="!!f.multiple" v-model="model[f.key]" />
+        <ActorTtpPicker v-else-if="f.type === 'actor'" v-model="model[f.key]" @import="onActorImport(f, $event)" />
         <StepsEditor v-else-if="f.type === 'steps'" v-model="model[f.key]" />
         <input v-else class="field" type="text" v-model="model[f.key]" :placeholder="f.placeholder || ''" />
 
@@ -301,10 +373,15 @@ async function submit() {
     <p v-if="error" class="err">{{ error }}</p>
 
     <template #footer>
-      <button class="btn" @click="emit('close')">{{ t('common.cancel') }}</button>
-      <button class="btn btn-primary" :disabled="busy" @click="submit">
-        {{ busy ? '…' : (isEdit ? t('common.save') : t('common.create')) }}
-      </button>
+      <template v-if="phase === 'evidence'">
+        <button class="btn btn-primary" @click="emit('saved')">{{ t('common.close') }}</button>
+      </template>
+      <template v-else>
+        <button class="btn" @click="emit('close')">{{ t('common.cancel') }}</button>
+        <button class="btn btn-primary" :disabled="busy" @click="submit">
+          {{ busy ? '…' : (isEdit ? t('common.save') : t('common.create')) }}
+        </button>
+      </template>
     </template>
   </DetailDrawer>
 </template>
@@ -331,4 +408,8 @@ async function submit() {
 .icon-btn .spin{width:11px;height:11px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;display:inline-block;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media (max-width:560px){ .grid{grid-template-columns:1fr} }
+.evi-phase{display:flex;flex-direction:column;gap:12px}
+.evi-ok{color:var(--c-green-tx);font-size:13px;margin:0}
+.evi-count{color:var(--muted);font-size:12.5px;margin:0}
+.muted{color:var(--muted);font-size:13px}
 </style>

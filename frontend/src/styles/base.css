@@ -48,11 +48,15 @@ body[data-theme="dark"] .btn-primary:hover{background:linear-gradient(180deg,#9B
   font-family:var(--font-body); font-size:14px;
 }
 .field:focus{outline:none; border-color:var(--violet); caret-color:var(--caret)}
-table{width:100%; border-collapse:collapse; font-family:var(--font-data)}
+/* Corps des tableaux : Inter 12.5px (typographie de la maquette), plus lisible que la
+   mono globale (--font-data). Les en-têtes gardent la mono majuscule via --font-eyebrow.
+   Les cellules « code » (empreintes, identifiants) qui veulent la chasse fixe la posent
+   explicitement (font-family:var(--font-data)) et priment sur cette valeur héritée. */
+table{width:100%; border-collapse:collapse; font-family:var(--font-body); font-size:12.5px}
 th{
   text-align:left; font-size:11px; text-transform:uppercase;
   letter-spacing:.04em; color:var(--muted); padding:8px 10px;
-  border-bottom:1px solid var(--border);
+  border-bottom:1px solid var(--border); font-family:var(--font-eyebrow);
 }
 td{padding:9px 10px; border-bottom:1px solid var(--border-2)}
 tr:hover td{background:var(--row-active-bg)}

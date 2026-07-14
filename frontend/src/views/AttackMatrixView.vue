@@ -15,6 +15,7 @@ const data = ref(null)
 const loading = ref(true)
 const error = ref(null)
 const layer = ref('couverture')
+const onlyCovered = ref(true) // ne montrer que tactiques/techniques couvertes (lecture facilitée)
 const imported = ref(null) // Set d'ext_id importés (couche Navigator)
 const expanded = ref(new Set()) // techniques parentes dépliées
 const importName = ref('')
@@ -70,6 +71,22 @@ function cellTitle(t) {
 }
 
 const summary = computed(() => data.value?.summary || {})
+
+// Une technique est « couverte » dès qu'elle porte une activité (jouée, en
+// bibliothèque, ou avec un verdict) — ou qu'elle appartient à la couche importée.
+function isCovered(t) {
+  if (imported.value?.has(t.ext_id)) return true
+  return !!(t.used || t.in_library || t.best_verdict)
+}
+// Tactiques (colonnes) affichées : filtrées sur les techniques couvertes quand le
+// mode « Couvertes uniquement » est actif ; les colonnes vidées disparaissent.
+const visibleTactics = computed(() => {
+  const tactics = data.value?.tactics || []
+  if (!onlyCovered.value) return tactics
+  return tactics
+    .map((c) => ({ ...c, techniques: c.techniques.filter(isCovered) }))
+    .filter((c) => c.techniques.length)
+})
 
 // Import d'une couche ATT&CK Navigator (fichier .json).
 function onImportFile(ev) {
@@ -137,6 +154,10 @@ function collapseAll() { expanded.value = new Set() }
                   @click="layer = l.id">{{ l.label }}</button>
         </div>
         <div class="expand-ctl">
+          <button :class="['btn', 'slim', { on: onlyCovered }]" @click="onlyCovered = !onlyCovered"
+                  :title="onlyCovered ? 'Afficher toute la matrice référencée' : 'Masquer les techniques et tactiques non couvertes'">
+            {{ onlyCovered ? '✓ Couvertes uniquement' : 'Couvertes uniquement' }}
+          </button>
           <button class="btn slim" @click="expandAll">Tout déplier</button>
           <button class="btn slim" @click="collapseAll">Replier</button>
         </div>
@@ -178,8 +199,11 @@ function collapseAll() { expanded.value = new Set() }
       </div>
 
       <!-- Grille -->
-      <div class="grid">
-        <div v-for="col in data.tactics" :key="col.tactic" class="col">
+      <p v-if="onlyCovered && !visibleTactics.length" class="muted">
+        Aucune technique couverte pour l'instant — désactivez « Couvertes uniquement » pour voir la matrice de référence.
+      </p>
+      <div v-else class="grid">
+        <div v-for="col in visibleTactics" :key="col.tactic" class="col">
           <div class="col-head">
             <span class="tac">{{ col.tactic }}</span>
             <span class="tac-count">{{ col.techniques.length }}</span>
@@ -256,6 +280,7 @@ function collapseAll() { expanded.value = new Set() }
 .cell.sub{margin-left:12px;border-left-width:2px;background:var(--surface-2)}
 .sub-id{font-size:10px;color:var(--muted)}
 .expand-ctl{display:flex;gap:6px}
+.expand-ctl .btn.on{background:var(--violet);color:#fff;border-color:var(--violet)}
 .cname{font-size:11px;color:var(--muted);line-height:1.25;margin-top:1px}
 .cbadges{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
 .badge{font-size:10px;color:var(--text);background:var(--surface-3);border-radius:var(--r-mini);padding:0 4px}

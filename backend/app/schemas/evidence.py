@@ -70,6 +70,12 @@ class EvidenceOut(ORMModel):
     stored_at: datetime | None = None
     retention_until: datetime | None = None
     legal_hold: bool
+    # Libellés résolus par jointure (affichage tableau du coffre). Optionnels : une
+    # preuve orpheline (audit/appli supprimé, uploader inconnu) laisse la valeur à None.
+    organisation_nom: str | None = None
+    application_nom: str | None = None
+    audit_nom: str | None = None
+    uploader_nom: str | None = None
 
 
 class CustodyChain(BaseModel):

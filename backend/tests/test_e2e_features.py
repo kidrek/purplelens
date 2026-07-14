@@ -104,8 +104,11 @@ async def test_exercise_steps_editor_http():
             ex = (await ca.post("/api/exercices", json={
                 "client_id": cid, "audit_id": aud["id"], "statut": "en_cours",
                 "tlp": "AMBER"})).json()
+            # Modèle §A00.1 : le scénario est une CHAÎNE D'ÉTAPES ; `techniques` en est
+            # dérivé côté serveur (le champ plat `techniques` n'est plus writable).
             sc = (await ca.post("/api/scenarios", json={
-                "nom": f"Sc{tag}", "techniques": ["T1566", "T1059"], "d3fend": [],
+                "nom": f"Sc{tag}",
+                "etapes": [{"technique": "T1566"}, {"technique": "T1059"}],
                 "tlp": "AMBER"})).json()
 
             # Chargement : 1 étape par technique, ordonnées, verdict not_tested.

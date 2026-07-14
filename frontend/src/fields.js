@@ -223,7 +223,7 @@ export const ENTITY_FIELDS = {
   scenarios: [
     { key: 'nom', label: 'Nom', type: 'text', required: true },
     { key: 'objectif', label: 'Objectif', type: 'textarea' },
-    { key: 'acteur_emule', label: 'Acteur émulé', type: 'text' },
+    { key: 'acteur_emule', label: 'Acteur émulé', type: 'actor', targetSteps: 'etapes' },
     { key: 'type_engagement', label: "Type d'engagement", type: 'select', options: ['red-team', 'purple-team', 'tabletop', 'assumed-breach'] },
     { key: 'sophistication', label: 'Sophistication', type: 'select', options: ['basique', 'intermediaire', 'avancee', 'apt'] },
     { key: 'credibilite', label: 'Crédibilité (Admiralty)', type: 'select', options: [
@@ -234,7 +234,7 @@ export const ENTITY_FIELDS = {
       { value: 5, label: '5 — Improbable' },
       { value: 6, label: '6 — Invérifiable' },
     ] },
-    { key: 'etapes', label: 'Étapes offensives', type: 'steps', loadFrom: 'scenario_steps', loadKey: 'scenario_id' },
+    { key: 'etapes', label: 'Étapes offensives', type: 'steps', loadFrom: 'scenario_steps', loadKey: 'scenario_id', fallbackFrom: 'techniques' },
     { key: 'ioc', label: "Indicateurs de compromission", type: 'textarea' },
     { key: 'ioa', label: "Indicateurs d'attaque", type: 'textarea' },
     { key: 'references', label: 'Références', type: 'textarea' },

@@ -4,7 +4,8 @@ import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DetailDrawer from './DetailDrawer.vue'
 import CorpusArticleDrawer from './CorpusArticleDrawer.vue'
-import { api } from '../api/client'
+import EvidenceUpload from './EvidenceUpload.vue'
+import { api, ApiError } from '../api/client'
 import { useRefNames } from '../composables/useRefNames'
 import { useOrgNames } from '../composables/useOrgNames'
 import { useLabels } from '../composables/useLabels'
@@ -31,6 +32,12 @@ const enrichment = ref(null)    // détail brut CIRCL (CPE/CAPEC/références/pr
 const circlBusy = ref(false)
 const circlMsg = ref(null)
 const corpusOpen = ref(false) // "Corpus" (DA §4.6) : ouvre corp-voc-cycle en overlay
+
+// Preuves attachées à la vulnérabilité.
+const evidenceItems = ref([])
+const evidenceLoading = ref(false)
+const evidenceMsg = ref(null)
+const showUploader = ref(false)
 const SSVC_TONE = { Act: 'red', Attend: 'amber', 'Track*': 'cyan', Track: 'gray' }
 const SEV_TONE = { critique: 'red', haute: 'amber', moyenne: 'cyan', basse: 'green' }
 const VEX_LABEL = { affected: 'Affecté', not_affected: 'Non affecté', fixed: 'Corrigé', under_investigation: 'En analyse' }
@@ -46,6 +53,7 @@ onMounted(async () => {
     enrichment.value = r.enrichment
   } catch { enrichment.value = null }
   await loadLinks()
+  await loadEvidence()
 })
 
 const v = computed(() => ({ ...(full.value || {}), ...props.vuln }))
@@ -75,6 +83,52 @@ async function loadLinks() {
     applications.value = results.filter(Boolean)
   } else {
     applications.value = []
+  }
+}
+
+// Chargement des preuves attachées à cette vulnérabilité.
+async function loadEvidence() {
+  evidenceLoading.value = true
+  evidenceMsg.value = null
+  try {
+    const r = await api.get(`/evidence?finding_id=${props.vuln.id}`)
+    evidenceItems.value = Array.isArray(r) ? r : (r?.items ?? [])
+  } catch (e) {
+    evidenceMsg.value = e instanceof ApiError && e.status === 403
+      ? t('common.forbidden')
+      : e.message
+    evidenceItems.value = []
+  } finally {
+    evidenceLoading.value = false
+  }
+}
+
+function onEvidenceUploaded() {
+  loadEvidence()
+}
+
+// Téléchargement d'une preuve : l'API renvoie le CONTENU DÉCHIFFRÉ (le binaire chiffré
+// au repos reste illisible sans la DEK). On récupère le blob, on l'enregistre sous le
+// nom d'origine. Le clair ne persiste pas : révocation immédiate de l'URL objet.
+async function downloadEvidence(item) {
+  evidenceMsg.value = null
+  try {
+    const resp = await fetch(`/api/evidence/${item.id}/content`, { credentials: 'include' })
+    if (!resp.ok) {
+      evidenceMsg.value = resp.status === 403 ? t('common.forbidden') : t('evidence.download_failed')
+      return
+    }
+    const blob = await resp.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = item.original_filename || 'evidence'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  } catch {
+    evidenceMsg.value = t('evidence.download_failed')
   }
 }
 
@@ -252,6 +306,52 @@ async function enrichCircl() {
       </div>
     </section>
 
+    <!-- 6. Preuves attachées -->
+    <section class="sec">
+      <div class="sec-t">{{ t('sec.evidence') }}</div>
+      <div class="evidence-actions">
+        <button v-if="full?.audit_id" class="btn slim" @click="showUploader = !showUploader">
+          {{ showUploader ? t('common.close') : t('upload.attach') }}
+        </button>
+        <span v-else class="muted">{{ t('upload.requires_audit') }}</span>
+      </div>
+
+      <!-- Formulaire d'upload (pliable) -->
+      <EvidenceUpload
+        v-if="showUploader && full?.audit_id"
+        :audit-id="full.audit_id"
+        :client-id="v.client_id"
+        :finding-id="v.id"
+        @uploaded="onEvidenceUploaded"
+        @error="evidenceMsg = $event"
+      />
+
+      <!-- Liste des preuves -->
+      <p v-if="evidenceLoading" class="muted">{{ t('common.loading') }}</p>
+      <p v-else-if="evidenceMsg" class="msg ko">{{ evidenceMsg }}</p>
+      <p v-else-if="!evidenceItems.length" class="muted">{{ t('common.empty') }}</p>
+      <div v-else class="evidence-list">
+        <div v-for="e in evidenceItems" :key="e.id" class="evi-row">
+          <span class="evi-name">{{ e.original_filename }}</span>
+          <span class="evi-status">
+            <span class="pill" :class="e.ingest_status === 'stored' ? 'pill-green' : 'pill-amber'">
+              {{ e.ingest_status === 'stored' ? t('evidence.stored') : t('evidence.quarantine') }}
+            </span>
+          </span>
+          <span class="evi-date">{{ e.stored_at ? new Date(e.stored_at).toLocaleDateString() : '—' }}</span>
+          <button class="icon-btn-sm"
+                  :title="e.contains_secrets ? t('evidence.secret_masked') : t('evidence.download')"
+                  :disabled="e.ingest_status !== 'stored' || e.contains_secrets"
+                  @click="() => downloadEvidence(e)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
     <!-- 6. À propos des référentiels -->
     <section class="sec">
       <div class="sec-t">{{ t('sec.referentiels') }}</div>
@@ -322,5 +422,14 @@ async function enrichCircl() {
 .ref-block p{margin:0 0 4px}
 .ref-block .mt{margin-top:10px}
 .ref-block b{color:var(--text)}
+
+/* Preuves */
+.evidence-actions{display:flex;gap:8px;margin-bottom:12px}
+.evidence-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.evi-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--border-2);border-radius:var(--r-mini);font-size:12px}
+.evi-name{font-family:var(--font-data);color:var(--heading);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.evi-status{flex:0 0 auto}
+.evi-date{font-size:11px;color:var(--faint);flex:0 0 auto}
+.msg.ko{color:var(--red);font-size:12px;margin:4px 0}
 </style>
 
