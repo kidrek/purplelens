@@ -1,8 +1,9 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { api, ApiError } from '../api/client'
 import { useAuthStore } from '../stores/auth'
 import { useI18n } from 'vue-i18n'
+import RefacSelect from '../components/RefacSelect.vue'
 
 // Administration des comptes. Toutes les actions ici sont à HAUT RISQUE : le
 // serveur exige une réauthentification récente (step-up TOTP). Le schéma est
@@ -11,11 +12,42 @@ import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 const auth = useAuthStore()
 
-const ROLES = ['admin', 'manager', 'ciso', 'auditeur', 'voc', 'cert']
+const ROLES = ['admin', 'manager', 'ciso', 'auditeur', 'voc', 'cert', 'operateur']
+// Miroir front de matrix.GLOBAL_SCOPE_ROLES — À DES FINS D'AFFICHAGE UNIQUEMENT
+// (aucune décision d'autorisation côté client) : sert à expliquer à l'admin ce
+// qu'implique un périmètre vide selon le rôle (tous les clients vs aucun accès).
+const GLOBAL_SCOPE_ROLES = ['admin', 'manager']
+
+// ── Organisations clientes (pour l'autocomplétion du périmètre) ──────────────
+const orgs = ref([])
+// Options {id,label} filtrées sur les organisations de rôle « client » (le
+// périmètre = les clients servis). Label = « CODE Nom » comme dans EntityForm.
+const orgOptions = computed(() =>
+  orgs.value
+    .filter((o) => o.role === 'client')
+    .map((o) => ({ id: o.id, label: `${o.code || ''} ${o.nom}`.trim() })),
+)
+
+async function loadOrgs() {
+  try {
+    const rows = await api.list('organisations')
+    orgs.value = Array.isArray(rows) ? rows : (rows.items ?? [])
+  } catch (e) {
+    orgs.value = []
+  }
+}
 
 // ── Création ────────────────────────────────────────────────────────────────
-const form = ref({ email: '', display_name: '', role: 'auditeur', client_scope: '', password: '' })
+const form = ref({ email: '', display_name: '', role: 'auditeur', client_scope: [], password: '' })
 const msg = ref(null)
+
+// Message contextuel réactif au rôle choisi : explicite ce qu'implique un
+// périmètre VIDE (durcissement fail-closed serveur).
+const scopeHint = computed(() =>
+  GLOBAL_SCOPE_ROLES.includes(form.value.role)
+    ? 'Périmètre vide = accès à tous les clients (rôle multi-clients par nature). Renseignez des clients pour restreindre.'
+    : 'Périmètre vide = aucun accès (sécurité « fail-closed »). Sélectionnez les organisations clientes que ce compte doit pouvoir gérer.',
+)
 
 // ── Step-up générique ───────────────────────────────────────────────────────
 const otp = ref('')
@@ -55,8 +87,12 @@ const loading = ref(false)
 
 async function loadUsers() {
   loading.value = true
-  try { users.value = await api.get('/admin/users') }
-  catch (e) { users.value = [] }
+  try {
+    const rows = await api.get('/admin/users')
+    // Périmètre éditable par ligne (tableau d'UUID), copié depuis client_scope
+    // pour que le RefacSelect puisse le modifier sans muter la valeur d'origine.
+    users.value = (rows || []).map((u) => ({ ...u, _scope: [...(u.client_scope || [])] }))
+  } catch (e) { users.value = [] }
   finally { loading.value = false }
 }
 
@@ -65,15 +101,13 @@ async function createUser() {
     email: form.value.email,
     display_name: form.value.display_name || null,
     role: form.value.role,
-    client_scope: form.value.client_scope
-      ? form.value.client_scope.split(',').map((s) => s.trim())
-      : [],
+    client_scope: form.value.client_scope, // déjà un tableau d'UUID (RefacSelect)
     password: form.value.password || null,
   }
   const ok = await withStepUp(async () => {
     await api.post('/admin/users', payload)
     msg.value = { kind: 'ok', text: 'Compte créé.' }
-    form.value = { email: '', display_name: '', role: 'auditeur', client_scope: '', password: '' }
+    form.value = { email: '', display_name: '', role: 'auditeur', client_scope: [], password: '' }
     await loadUsers()
   })
   return ok
@@ -83,9 +117,7 @@ async function saveRole(u) {
   await withStepUp(async () => {
     await api.put(`/admin/users/${u.id}/role`, {
       role: u.role,
-      client_scope: u._scope !== undefined
-        ? (u._scope ? u._scope.split(',').map((s) => s.trim()) : [])
-        : null,
+      client_scope: u._scope, // tableau d'UUID courant (RefacSelect)
     })
     msg.value = { kind: 'ok', text: `Rôle/périmètre de ${u.email} mis à jour (sessions révoquées).` }
     await loadUsers()
@@ -101,7 +133,7 @@ async function deactivate(u) {
   })
 }
 
-onMounted(loadUsers)
+onMounted(() => { loadUsers(); loadOrgs() })
 </script>
 
 <template>
@@ -134,10 +166,15 @@ onMounted(loadUsers)
         <h3>Comptes</h3>
         <button class="btn" @click="loadUsers">{{ t('common.refresh') }}</button>
       </div>
+      <p class="legend">
+        <b>Périmètre</b> = organisations clientes visibles par le compte. Vide :
+        <b>tous les clients</b> pour admin/manager, <b>aucun accès</b> pour les autres rôles
+        (sécurité « fail-closed »).
+      </p>
       <p v-if="loading" class="muted">{{ t('common.loading') }}</p>
       <table v-else>
         <thead>
-          <tr><th>E-mail</th><th>Rôle</th><th>Périmètre (UUID clients)</th><th>MFA</th><th>SSO</th><th>Statut</th><th></th></tr>
+          <tr><th>E-mail</th><th>Rôle</th><th>Périmètre (clients)</th><th>MFA</th><th>SSO</th><th>Statut</th><th></th></tr>
         </thead>
         <tbody>
           <tr v-for="u in users" :key="u.id">
@@ -147,10 +184,12 @@ onMounted(loadUsers)
                 <option v-for="r in ROLES" :key="r" :value="r">{{ r }}</option>
               </select>
             </td>
-            <td>
-              <input class="field slim" :placeholder="u.client_scope.length ? '' : 'tous (multi-clients)'"
-                     :value="u._scope !== undefined ? u._scope : u.client_scope.join(', ')"
-                     @input="u._scope = $event.target.value" />
+            <td class="scope-cell">
+              <RefacSelect :options="orgOptions" :multiple="true" v-model="u._scope"
+                           placeholder="Rechercher un client…" />
+              <span v-if="!u._scope.length && !GLOBAL_SCOPE_ROLES.includes(u.role)"
+                    class="pill pill-amber warn-scope" title="Périmètre vide : ce rôle ne verra aucun client (fail-closed).">⚠ aucun accès</span>
+              <span v-else-if="!u._scope.length" class="muted small">tous (multi-clients)</span>
             </td>
             <td><span :class="['pill', u.mfa_enrolled ? 'pill-green' : 'pill-amber']">{{ u.mfa_enrolled ? 'oui' : 'non' }}</span></td>
             <td><span :class="['pill', u.sso_linked ? 'pill-cyan' : 'pill-gray']">{{ u.sso_linked ? 'lié' : '—' }}</span></td>
@@ -175,8 +214,10 @@ onMounted(loadUsers)
       <select class="field" v-model="form.role">
         <option v-for="r in ROLES" :key="r" :value="r">{{ r }}</option>
       </select>
-      <label class="lbl">Périmètre client (UUID séparés par des virgules — vide = multi-clients)</label>
-      <input class="field" v-model="form.client_scope" placeholder="uuid1, uuid2" />
+      <label class="lbl">Périmètre client</label>
+      <RefacSelect :options="orgOptions" :multiple="true" v-model="form.client_scope"
+                   placeholder="Rechercher une organisation cliente…" />
+      <p class="hint" :class="{ 'hint-warn': !GLOBAL_SCOPE_ROLES.includes(form.role) }">{{ scopeHint }}</p>
       <label class="lbl">Mot de passe initial (optionnel)</label>
       <input class="field" v-model="form.password" type="password" autocomplete="new-password" />
       <p class="hint">
@@ -199,6 +240,11 @@ onMounted(loadUsers)
 .otpf{max-width:160px}
 .lbl{display:block;margin:12px 0 5px;font-size:12px;color:var(--muted)}
 .hint{margin-top:8px;font-size:11px;color:var(--faint)}
+.hint-warn{color:var(--amber)}
+.legend{margin:8px 0 4px;font-size:11.5px;color:var(--muted)}
+.scope-cell{min-width:240px}
+.scope-cell .warn-scope{margin-top:6px;display:inline-block}
+.small{font-size:11px}
 .head-row{display:flex;justify-content:space-between;align-items:center}
 .sub{font-size:11px;color:var(--faint)}
 .slim{padding:5px 8px;font-size:12px}

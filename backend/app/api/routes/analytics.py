@@ -420,8 +420,8 @@ async def compute_applications_coverage(s, client_id: str | None = None) -> list
     """
     rows = (await s.execute(text(
         """
-        SELECT a.id, a.nom, a.code, a.criticite, a.exposition, a.contact_metier,
-               a.stack, a.type, a.statut, a.tlp,
+        SELECT a.id, a.client_id, a.nom, a.code, a.criticite, a.exposition, a.contact_metier,
+               a.stack, a.type, a.statut, a.tlp, a.version, a.url, a.valeur_metier, a.tags,
           (SELECT count(*) FROM vulnerability v WHERE v.deleted_at IS NULL
              AND a.id = ANY(v.applications)) AS vuln_total,
           (SELECT count(*) FROM vulnerability v WHERE v.deleted_at IS NULL
@@ -441,6 +441,7 @@ async def compute_applications_coverage(s, client_id: str | None = None) -> list
     for r in rows:
         d = dict(r)
         d["id"] = str(r["id"])
+        d["client_id"] = str(r["client_id"]) if r["client_id"] is not None else None
         out.append(d)
     return out
 

@@ -22,6 +22,7 @@ from app.api.routes import (
     entities,
     evidence,
     exercises,
+    profile,
     reference,
     stix,
     vulnerabilities,
@@ -70,6 +71,7 @@ app.include_router(stix.router)
 app.include_router(reference.router)
 app.include_router(vulnerabilities.router)
 app.include_router(exercises.router)
+app.include_router(profile.router)
 
 
 @app.get("/api/health/live", tags=["health"])

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 import { useUiStore } from './stores/ui'
@@ -19,23 +19,41 @@ const palette = ref(null)
 const counts = ref({})
 const navOpen = ref(false) // sidebar mobile (< 860px), cf. DA §6 responsive
 
-onMounted(async () => {
-  ui.setTheme(ui.theme)
-  // Compteurs de nav (badges) : total par entité via ?limit=1 (léger). Silencieux si échec.
+// Compteurs de nav (badges) : total par entité via ?limit=1 (léger). Alignés sur le
+// client actif — comme les pages, filtrées par ui.activeClient — pour éviter un badge
+// « 1 » alors que la vue filtrée est vide. Le filtre client_id est ignoré côté API pour
+// les entités globales (scénarios, corpus) : leur compteur reste inchangé. Silencieux si échec.
+async function loadCounts() {
+  const params = '?limit=1' + (ui.activeClient ? `&client_id=${ui.activeClient}` : '')
   const wanted = NAV_GROUPS.flatMap((g) => g.items).filter((i) => i.count)
   await Promise.all(wanted.map(async (i) => {
     try {
-      const d = await api.list(i.count, '?limit=1')
+      const d = await api.list(i.count, params)
       if (d && typeof d.total === 'number') counts.value[i.id] = d.total
     } catch { /* non bloquant */ }
   }))
-  // Clients accessibles (pour le filtre multi-clients) — silencieux si non autorisé.
-  try {
-    const d = await api.list('organisations')
-    const orgs = Array.isArray(d) ? d : (d?.items ?? [])
-    ui.setClients(orgs.filter((o) => o.role === 'client').map((o) => ({ id: o.id, nom: o.nom })))
-  } catch { /* non bloquant */ }
+}
+
+// Données dépendant de la session : badges de nav + liste des clients accessibles.
+function loadSessionData() {
+  loadCounts()
+  ui.loadClients() // silencieux si non autorisé
+}
+
+onMounted(() => {
+  ui.setTheme(ui.theme)
+  // App.vue n'est monté qu'une fois — souvent à l'écran de login, non authentifié.
+  // On ne charge les données de session que si déjà connecté (ex. rechargement de page).
+  if (auth.isAuthenticated) loadSessionData()
 })
+
+// Après une connexion en SPA (sans rechargement de page), (re)charger les données de
+// session : sinon le sélecteur de client et les badges resteraient vides jusqu'à un F5.
+watch(() => auth.isAuthenticated, (v) => { if (v) loadSessionData() })
+
+// Recalcule les badges quand l'utilisateur change de client actif (ou repasse « Tous
+// les clients ») : les compteurs collent alors à ce que montrent les pages filtrées.
+watch(() => ui.activeClient, loadCounts)
 
 const showShell = computed(() => auth.isAuthenticated && route.name !== 'login')
 const isAdmin = computed(() => auth.role === 'admin')
@@ -98,7 +116,7 @@ async function doLogout() {
         <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 14.5A8 8 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z"/></svg>
       </button>
       <RouterLink class="who" to="/account" title="Mon compte (MFA)">
-        {{ auth.user?.display_name }} · <span class="pill pill-violet">{{ auth.role }}</span>
+        <span class="pill pill-violet">{{ auth.user?.display_name }}</span>
         <span v-if="!auth.user?.mfa" class="pill pill-amber">MFA</span>
       </RouterLink>
       <button class="btn" @click="doLogout">{{ t('common.logout') }}</button>
@@ -151,7 +169,8 @@ async function doLogout() {
 .brand .dot{width:11px;height:11px;border-radius:50%;background:var(--violet);box-shadow:0 0 12px var(--violet)}
 .brand-name{font-family:var(--font-display);font-weight:600;font-size:14.5px;color:var(--heading);letter-spacing:.01em}
 .spacer{flex:1}
-.who{color:var(--muted);font-size:12px;display:flex;align-items:center;gap:6px}
+.who{display:flex;align-items:center;gap:6px;text-decoration:none}
+.who .pill{height:34px;display:inline-flex;align-items:center;padding:0 12px;font-size:12px;border-radius:8px}
 .btn.ghost{background:transparent;border-color:var(--border-2)}
 
 /* Toggles langue + thème (maquette, DA §0.3) */

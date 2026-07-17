@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api, ApiError } from '../api/client'
+import { icons } from '../icons'
 const { t } = useI18n()
 
 // Matrice ATT&CK multi-couches : tactiques en colonnes, techniques en cellules.
@@ -82,10 +83,17 @@ function isCovered(t) {
 // mode « Couvertes uniquement » est actif ; les colonnes vidées disparaissent.
 const visibleTactics = computed(() => {
   const tactics = data.value?.tactics || []
-  if (!onlyCovered.value) return tactics
   return tactics
-    .map((c) => ({ ...c, techniques: c.techniques.filter(isCovered) }))
-    .filter((c) => c.techniques.length)
+    .map((c) => {
+      const covered = c.techniques.filter(isCovered)
+      return {
+        ...c,
+        coveredCount: covered.length,
+        total: c.techniques.length,
+        techniques: onlyCovered.value ? covered : c.techniques,
+      }
+    })
+    .filter((c) => (onlyCovered.value ? c.techniques.length : true))
 })
 
 // Import d'une couche ATT&CK Navigator (fichier .json).
@@ -206,40 +214,42 @@ function collapseAll() { expanded.value = new Set() }
         <div v-for="col in visibleTactics" :key="col.tactic" class="col">
           <div class="col-head">
             <span class="tac">{{ col.tactic }}</span>
-            <span class="tac-count">{{ col.techniques.length }}</span>
+            <span class="tac-count">{{ col.coveredCount }} / {{ col.total }}</span>
           </div>
-          <template v-for="t in col.techniques" :key="t.ext_id">
-            <div :class="['cell', cellClass(t)]" :title="cellTitle(t)">
-              <div class="crow">
-                <div class="cid">{{ t.ext_id }}</div>
-                <button v-if="t.sub_count" class="subtoggle" @click.stop="toggle(t.ext_id)"
-                        :title="expanded.has(t.ext_id) ? 'Replier' : 'Déplier les sous-techniques'">
-                  {{ expanded.has(t.ext_id) ? '▾' : '▸' }} {{ t.sub_used ? t.sub_used + '/' : '' }}{{ t.sub_count }}
-                </button>
-              </div>
-              <div class="cname">{{ t.name || '—' }}</div>
-              <div class="cbadges">
-                <span v-if="t.steps" class="badge">⚔ {{ t.steps }}</span>
-                <span v-if="t.vulns" class="badge">🐞 {{ t.vulns }}</span>
-                <span v-if="t.tickets" class="badge">🎫 {{ t.tickets }}</span>
-                <span v-if="t.scenarios" class="badge">📜 {{ t.scenarios }}</span>
-              </div>
-            </div>
-            <!-- Sous-techniques (dépliées) -->
-            <template v-if="expanded.has(t.ext_id)">
-              <div v-for="st in t.subtechniques" :key="st.ext_id"
-                   :class="['cell', 'sub', cellClass(st)]" :title="cellTitle(st)">
-                <div class="cid sub-id">{{ st.ext_id }}</div>
-                <div class="cname">{{ st.name || '—' }}</div>
+          <div class="cells">
+            <template v-for="t in col.techniques" :key="t.ext_id">
+              <div :class="['cell', cellClass(t)]" :title="cellTitle(t)">
+                <div class="crow">
+                  <div class="cid">{{ t.ext_id }}</div>
+                  <button v-if="t.sub_count" class="subtoggle" @click.stop="toggle(t.ext_id)"
+                          :title="expanded.has(t.ext_id) ? 'Replier' : 'Déplier les sous-techniques'">
+                    {{ expanded.has(t.ext_id) ? '▾' : '▸' }} {{ t.sub_used ? t.sub_used + '/' : '' }}{{ t.sub_count }}
+                  </button>
+                </div>
+                <div class="cname">{{ t.name || '—' }}</div>
                 <div class="cbadges">
-                  <span v-if="st.steps" class="badge">⚔ {{ st.steps }}</span>
-                  <span v-if="st.vulns" class="badge">🐞 {{ st.vulns }}</span>
-                  <span v-if="st.tickets" class="badge">🎫 {{ st.tickets }}</span>
-                  <span v-if="st.scenarios" class="badge">📜 {{ st.scenarios }}</span>
+                  <span v-if="t.steps" class="badge"><span class="bico" v-html="icons.swords"></span>{{ t.steps }}</span>
+                  <span v-if="t.vulns" class="badge"><span class="bico" v-html="icons.bug"></span>{{ t.vulns }}</span>
+                  <span v-if="t.tickets" class="badge"><span class="bico" v-html="icons.ticket"></span>{{ t.tickets }}</span>
+                  <span v-if="t.scenarios" class="badge"><span class="bico" v-html="icons.target"></span>{{ t.scenarios }}</span>
                 </div>
               </div>
+              <!-- Sous-techniques (dépliées) -->
+              <template v-if="expanded.has(t.ext_id)">
+                <div v-for="st in t.subtechniques" :key="st.ext_id"
+                     :class="['cell', 'sub', cellClass(st)]" :title="cellTitle(st)">
+                  <div class="cid sub-id">{{ st.ext_id }}</div>
+                  <div class="cname">{{ st.name || '—' }}</div>
+                  <div class="cbadges">
+                    <span v-if="st.steps" class="badge"><span class="bico" v-html="icons.swords"></span>{{ st.steps }}</span>
+                    <span v-if="st.vulns" class="badge"><span class="bico" v-html="icons.bug"></span>{{ st.vulns }}</span>
+                    <span v-if="st.tickets" class="badge"><span class="bico" v-html="icons.ticket"></span>{{ st.tickets }}</span>
+                    <span v-if="st.scenarios" class="badge"><span class="bico" v-html="icons.target"></span>{{ st.scenarios }}</span>
+                  </div>
+                </div>
+              </template>
             </template>
-          </template>
+          </div>
         </div>
       </div>
     </template>
@@ -266,36 +276,47 @@ function collapseAll() { expanded.value = new Set() }
 .legend{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:14px;font-size:11px;color:var(--muted)}
 .lg{display:flex;align-items:center;gap:5px}
 .sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px solid var(--border-2)}
-.grid{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;align-items:flex-start}
-.col{flex:0 0 168px;min-width:168px}
-.col-head{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-mini) var(--r-mini) 0 0}
-.tac{font-family:var(--font-eyebrow);text-transform:uppercase;letter-spacing:.04em;font-size:10px;color:var(--heading);font-weight:600}
-.tac-count{font-size:10px;color:var(--faint);background:var(--surface-3);border-radius:99px;padding:0 6px}
-.cell{padding:7px 8px;border:1px solid var(--border-2);border-top:none;background:var(--surface);border-left-width:3px;border-left-style:solid;border-left-color:var(--border-2)}
+/* Board — repris de la maquette (§ matrice ATT&CK, .atk-matrix) : cartes détachées
+   arrondies sur --surface-2, en-tête sans fond souligné + compteur couvertes/total,
+   teinte pleine par statut (fond + bordure + texte), hover qui soulève la carte. */
+.grid{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 10px;align-items:flex-start}
+.col{flex:0 0 150px;min-width:150px;display:flex;flex-direction:column}
+.col-head{padding:4px 4px 8px;border-bottom:2px solid var(--border);margin-bottom:7px}
+.tac{font-family:var(--font-eyebrow);text-transform:uppercase;letter-spacing:.02em;font-size:10.5px;font-weight:var(--eyebrow-weight);color:var(--heading);line-height:1.22;display:block}
+.tac-count{font-family:var(--font-data);font-size:9.5px;color:var(--faint);margin-top:2px;display:block}
+.cells{display:flex;flex-direction:column;gap:5px}
+.cell{border:1px solid var(--border-2);border-radius:6px;padding:5px 7px;background:var(--surface-2);transition:transform var(--t-fast),box-shadow var(--t-fast)}
+.cell:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
 .crow{display:flex;align-items:center;justify-content:space-between;gap:6px}
-.cid{font-family:var(--font-data);font-size:11px;font-weight:700;color:var(--heading)}
-.subtoggle{border:0;background:var(--surface-3);color:var(--muted);border-radius:99px;font-size:9.5px;
+.cid{font-family:var(--font-data);font-size:9px;font-weight:700;opacity:.85;color:var(--heading)}
+.subtoggle{border:0;background:var(--surface-3);color:var(--muted);border-radius:99px;font-size:9px;
   padding:0 6px;cursor:pointer;font-family:var(--font-data);line-height:1.6;white-space:nowrap}
 .subtoggle:hover{background:var(--violet);color:#fff}
-.cell.sub{margin-left:12px;border-left-width:2px;background:var(--surface-2)}
-.sub-id{font-size:10px;color:var(--muted)}
+.cell.sub{margin-left:12px}
+.sub-id{opacity:.7}
 .expand-ctl{display:flex;gap:6px}
 .expand-ctl .btn.on{background:var(--violet);color:#fff;border-color:var(--violet)}
-.cname{font-size:11px;color:var(--muted);line-height:1.25;margin-top:1px}
+.cname{font-size:10.5px;color:var(--muted);line-height:1.25;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cbadges{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
-.badge{font-size:10px;color:var(--text);background:var(--surface-3);border-radius:var(--r-mini);padding:0 4px}
-.cell.v-prevented{border-left-color:var(--green);background:var(--c-green-bg)}
-.cell.v-alerted{border-left-color:var(--cyan);background:var(--c-cyan-bg)}
-.cell.v-logged{border-left-color:var(--amber);background:var(--c-amber-bg)}
-.cell.v-no_telemetry{border-left-color:var(--red);background:var(--c-red-bg)}
-.cell.v-not_tested{border-left-color:var(--faint)}
-.cell.touched{border-left-color:var(--violet);background:var(--c-violet-bg)}
-.cell.library{border-left-color:var(--blue);background:var(--c-blue-bg)}
+.badge{display:inline-flex;align-items:center;gap:3px;font-size:9.5px;color:var(--text);background:var(--surface-3);border-radius:var(--r-mini);padding:1px 5px}
+.bico{display:inline-flex}
+.badge :deep(svg){width:11px;height:11px;flex:0 0 auto;opacity:.85}
+/* Teintes par statut — fond + bordure + couleur du texte (id/nom) */
+.cell.v-prevented,.cell.detected{background:var(--c-green-bg);border-color:var(--c-green-bd)}
+.cell.v-prevented .cid,.cell.v-prevented .cname,.cell.detected .cid,.cell.detected .cname{color:var(--c-green-tx)}
+.cell.v-alerted{background:var(--c-cyan-bg);border-color:var(--c-cyan-bd)}
+.cell.v-alerted .cid,.cell.v-alerted .cname{color:var(--c-cyan-tx)}
+.cell.v-logged{background:var(--c-amber-bg);border-color:var(--c-amber-bd)}
+.cell.v-logged .cid,.cell.v-logged .cname{color:var(--c-amber-tx)}
+.cell.v-no_telemetry,.cell.gap{background:var(--c-red-bg);border-color:var(--c-red-bd)}
+.cell.v-no_telemetry .cid,.cell.v-no_telemetry .cname,.cell.gap .cid,.cell.gap .cname{color:var(--c-red-tx)}
+.cell.touched,.cell.inlayer{background:var(--c-violet-bg);border-color:var(--c-violet-bd)}
+.cell.touched .cid,.cell.touched .cname,.cell.inlayer .cid,.cell.inlayer .cname{color:var(--c-violet-tx)}
+.cell.library{background:var(--c-blue-bg);border-color:var(--c-blue-bd)}
+.cell.library .cid,.cell.library .cname{color:var(--c-blue-tx)}
+.cell.v-not_tested{border-color:var(--border-2)}
 .cell.empty{opacity:.55}
-.cell.detected{border-left-color:var(--green);background:var(--c-green-bg)}
-.cell.gap{border-left-color:var(--red);background:var(--c-red-bg)}
 .cell.untested{opacity:.5}
-.cell.inlayer{border-left-color:var(--violet);background:var(--c-violet-bg)}
 .cell.muted{opacity:.4}
 .sw.v-prevented,.sw.detected{background:var(--green)} .sw.v-alerted{background:var(--cyan)}
 .sw.v-logged{background:var(--amber)} .sw.v-no_telemetry,.sw.gap{background:var(--red)}

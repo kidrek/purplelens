@@ -86,6 +86,9 @@ async function onSaved() {
     try {
       await api.refresh()
       await auth.fetchMe()
+      // La nouvelle org est désormais dans le scope : recharger la liste des clients
+      // pour qu'elle apparaisse tout de suite dans le sélecteur et les autocomplétions.
+      await ui.loadClients()
     } catch { /* silencieux : le scope se mettra à jour au prochain login */ }
   }
   await load()

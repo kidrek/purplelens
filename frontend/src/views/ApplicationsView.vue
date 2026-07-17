@@ -1,9 +1,10 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useLabels } from '../composables/useLabels'
 import { api, ApiError } from '../api/client'
 import { useUiStore } from '../stores/ui'
+import { useOrgNames } from '../composables/useOrgNames'
 import AppDrawer from '../components/AppDrawer.vue'
 import EntityForm from '../components/EntityForm.vue'
 import { fieldsFor } from '../fields'
@@ -14,6 +15,7 @@ const { enumLabel } = useLabels()
 // ouvertes) et présence dans un audit. Filtres opérationnels (responsable, stack,
 // criticité, exposition, audité). Données agrégées et cloisonnées RLS côté serveur.
 const ui = useUiStore()
+const { preload: preloadOrgs, orgName } = useOrgNames()
 const items = ref([])
 const loading = ref(true)
 const msg = ref(null)
@@ -63,6 +65,19 @@ const kpiWithVulns = computed(() => items.value.filter((a) => a.vuln_open > 0).l
 const critTone = (c) => CRIT_TONE[String(c).toLowerCase()] || 'gray'
 
 watch(() => ui.activeClient, load)
+onMounted(() => { load(); preloadOrgs() }) // chargement initial (+ noms d'organisations)
+
+async function remove(a) {
+  if (!window.confirm(`Supprimer l’application « ${a.nom} » ? Cette action est journalisée.`)) return
+  try {
+    await api.remove('applications', a.id)
+    if (detailFor.value?.id === a.id) detailFor.value = null
+    await load()
+  } catch (e) {
+    // Le serveur décide (matrice RBAC) : un rôle sans droit S reçoit un 403.
+    msg.value = e instanceof ApiError && e.status === 403 ? 'Accès refusé.' : (e.message || 'Erreur.')
+  }
+}
 function openNew() { editRecord.value = null; showForm.value = true }
 async function openEdit(a) {
   detailFor.value = null
@@ -113,13 +128,14 @@ function onSaved() { showForm.value = false; load() }
 
     <table v-else class="atable">
       <thead><tr>
-        <th>{{ t('fields.nom') }}</th><th>{{ t('fields.code') }}</th><th>{{ t('fields.criticite') }}</th><th>{{ t('fields.exposition') }}</th><th>{{ t('fields.contact_metier') }}</th>
+        <th>{{ t('fields.nom') }}</th><th>{{ t('fields.code') }}</th><th>{{ t('fields.client_id') }}</th><th>{{ t('fields.criticite') }}</th><th>{{ t('fields.exposition') }}</th><th>{{ t('fields.contact_metier') }}</th>
         <th>{{ t('av.col_vulns') }}</th><th>{{ t('av.audit') }}</th><th></th>
       </tr></thead>
       <tbody>
         <tr v-for="a in filtered" :key="a.id" class="row-clickable" @click="detailFor = a">
           <td class="nom link">{{ a.nom }}</td>
           <td class="mono">{{ a.code || '—' }}</td>
+          <td class="sm">{{ orgName(a.client_id) || '—' }}</td>
           <td><span :class="['pill', 'pill-' + critTone(a.criticite)]">{{ a.criticite || '—' }}</span></td>
           <td class="sm">{{ a.exposition || '—' }}</td>
           <td class="sm">{{ a.contact_metier || '—' }}</td>
@@ -135,6 +151,7 @@ function onSaved() { showForm.value = false; load() }
           <td class="ta" @click.stop>
             <button class="btn slim" @click="detailFor = a">{{ t('common.detail') }}</button>
             <button class="btn slim" :disabled="editBusy === a.id" @click="openEdit(a)">{{ editBusy === a.id ? '…' : t('common.edit') }}</button>
+            <button class="btn slim danger" @click="remove(a)">{{ t('common.delete') }}</button>
           </td>
         </tr>
       </tbody>
@@ -169,4 +186,5 @@ function onSaved() { showForm.value = false; load() }
 .v-tot{color:var(--heading);font-weight:600}
 .v-high{color:var(--red)} .v-open{color:var(--amber)}
 .ta{text-align:right;white-space:nowrap} .ta .slim{margin-left:4px;padding:3px 8px;font-size:11.5px}
+.ta .danger{color:var(--red);border-color:var(--c-red-bd)}
 </style>

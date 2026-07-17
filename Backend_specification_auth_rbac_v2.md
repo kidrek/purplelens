@@ -1,9 +1,11 @@
 # Spécification Backend — Authentification & RBAC réel
-## Cockpit de Pilotage Purple Team (multi-clients) — v2.0
+## Cockpit de Pilotage Purple Team (multi-clients) — v2.1
  
 **Statut :** spécification de la **cible backend**. Remplace, pour le produit, le **RBAC simulé** de la v1 (sélecteur de profil côté client, `audit-tracker.html`). La v1 reste la référence de la maquette de démonstration.
 **Rattachement :** cahier des charges **v5.0** (§3 profils · §6quater stockage des preuves) · DA **v2.7** (§0.6 barre supérieure · §5 Preuves) · DDL `schema_evidence.sql`.
 **Principe directeur :** ce que la v1 *simulait* côté client (rôle + `clients_rattaches[]`, matrice L/C/E/S/V, immutabilité du journal), la v2 le rend **opposable** — porté par le serveur, la base (RLS) et la hiérarchie de clés (Vault). Aucun contrôle de sécurité ne repose plus sur le navigateur.
+
+> **v2.1 (2026-07-15) — ajout du rôle `operateur`.** Un **7ᵉ rôle** est introduit : `operateur`, profil *prestataire multi-clients « super-utilisateur métier »* (CRUD complet sur l'inventaire, les scénarios et les livrables ; validation de ses propres audits/vulnérabilités/tickets). Il reste **strictement cloisonné** par `client_scope` (jamais multi-client de droit). Le reste du modèle v2.0 est inchangé. Cf. §2.1 et la colonne *Operateur* ⁵ de la matrice §3.1.
  
 ---
  
@@ -18,7 +20,7 @@
 | **Journal** | Chaîne de hachage locale | Idem, mais **côté serveur**, alimenté par toutes les décisions sensibles |
 | **Preuves** | Blob IndexedDB, chiffrement optionnel par passphrase | Object storage chiffré (DEK/audit, KEK/client Vault), accès sous contrôle RBAC + RLS + TLP/PAP |
  
-> **La v2 conserve intégralement le modèle métier de la v1** : 6 rôles, matrice rôle × entité × action (L/C/E/S/V), validation comme action distincte, cloisonnement par client qui *restreint sans jamais élargir*. Elle en change le **lieu d'application** et lui ajoute l'entité **Preuves**.
+> **La v2 conserve intégralement le modèle métier de la v1** : les 6 rôles v1, la matrice rôle × entité × action (L/C/E/S/V), la validation comme action distincte, le cloisonnement par client qui *restreint sans jamais élargir*. Elle en change le **lieu d'application** et lui ajoute l'entité **Preuves**. *(La v2.1 ajoute un **7ᵉ rôle** `operateur` — cf. encadré ci-dessus — sans modifier aucun droit des 6 rôles v1.)*
  
 ---
  
@@ -57,15 +59,15 @@ app_user
   external_sub  text        -- 'sub' OIDC (NULL si compte local)
   email         text UNIQUE
   display_name  text
-  role          text        -- 'admin'|'manager'|'ciso'|'auditeur'|'voc'|'cert'
+  role          text        -- 'admin'|'manager'|'ciso'|'auditeur'|'voc'|'cert'|'operateur'
   client_scope  uuid[]      -- clients rattachés ; [] = tous (selon droits du rôle)
   status        text        -- 'active'|'suspended'|'disabled'
   mfa_enrolled  boolean
   created_at, updated_at, last_login_at
 ```
  
-- Les **6 rôles** de la v1 sont conservés à l'identique (`admin`, `manager`, `ciso`, `auditeur`, `voc`, `cert`).
-- `client_scope` reprend `clients_rattaches[]` : **vide = tous clients** (dans la limite des droits du rôle) ; **renseigné = restriction stricte**. Verrouillé à *tous clients* pour `admin` et `manager` (leur raison d'être multi-client), configurable pour `ciso`/`auditeur`/`voc`/`cert` — inchangé depuis la v1.
+- Les **6 rôles** de la v1 sont conservés à l'identique (`admin`, `manager`, `ciso`, `auditeur`, `voc`, `cert`). La **v2.1** ajoute un **7ᵉ rôle** `operateur` (cf. ⁵ en §3.1) — profil prestataire multi-clients « super-utilisateur métier ».
+- `client_scope` reprend `clients_rattaches[]` : **vide = tous clients** (dans la limite des droits du rôle) ; **renseigné = restriction stricte**. Verrouillé à *tous clients* pour `admin` et `manager` (leur raison d'être multi-client), configurable pour `ciso`/`auditeur`/`voc`/`cert`/`operateur` — inchangé depuis la v1. **`operateur` n'est jamais multi-client de droit** : un scope vide ne lui donne aucun accès (durcissement fail-closed) ; l'admin lui renseigne explicitement la liste des clients servis.
 - Toute création/modification de compte, de rôle ou de `client_scope` est une **action d'administration journalisée** (acteur, avant/après, horodatage), réservée à `admin` + step-up MFA.
 ### 2.2 Comptes de service
  
@@ -79,20 +81,21 @@ Le **générateur de livrables** et les **jobs** (rétention/crypto-shredding, c
  
 La **matrice rôle × entité × action (L/C/E/S/V)** de la v1 §3 est reprise pour les 13 entités existantes — avec **une extension v2 des droits Auditeur** (⁴ ci-dessous) — et **étendue** aux deux entités du sous-système de preuves (cahier §6quater.7) :
  
-| Entité | Admin | Manager | RSSI/CISO | Auditeur | VOC | CERT/Blue |
-|---|---|---|---|---|---|---|
-| **Organisations** | LCES | L | L | **LC** ⁴ | L | L |
-| **Applications** | LCES | L | L | **LC** ⁴ | L | L |
-| **Ressources** | LCES | L | L | **LC** ⁴ | L | LCES |
-| *(… 10 autres entités v1 inchangées : Audits, Actions, Attaques, Exercices, Observations, Vulnérabilités, Tickets, Scénarios, Livrables, Journal …)* | | | | | | |
-| **🗄️ Preuves** (`evidence`) | L E¹ S² | L E¹ | L | **L C E¹** | L | L |
-| **🗄️ Journal d'accès preuves** (`evidence_access`) | L | L | L | — | — | — |
-| **🗄️ Clés d'audit** (`audit_dek`) | — ³ | — | — | — | — | — |
+| Entité | Admin | Manager | RSSI/CISO | Auditeur | VOC | CERT/Blue | Operateur ⁵ |
+|---|---|---|---|---|---|---|---|
+| **Organisations** | LCES | L | L | **LC** ⁴ | L | L | **LCES** |
+| **Applications** | LCES | L | L | **LC** ⁴ | L | L | **LCES** |
+| **Ressources** | LCES | L | L | **LC** ⁴ | L | LCES | **LCES** |
+| *(… 10 autres entités v1 : Audits, Actions, Attaques, Exercices, Observations, Vulnérabilités, Tickets, Scénarios, Livrables, Journal — inchangées pour les 6 rôles v1 ; droits `operateur` détaillés en ⁵)* | | | | | | | |
+| **🗄️ Preuves** (`evidence`) | L E¹ S² | L E¹ | L | **L C E¹** | L | L | **L C E¹** |
+| **🗄️ Journal d'accès preuves** (`evidence_access`) | L | L | L | — | — | — | — |
+| **🗄️ Clés d'audit** (`audit_dek`) | — ³ | — | — | — | — | — | — |
  
 ¹ **E limité aux champs non-custody** (légende, `tlp`/`pap`, `contains_pii`/`contains_secrets`). L'immutabilité des champs de custody (empreintes, localisation, crypto, auteur, horodatages, scellement) est portée par un **trigger base** (`schema_evidence.sql`), pas par la matrice — défense en profondeur.
 ² **S = soft delete uniquement** (`deleted_at`), **refusé** si `legal_hold` actif ou Object Lock non échu. La destruction effective du contenu passe par le **crypto-shredding** (§3.4), jamais par un DELETE.
 ³ **Aucun rôle** n'a d'accès applicatif direct à `audit_dek` : les clés enveloppées ne sont jamais lues par un humain. Seuls les **comptes de service** de déchiffrement les manipulent, via un chemin dédié (unwrap Vault en mémoire), et uniquement pour servir une preuve autorisée.
 ⁴ **Extension v2** : l'Auditeur obtient **C** (création) sur `organisations`, `applications` et `ressources` — il peut référencer un client, une application ou une ressource découverts pendant l'audit — sans **E/S** (l'édition/suppression du référentiel reste réservée à l'Admin). Conséquence RLS : `organisation` est cloisonnée par sa **propre clé** (`app_client_visible(id)`), or l'`id` d'une organisation neuve ne figure dans aucun scope par construction ; sa politique RLS est donc **scindée** (`SELECT/UPDATE/DELETE` = appartenance au scope ; `INSERT` = simple contexte de sécurité établi, `app_authenticated()`, migration `0009`). À la création, l'`id` de la nouvelle organisation est ajouté au `client_scope` du créateur (effectif à sa prochaine connexion). Applications/Ressources sont cloisonnées par `client_id`/`organisation_id` (déjà dans le scope) : aucun changement RLS.
+⁵ **Ajout v2.1 — rôle `operateur`** (prestataire multi-clients « super-utilisateur métier »). C'est l'Auditeur **élevé** : **CRUD complet** (LCES) sur `organisations`, `applications`, `ressources`, `scénarios` (+ étapes) et `livrables` ; **CRUD + validation** (LCESV) sur `audits` (+ actions, jalons), `vulnérabilités` et `tickets` ; **LCES** sur attaques, exercices, observations ; **L C E¹** sur `evidence` (dépose les preuves comme l'Auditeur, sans **S**) ; **L** sur `corpus` et `journal` ; **aucun** accès à `evidence_access` ni `audit_dek` (invariants inchangés). Conséquence RLS : `operateur` est ajouté à `app_role_may_create_org()` (miroir SQL du droit `organisations:C`, migration `0016`) ; il **n'est pas** ajouté à `app_role_spans_all_clients()` — il reste **cloisonné** à son `client_scope` explicite. Aucun autre droit des 6 rôles v1 n'est modifié.
  
 > Cohérence avec l'esprit v1 : de même que **personne, pas même l'Admin, ne peut modifier le journal**, personne ne *lit* une DEK. L'immutabilité et le secret sont portés par la structure, pas par la discipline d'un rôle.
  
@@ -260,4 +263,4 @@ Le générateur embarque les preuves image dans les rapports (cahier §6bis). Il
  
 ## 9. Ce qui reste inchangé depuis la v1
  
-Pour lever toute ambiguïté : la v2 **ne remet pas en cause** le modèle métier. Sont conservés **à l'identique** — les 6 rôles et leurs codes ; la matrice L/C/E/S/V sur les 13 entités existantes ; la **validation** comme action distincte de l'édition (avec `valide_par`/`valide_le`) ; le principe du cloisonnement `{ rôle, clients rattachés }` qui **restreint sans élargir** ; l'**immutabilité du journal** (aucun rôle n'a C/E/S) ; les correctifs v1 (éditeur de scénario sous `can()`, boutons d'édition masqués par droit, palette ⌘K vérifiant la lecture). La v2 **ajoute** : l'authentification réelle, l'application serveur de ces règles, la RLS, l'entité `Preuves` et son articulation avec le chiffrement d'enveloppe.
+Pour lever toute ambiguïté : la v2 **ne remet pas en cause** le modèle métier. Sont conservés **à l'identique** — les 6 rôles v1 et leurs codes (et *leurs droits*, inchangés par l'ajout v2.1 d'`operateur`) ; la matrice L/C/E/S/V sur les 13 entités existantes ; la **validation** comme action distincte de l'édition (avec `valide_par`/`valide_le`) ; le principe du cloisonnement `{ rôle, clients rattachés }` qui **restreint sans élargir** ; l'**immutabilité du journal** (aucun rôle n'a C/E/S) ; les correctifs v1 (éditeur de scénario sous `can()`, boutons d'édition masqués par droit, palette ⌘K vérifiant la lecture). La v2 **ajoute** : l'authentification réelle, l'application serveur de ces règles, la RLS, l'entité `Preuves` et son articulation avec le chiffrement d'enveloppe. La **v2.1** ajoute le **7ᵉ rôle** `operateur` (cf. §2.1 et ⁵ en §3.1), sans toucher aux droits des 6 rôles v1.

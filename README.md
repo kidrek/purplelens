@@ -1,81 +1,232 @@
-# Cockpit de Pilotage Purple Team
+# Purple Team Operations Cockpit
 
-Plateforme multi-clients de pilotage d'une équipe Purple Team (cybersécurité offensive
-et défensive coordonnées). Elle gère le cycle complet : organisations, applications,
-ressources, scénarios de menace, audits, exercices Purple, chaînes d'attaque,
-observations défensives, vulnérabilités, tickets de détection, livrables — et un
-**sous-système de preuves chiffrées** de bout en bout.
+🇫🇷 [Version française](README.fr.md)
 
-Ce dépôt implémente les documents normatifs du projet : cahier des charges v5.0,
-architecture technique (DAT) v1.1, spécification Auth & RBAC v2.0 et direction
-artistique v2.7.
+Multi-tenant platform for running a Purple Team (coordinated offensive and defensive
+cybersecurity). It manages the full lifecycle: organizations, applications, resources,
+threat scenarios, audits, Purple exercises, attack chains, defensive observations,
+vulnerabilities, detection tickets, deliverables — and an **end-to-end encrypted
+evidence subsystem**.
 
-## Doctrine de sécurité — défense en profondeur (4 couches)
+This repository implements the project's normative documents: requirements
+specification v5.0, technical architecture (DAT) v1.1, Auth & RBAC specification v2.0
+and artistic direction v2.7.
 
-Aucune autorisation n'est décidée côté client : **le serveur décide, toujours**.
-Les binaires ne transitent jamais par l'API. Quatre couches indépendantes se
-superposent, de sorte que la défaillance d'une seule ne compromet pas l'ensemble :
+## Guided tour
 
-1. **`can()` applicatif** — un moteur à 5 portes (authentification, MFA/step-up,
-   matrice RBAC, cloisonnement client, TLP/PAP) évalué à chaque appel, refus par défaut.
-2. **RLS PostgreSQL** — Row-Level Security *forcée* (`FORCE ROW LEVEL SECURITY`) sur
-   toutes les tables cloisonnées. Le rôle applicatif (`app_api`) est `NOBYPASSRLS` :
-   même une requête qui échapperait à la couche 1 ne voit que les clients de son
-   périmètre. Sans contexte applicatif établi, **aucune ligne n'est visible**.
-3. **Chiffrement enveloppe** — chaque preuve est chiffrée par une clé de données (DEK)
-   AES-256-GCM propre à l'audit ; la DEK est elle-même enveloppée par une clé maître
-   (KEK) par client, gérée dans Vault (moteur *transit*). Détruire la KEK/DEK rend les
-   données irrécupérables (*crypto-shredding*).
-4. **Stockage WORM + journal inviolable** — les objets chiffrés sont déposés en MinIO
-   avec *Object Lock* (write-once-read-many) ; le journal d'audit est chaîné par hachage
-   (tamper-evident) et **immuable applicativement** : aucun rôle, pas même `admin`, ne
-   peut le modifier ou le supprimer.
+A complete, screen-by-screen tour of the platform, in navigation order. Screenshots use
+the dark SOC theme (theme B) and were taken on the demo dataset. Detailed role-based
+journeys are covered in the [user guide](docs/guide-utilisateur.md) (French).
 
-Le déploiement respecte la **règle d'un seul point d'entrée** (DAT §4.1bis) : seul le
-reverse proxy `frontend` publie des ports ; tous les autres services ne communiquent
-que sur les réseaux Docker internes. Un test de CI (`scripts/check_ports.py`) échoue si
-un autre service expose un port.
+### Sign-in & account
 
-## Pile technique
+![Login page](docs/img/login.png)
 
-| Couche      | Technologie |
-|-------------|-------------|
-| Backend/BFF | Python 3.11+ (validé sur 3.12) · FastAPI · SQLAlchemy 2 (async) · Alembic |
-| Tâches      | Celery + Redis (files `ingest` / `jobs`) |
-| Données     | PostgreSQL 15+ (validé sur 16, RLS forcée) |
-| Secrets/KEK | HashiCorp Vault (moteur transit) |
-| Objets      | MinIO (S3, Object Lock COMPLIANCE) |
-| Antivirus   | ClamAV (sas d'ingestion) |
-| Identité    | Keycloak (OIDC + PKCE S256) — l'IdP authentifie, le produit autorise |
-| Frontend    | Vue 3 · Vite · Pinia · vue-i18n (FR/EN) — thèmes A (clair) / B (SOC sombre) |
-| Déploiement | Docker Compose + Makefile |
+*Sign-in: organization SSO (Keycloak, OIDC + PKCE) or local fallback with e-mail /
+password / TOTP. Once signed in, the session is **silently renewed** while you are
+active — no more untimely logouts.*
 
-## Démarrage rapide
+![My account](docs/img/account.png)
 
-Prérequis : Docker, Docker Compose, Make.
+*My account: identity and role, **TOTP enrollment** (mandatory for operational roles and
+step-up), and the "auditor card" that makes you selectable as an auditor on audits
+within your scope.*
+
+### Steering
+
+![Cockpit — Purple Team dashboard](docs/img/cockpit.png)
+
+*Cockpit: detection rate, blind spots, criticals past SLA, coverage per MITRE tactic,
+aggregated posture and the latest journal events — restricted to your tenant scope.*
+
+![Purple exercises — Red → Blue → Detection loop](docs/img/exercices.png)
+
+*Purple exercises: the Red → Blue → Detection loop on a single screen — run KPIs
+(coverage, steps played, detections, blind spots), posture breakdown, attack-step
+timeline with defensive verdicts (prevented / alerted / logged / no telemetry) and
+on-the-fly creation of remediation tickets.*
+
+![Audit card — pentest engagement](docs/img/audit-drawer.png)
+
+*Audits: an engagement card (opened from the list) — PTES progress, test actions,
+emulated CTI scenario (FIN7) and the audit's ATT&CK TTP coverage.*
+
+| | |
+|---|---|
+| ![Vulnerabilities](docs/img/vulnerabilities.png) | ![Detection tickets](docs/img/tickets.png) |
+| Vulnerabilities & gaps: severity, CVSS, computed SLAs, CISO/Manager validation, CVE/EPSS enrichment. | Detection tickets: born from exercise blind spots, with ATT&CK technique, D3FEND countermeasure and Sigma rule. |
+
+![Vulnerability card](docs/img/vuln-drawer.png)
+
+*Vulnerability card: identity (client, linked audit, application, SLA), analysis,
+OWASP Top 10 / CWE / CVSS classification, and online **VOC enrichment** via CIRCL —
+EPSS, CISA KEV, SSVC, VEX — with graceful degradation when offline.*
+
+![Detection ticket card](docs/img/ticket-drawer.png)
+
+*Ticket card: ATT&CK technique and D3FEND countermeasure resolved to plain names
+("T1608.004 — Drive-by Target", "D3-NTA — Network Traffic Analysis"), blind-spot
+description, priority and remediation status.*
+
+### Knowledge
+
+![ATT&CK matrix — coverage per tactic](docs/img/attack-matrix.png)
+
+*ATT&CK matrix: tactics as columns (covered / total), techniques tinted by status,
+expandable sub-techniques, activity badges, and 4 reading layers — Coverage /
+Detection / Gap / imported ATT&CK Navigator layer.*
+
+![Threat scenarios](docs/img/scenarios.png)
+
+*Threat scenarios: cross-tenant CTI library (emulated actors, sophistication, Admiralty
+credibility), **STIX 2.1** import / export.*
+
+![FIN7 scenario card](docs/img/scenario-drawer.png)
+
+*A scenario card: emulated actor (FIN7), 50 TTPs with their per-tactic ATT&CK coverage,
+D3FEND countermeasures, remaining blind spots and linked audits — the bridge between
+intelligence and exercise.*
+
+| | |
+|---|---|
+| ![Organizations](docs/img/organisations.png) | ![Applications](docs/img/applications.png) |
+| Organizations: clients and providers, sector, default TLP — the foundation of tenant isolation. | Applications: inventory of the tested perimeter, linked to audits and vulnerabilities. |
+
+| | |
+|---|---|
+| ![Organization card](docs/img/organisation-drawer.png) | ![Application card](docs/img/application-drawer.png) |
+| Organization card: contact, default TLP and attachments (applications, audits, resources). | Application card: criticality, environment and links to the perimeter's audits and vulnerabilities. |
+
+![Resources](docs/img/ressources.png)
+
+*Resources: auditors and assets, attached to organizations and selectable in
+engagements.*
+
+### Deliverables & traceability
+
+![Deliverable generator](docs/img/deliverables.png)
+
+*Deliverables: engagement letters, NDAs and PTES reports generated as PDF (headless
+Chromium) with a **TLP classification banner**, sealed in locked storage and traced in
+the journal.*
+
+![Deliverable card](docs/img/deliverable-drawer.png)
+
+*A produced deliverable's card: type, client, language, TLP marking and download —
+every access is traced in the journal.*
+
+![Evidence vault](docs/img/evidence.png)
+
+*Evidence vault: upload via presigned URL (binaries never transit through the API),
+ingestion sandbox (antivirus, true file type, AES-256-GCM envelope encryption), **WORM**
+storage and TLP marking. Requires `make init-vault` before the first deposits.*
+
+![Tamper-evident journal](docs/img/journal.png)
+
+*Journal: hash-chained, readable by everyone, modifiable by no one — the "Verify chain
+integrity" button recomputes the chain server-side.*
+
+### System
+
+![Methodology library](docs/img/bibliotheque.png)
+
+*Library: a corpus of 38 articles (procedures, processes, business articles) filterable
+by profile — auditor, VOC, CTI, Purple Manager — with ISO 27002 cross-references and
+exportable templates.*
+
+![Library article — process](docs/img/bibliotheque-article.png)
+
+*Reading a process ("The detection engineering loop"): step-by-step flow with decision
+points, "key takeaways" box, relevant profiles and ISO 27002 reference (A.8.16) —
+methodology right next to the tool.*
+
+![Security reference catalogs](docs/img/parametres.png)
+
+*Settings — reference catalogs: local ATT&CK / ATT&CK Groups / D3FEND / OWASP / CWE /
+CAPEC / MISP Threat Actors catalog, synchronizable from online sources (falls back to
+the embedded baseline when offline).*
+
+![Administration](docs/img/admin.png)
+
+*Administration (`admin` role): accounts, roles and each user's **client scope**
+(fail-closed security: an empty scope means no access for non-manager roles), account
+creation and deactivation.*
+
+## Security doctrine — defense in depth (4 layers)
+
+No authorization is ever decided client-side: **the server decides, always**.
+Binaries never transit through the API. Four independent layers stack up, so that the
+failure of any single one does not compromise the whole:
+
+1. **Application `can()` engine** — a 5-gate evaluator (authentication, MFA/step-up,
+   RBAC matrix, client tenancy, TLP/PAP) checked on every call, deny by default.
+2. **PostgreSQL RLS** — *forced* Row-Level Security (`FORCE ROW LEVEL SECURITY`) on all
+   tenant-scoped tables. The application role (`app_api`) is `NOBYPASSRLS`: even a query
+   that escaped layer 1 only sees the clients within its scope. Without an established
+   application context, **no row is visible**.
+3. **Envelope encryption** — each evidence item is encrypted with a per-audit
+   AES-256-GCM data key (DEK); the DEK is itself wrapped by a per-client master key
+   (KEK) managed in Vault (*transit* engine). Destroying the KEK/DEK makes the data
+   unrecoverable (*crypto-shredding*).
+4. **WORM storage + tamper-evident journal** — encrypted objects are stored in MinIO
+   with *Object Lock* (write-once-read-many); the audit journal is hash-chained
+   (tamper-evident) and **immutable at the application level**: no role, not even
+   `admin`, can modify or delete it.
+
+Deployment follows the **single entry point rule** (DAT §4.1bis): only the `frontend`
+reverse proxy publishes ports; every other service communicates solely on internal
+Docker networks. A CI check (`scripts/check_ports.py`) fails if any other service
+exposes a port.
+
+## Tech stack
+
+| Layer       | Technology |
+|-------------|------------|
+| Backend/BFF | Python 3.11+ (validated on 3.12) · FastAPI · SQLAlchemy 2 (async) · Alembic |
+| Tasks       | Celery + Redis (`ingest` / `jobs` queues) |
+| Data        | PostgreSQL 15+ (validated on 16, forced RLS) |
+| Secrets/KEK | HashiCorp Vault (transit engine) |
+| Objects     | MinIO (S3, Object Lock COMPLIANCE) |
+| Antivirus   | ClamAV (ingestion sandbox) |
+| Identity    | Keycloak (OIDC + PKCE S256) — the IdP authenticates, the product authorizes |
+| Frontend    | Vue 3 · Vite · Pinia · vue-i18n (FR/EN) — themes A (light) / B (dark SOC) |
+| Deployment  | Docker Compose + Makefile |
+
+## Quick start
+
+Prerequisites: Docker, Docker Compose, Make.
 
 ```bash
-cp .env.example .env          # ajuster les secrets (SEED_DEFAULT_PASSWORD, APP_*_PASSWORD…)
-make bootstrap                # premier démarrage complet : stack + schéma + comptes de démo
-make init-vault               # (avant le dépôt de preuves) descellement + transit + KEK
+cp .env.example .env          # adjust the secrets (SEED_DEFAULT_PASSWORD, APP_*_PASSWORD…)
+make bootstrap                # full first start: stack + schema + demo accounts
+make init-vault               # (before storing evidence) unseal + transit + KEK
 ```
 
-`make bootstrap` enchaîne `up` (certificat TLS dev généré au besoin), l'attente de la
-disponibilité de PostgreSQL, `migrate` (schéma Alembic) et `seed` (référentiels +
-comptes de démonstration). Idempotent : peut être relancé sans dommage.
+`make bootstrap` chains `up` (dev TLS certificate generated if needed), waiting for
+PostgreSQL availability, `migrate` (Alembic schema) and `seed` (reference catalogs +
+demo accounts). Idempotent: safe to re-run.
 
-Équivalent manuel, étape par étape :
+Manual equivalent, step by step:
 
 ```bash
-make up                       # démarre toute la pile
-make migrate                  # applique le schéma (rôle app_migrator)
-make seed                     # référentiels + organisation démo + comptes
+make up                       # start the whole stack
+make migrate                  # apply the schema (app_migrator role)
+make seed                     # reference catalogs + demo organizations + accounts
+make seed-demo                # (optional) rich demo dataset — audits, Purple exercises,
+                              # vulnerabilities, tickets, scenarios (lights up every KPI)
 ```
 
-Accès : `https://localhost/` — comptes de démonstration (mot de passe `ChangeMe!2026`,
-TOTP à enrôler) : `admin@purple.local`, `auditeur@purple.local`, `ciso@purple.local`.
+`make seed-demo` is idempotent (deterministic UUIDs) and kept separate from `seed`, so a
+production instance stays free of fictitious data.
 
-Import de la maquette de démonstration :
+Access: `https://localhost/` (self-signed certificate in dev — accept the warning).
+Demo accounts: `admin@purple.local`, `auditeur@purple.local`, `ciso@purple.local`,
+`operateur@purple.local` (multi-client provider role, scoped to both demo clients).
+The password is the value of `SEED_DEFAULT_PASSWORD` in `.env`; since MFA is not
+enrolled on the demo accounts, **leave the TOTP field empty** at sign-in (enrollment
+happens later via "My account").
+
+Importing the demo dataset:
 
 ```bash
 make import-maquette FILE=export.json
@@ -84,55 +235,56 @@ make import-maquette FILE=export.json
 ## Tests
 
 ```bash
-make test            # suite complète (unitaires + sécurité)
-make test-security   # familles bloquantes : isolation RLS, matrice RBAC, sas,
-                     # immuabilité du journal, crypto-shredding, exposition réseau
+make test            # full suite (unit + security)
+make test-security   # blocking families: RLS isolation, RBAC matrix, ingestion sandbox,
+                     # journal immutability, crypto-shredding, network exposure
 ```
 
-Les tests d'isolation RLS s'exécutent contre une vraie base PostgreSQL migrée
-(`TEST_DATABASE_URL`), et prouvent notamment qu'une connexion sans contexte ne voit
-aucune ligne et qu'une écriture hors périmètre est rejetée par la clause `WITH CHECK`.
+The RLS isolation tests run against a real migrated PostgreSQL database
+(`TEST_DATABASE_URL`) and prove, among other things, that a connection without context
+sees no rows and that an out-of-scope write is rejected by the `WITH CHECK` clause.
 
 ## Structure
 
 ```
-backend/            API FastAPI, workers Celery, migrations, tests
+backend/            FastAPI API, Celery workers, migrations, tests
   app/
-    security/       matrice RBAC, moteur can() 5 portes, contexte, jetons, OIDC, MFA
-    journal/        journal chaîné (tamper-evident)
-    storage/        chiffrement enveloppe, Vault, MinIO (WORM)
-    models/         ORM (métier + sécurité + preuves)
-    api/routes/     auth, entités (CRUD générique), preuves, livrables, admin
-    workers/        sas d'ingestion (antivirus, type réel, chiffrement, WORM), jobs
-    deliverables/   génération de livrables HTML→PDF (bandeaux TLP)
-  sql/              roles.sql (rôles PG) + schema_evidence.sql (DDL preuves + RLS)
-  migrations/       Alembic (schéma initial complet)
-frontend/           Vue 3 + Vite (tokens DA repris verbatim)
-deploy/             nginx (reverse proxy unique), keycloak (realm), vault
+    security/       RBAC matrix, 5-gate can() engine, context, tokens, OIDC, MFA
+    journal/        hash-chained journal (tamper-evident)
+    storage/        envelope encryption, Vault, MinIO (WORM)
+    models/         ORM (business + security + evidence)
+    api/routes/     auth, entities (generic CRUD), evidence, deliverables, admin
+    workers/        ingestion sandbox (antivirus, true type, encryption, WORM), jobs
+    deliverables/   HTML→PDF deliverable generation (TLP banners)
+  sql/              roles.sql (PG roles) + schema_evidence.sql (evidence DDL + RLS)
+  migrations/       Alembic (complete initial schema)
+frontend/           Vue 3 + Vite (design tokens reused verbatim)
+deploy/             nginx (single reverse proxy), keycloak (realm), vault
 scripts/            check_ports.py, backup.sh, restore.sh
-docs/               runbook Vault, guide utilisateur
-.github/workflows/  CI (lint, tests, sécurité, exposition réseau)
+docs/               user guide, deployment, operations, Vault runbook, screenshots (img/)
 ```
 
-## Décisions d'architecture (DAT)
+## Architecture decisions (DAT)
 
-D1 Python/FastAPI/SQLAlchemy async · D2 Vue 3 + réemploi des tokens DA ·
-D3 Docker Compose (Kubernetes hors périmètre) · D4 rôle géré dans le produit (l'IdP
-authentifie seulement) · D5 MFA globale pour les rôles opérationnels + step-up sur les
-actions à haut risque · D6 droits Manager en lecture seule sur Ressources/Applications/
-Actions · D7 Keycloak embarqué (OIDC + PKCE) · D8 sur-chiffrement côté client reporté.
+D1 Python/FastAPI/SQLAlchemy async · D2 Vue 3 + reuse of design tokens ·
+D3 Docker Compose (Kubernetes out of scope) · D4 role managed in the product (the IdP
+only authenticates) · D5 global MFA for operational roles + step-up on high-risk
+actions · D6 read-only Manager rights on Resources/Applications/Actions · D7 embedded
+Keycloak (OIDC + PKCE) · D8 client-side over-encryption deferred.
 
 ## Documentation
 
-| Document | Objet |
+All operational documents are written in French.
+
+| Document | Purpose |
 |---|---|
-| `docs/deploiement.md` | Déploiement en production (secrets, ordre d'installation, intégrations, TLS, montée de version) |
-| `docs/exploitation.md` | Exploitation courante (synchro référentiels, sauvegarde, vérification du journal, réponse à incident, crypto-shredding) |
-| `docs/runbook-vault.md` | Vault en détail (descellement, rotation KEK, crypto-shredding) |
-| `docs/guide-utilisateur.md` | Prise en main par rôle et parcours métier |
-| `docs/validation.md` | Preuves d'exécution — couverture des tests |
-| `docs/RECETTE.md` | Recette et durcissement |
+| `docs/deploiement.md` | Production deployment (secrets, install order, integrations, TLS, upgrades) |
+| `docs/exploitation.md` | Day-2 operations (catalog sync, backup, journal verification, incident response, crypto-shredding) |
+| `docs/runbook-vault.md` | Vault in detail (unsealing, KEK rotation, crypto-shredding) |
+| `docs/guide-utilisateur.md` | Role-based onboarding and business journeys |
+| `docs/validation.md` | Execution proof — test coverage |
+| `docs/RECETTE.md` | Acceptance testing and hardening |
 
-## Licence
+## License
 
-Projet interne. Voir les conditions du contrat de prestation.
+Internal project. See the terms of the service contract.

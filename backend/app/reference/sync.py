@@ -75,7 +75,8 @@ def parse_attack(bundle: dict) -> list[dict]:
         if not tactics and phases:
             tactics = [phases[0]]
         out.append({"ext_id": ext_id, "name": o.get("name") or ext_id,
-                    "tactic": tactics[0] if tactics else None, "tactics": tactics})
+                    "tactic": tactics[0] if tactics else None, "tactics": tactics,
+                    "description": o.get("description")})
     return out
 
 
@@ -123,8 +124,11 @@ def parse_attack_groups(bundle: dict) -> list[dict]:
 
     Le même bundle STIX que `parse_attack` contient les groupes (`intrusion-set`) et les
     relations `intrusion-set --uses--> attack-pattern`. On en dérive, par acteur :
-    { ext_id (Gxxxx), name, data:{aliases, techniques} } — techniques dédupliquées, ordre
-    des relations préservé. Groupes/relations révoqués ou dépréciés ignorés.
+    { ext_id (Gxxxx), name, data:{aliases, techniques, procedures} } — techniques
+    dédupliquées, ordre des relations préservé. `procedures` mappe ext_id technique →
+    description de la relation `uses` (les « procedure examples » : comment CET acteur
+    emploie la technique), utilisée pour pré-remplir le contexte d'une étape offensive.
+    Groupes/relations révoqués ou dépréciés ignorés.
     """
     groups: dict[str, dict] = {}       # id STIX intrusion-set -> acteur
     tech_by_stix: dict[str, str] = {}  # id STIX attack-pattern -> ext_id technique
@@ -140,7 +144,8 @@ def parse_attack_groups(bundle: dict) -> list[dict]:
             aliases = [a for a in (o.get("aliases") or o.get("x_mitre_aliases") or [])
                        if isinstance(a, str) and a and a != name]
             groups[o.get("id")] = {"ext_id": ext_id, "name": name,
-                                   "aliases": list(dict.fromkeys(aliases)), "techniques": []}
+                                   "aliases": list(dict.fromkeys(aliases)),
+                                   "techniques": [], "procedures": {}}
         elif t == "attack-pattern":
             ext_id = _attack_ext_id(o)
             if ext_id and o.get("id"):
@@ -153,10 +158,15 @@ def parse_attack_groups(bundle: dict) -> list[dict]:
         src, tgt = o.get("source_ref"), o.get("target_ref")
         g = groups.get(src) if isinstance(src, str) else None
         tech = tech_by_stix.get(tgt) if isinstance(tgt, str) else None
-        if g and tech and tech not in g["techniques"]:
-            g["techniques"].append(tech)
+        if g and tech:
+            if tech not in g["techniques"]:
+                g["techniques"].append(tech)
+            desc = o.get("description")
+            if isinstance(desc, str) and desc.strip() and tech not in g["procedures"]:
+                g["procedures"][tech] = desc
     return [{"ext_id": g["ext_id"], "name": g["name"],
-             "data": {"aliases": g["aliases"], "techniques": g["techniques"]}}
+             "data": {"aliases": g["aliases"], "techniques": g["techniques"],
+                      "procedures": g["procedures"]}}
             for g in groups.values()]
 
 
@@ -173,10 +183,13 @@ def parse_misp_actors(doc: dict, groups: list[dict] | None = None) -> list[dict]
     tout de même le nommage et les alias pour la recherche fusionnée).
     """
     index: dict[str, list[str]] = {}
+    proc_index: dict[str, dict[str, str]] = {}  # norm(nom/alias) -> {ext_id tech: procédure}
     for g in (groups or []):
         techs = g.get("data", {}).get("techniques", [])
+        procs = g.get("data", {}).get("procedures", {})
         for key in [g.get("name", ""), *g.get("data", {}).get("aliases", [])]:
             index.setdefault(_norm(key), []).extend(techs)
+            proc_index.setdefault(_norm(key), {}).update(procs)
     out: list[dict] = []
     for v in doc.get("values", []):
         if not isinstance(v, dict):
@@ -188,13 +201,17 @@ def parse_misp_actors(doc: dict, groups: list[dict] | None = None) -> list[dict]
         aliases = list(dict.fromkeys(
             a for a in (meta.get("synonyms") or []) if isinstance(a, str) and a and a != name))
         techniques: list[str] = []
+        procedures: dict[str, str] = {}
         for key in [name, *aliases]:
             for t in index.get(_norm(key), []):
                 if t not in techniques:
                     techniques.append(t)
+            for t, desc in proc_index.get(_norm(key), {}).items():
+                procedures.setdefault(t, desc)
         ext_id = str(v.get("uuid") or _norm(name))[:64]
         out.append({"ext_id": ext_id, "name": name,
-                    "data": {"aliases": aliases, "techniques": techniques}})
+                    "data": {"aliases": aliases, "techniques": techniques,
+                             "procedures": procedures}})
     return out
 
 
@@ -251,7 +268,7 @@ async def sync_catalog(session, catalog_id: str) -> int:
                 "data = EXCLUDED.data, updated_at = now()"
             ), {"e": r["ext_id"], "n": r["name"][:255], "d": json.dumps({
                 "aliases": data.get("aliases", []), "techniques": data.get("techniques", []),
-                "source": spec.get("source", "")})})
+                "procedures": data.get("procedures", {}), "source": spec.get("source", "")})})
         elif spec["has_tactic"]:
             tactics = r.get("tactics") or ([r["tactic"]] if r.get("tactic") else [])
             await session.execute(text(
@@ -260,7 +277,7 @@ async def sync_catalog(session, catalog_id: str) -> int:
                 "ON CONFLICT (ext_id) DO UPDATE SET name = EXCLUDED.name, "
                 "tactic = EXCLUDED.tactic, data = EXCLUDED.data, updated_at = now()"
             ), {"e": r["ext_id"], "n": r["name"][:255], "t": r.get("tactic"),
-                "d": json.dumps({"tactics": tactics})})
+                "d": json.dumps({"tactics": tactics, "description": r.get("description")})})
         else:
             await session.execute(text(
                 f"INSERT INTO {table} (id, ext_id, name, data) "

@@ -28,7 +28,7 @@
  
 Purple Cockpit centralise le pilotage d'audits de sécurité et d'exercices Purple Team. Il couvre : le référentiel client (organisations, applications, ressources), le cadrage et le suivi des audits, la gestion des vulnérabilités avec enrichissement décisionnel (VOC), une bibliothèque de scénarios de menace (CTI), des exercices Purple documentant une chaîne d'attaque technique par technique, la mesure de couverture MITRE ATT&CK, la génération de livrables et la conservation de preuves probantes chiffrées.
  
-Le système sert six profils d'utilisateurs (administrateur, manager, RSSI, auditeur, VOC, CERT/CTI), chacun avec un périmètre de droits propre, et cloisonne strictement les données par organisation cliente.
+Le système sert sept profils d'utilisateurs (administrateur, manager, RSSI, auditeur, VOC, CERT/CTI, opérateur), chacun avec un périmètre de droits propre, et cloisonne strictement les données par organisation cliente.
  
 **Principe directeur** : le serveur est l'unique autorité de décision. Le frontend n'applique aucune règle de sécurité — il ne fait qu'afficher ou masquer par confort ce que le serveur a déjà autorisé, et chaque action est revalidée côté API.
  
@@ -95,31 +95,31 @@ Défense en profondeur à quatre portes indépendantes, chacune devant autoriser
 - Aucun jeton lisible côté JavaScript (cookies `HttpOnly`) — protection contre le vol de jeton par XSS.
 ### 3.2 Rôles et matrice RBAC
  
-Six rôles interactifs (**admin, manager, ciso, auditeur, voc, cert**) et des rôles de service non interactifs à périmètre minimal (`report_render`, `job_retention`, `job_integrity`, `admin_service`).
+Sept rôles interactifs (**admin, manager, ciso, auditeur, voc, cert, operateur**) et des rôles de service non interactifs à périmètre minimal (`report_render`, `job_retention`, `job_integrity`, `admin_service`).
  
 La matrice `{rôle → entité → actions}` est une **donnée unique**, chargée au démarrage et testée exhaustivement : chaque couple rôle × entité doit être défini, aucun trou silencieux n'est possible. Actions : **L** lecture · **C** création · **E** édition · **S** suppression · **V** validation.
  
-| Entité | admin | manager | ciso | auditeur | voc | cert |
-|---|---|---|---|---|---|---|
-| organisations | LCES | L | L | LC | L | L |
-| applications | LCES | L | L | LC | L | L |
-| ressources | LCES | L | L | LC | L | LCES |
-| audits | LCESV | LCES | L | LCES | L | L |
-| audit_actions | LCESV | LV | L | LCES | L | L |
-| audit_milestones | LCESV | LV | L | LCES | L | L |
-| attack_steps | LCES | LCES | L | LCES | L | L |
-| exercices | LCES | LCES | L | LCES | L | L |
-| observations | LCES | L | L | LCES | L | LCES |
-| vulnerabilities | LCESV | LV | LV | LCES | LCES | L |
-| tickets | LCESV | LV | LV | LCES | L | LCES |
-| scenarios | LCES | LCES | L | L | L | LCES |
-| scenario_steps | LCES | LCES | L | L | L | LCES |
-| corpus | LCES | LCES | L | L | L | LCES |
-| deliverables | LCES | LCES | L | LC | L | L |
-| journal | L | L | L | L | L | L |
-| evidence | L E¹ S² | L E¹ | L | L C E¹ | L | L |
-| evidence_access | L | L | L | — | — | — |
-| audit_dek | — | — | — | — | — | — |
+| Entité | admin | manager | ciso | auditeur | voc | cert | operateur |
+|---|---|---|---|---|---|---|---|
+| organisations | LCES | L | L | LC | L | L | LCES |
+| applications | LCES | L | L | LC | L | L | LCES |
+| ressources | LCES | L | L | LC | L | LCES | LCES |
+| audits | LCESV | LCES | L | LCES | L | L | LCESV |
+| audit_actions | LCESV | LV | L | LCES | L | L | LCESV |
+| audit_milestones | LCESV | LV | L | LCES | L | L | LCESV |
+| attack_steps | LCES | LCES | L | LCES | L | L | LCES |
+| exercices | LCES | LCES | L | LCES | L | L | LCES |
+| observations | LCES | L | L | LCES | L | LCES | LCES |
+| vulnerabilities | LCESV | LV | LV | LCES | LCES | L | LCESV |
+| tickets | LCESV | LV | LV | LCES | L | LCES | LCESV |
+| scenarios | LCES | LCES | L | L | L | LCES | LCES |
+| scenario_steps | LCES | LCES | L | L | L | LCES | LCES |
+| corpus | LCES | LCES | L | L | L | LCES | L |
+| deliverables | LCES | LCES | L | LC | L | L | LCES |
+| journal | L | L | L | L | L | L | L |
+| evidence | L E¹ S² | L E¹ | L | L C E¹ | L | L | L C E¹ |
+| evidence_access | L | L | L | — | — | — | — |
+| audit_dek | — | — | — | — | — | — | — |
  
 ¹ édition limitée aux métadonnées (TLP/PAP, légende) — jamais le contenu chiffré.
 ² suppression = crypto-shredding (destruction de la clé), jamais une suppression physique silencieuse.
@@ -130,6 +130,7 @@ Points structurants :
 - Le **journal** est en lecture seule pour tous, admin compris (immuabilité applicative).
 - Le **CERT** porte le catalogue CTI (scénarios, étapes, corpus) en écriture complète ; l'**auditeur** n'y a qu'un accès en lecture.
 - Le **VOC** possède le cycle de vie complet des vulnérabilités mais reste en lecture sur les audits et exercices.
+- L'**operateur** est le profil *prestataire multi-clients « super-utilisateur métier »* : il cumule le CRUD complet sur l'inventaire (organisations, applications, ressources), les scénarios et les livrables, et valide (V) ses propres audits, vulnérabilités et tickets. Il reste **strictement cloisonné** à sa liste de clients (`client_scope`) — jamais multi-client de droit : un scope vide ne lui donne aucun accès. Il n'a **aucun** accès au journal d'accès aux preuves ni aux clés d'audit.
 ### 3.3 Cloisonnement (RLS)
  
 Toute table portant un `client_id` (ou équivalent : `organisation.id`, `ressource.organisation_id`) reçoit une politique RLS **forcée** (`FORCE ROW LEVEL SECURITY`). Seules les tables de connaissance globale (scénarios, étapes de scénario, corpus, référentiels de sécurité) et les tables techniques (comptes, jetons, journal) échappent au cloisonnement client — elles ne portent structurellement pas de `client_id`.

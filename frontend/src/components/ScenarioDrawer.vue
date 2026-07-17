@@ -49,6 +49,20 @@ const s = computed(() => props.record)
 const techniques = computed(() => s.value.techniques || [])
 const d3fend = computed(() => s.value.d3fend || [])
 
+// Techniques ATT&CK de la matrice/KPI = techniques distinctes des étapes offensives
+// réellement chargées (scenario_step). On ne s'appuie plus sur scenario.techniques,
+// champ stocké et dédoublonné qui peut être en retard sur la chaîne d'étapes (import
+// STIX, étapes semées hors du chemin `etapes`). Repli sur le champ stocké tant que les
+// étapes ne sont pas chargées ou pour un scénario sans étapes détaillées.
+const matrixTechniques = computed(() => {
+  const out = []
+  for (const st of steps.value) {
+    const tq = st.technique
+    if (tq && !out.includes(tq)) out.push(tq)
+  }
+  return out.length ? out : techniques.value
+})
+
 function categoryOf(extId) {
   return refMeta('d3fend', extId)?.category || d3fendCategoryFallback.Detect
 }
@@ -109,7 +123,7 @@ async function copyStix() {
         </div>
         <div class="kpi-card">
           <div class="kpi-label">TTPs</div>
-          <div class="kpi-value">{{ techniques.length }}</div>
+          <div class="kpi-value">{{ matrixTechniques.length }}</div>
           <span class="pill pill-cyan"><span class="dot"></span>{{ d3fend.length }} D3FEND</span>
         </div>
         <div class="kpi-card">
@@ -141,7 +155,8 @@ async function copyStix() {
 
     <!-- 3. TTPs ATT&CK (lecture seule — généré depuis les techniques des étapes) -->
     <section class="sec">
-      <AttckTtpMatrix :techniques="techniques" :steps-count="steps.length" />
+      <AttckTtpMatrix :techniques="matrixTechniques" :steps-count="steps.length"
+                      description="Couverture ATT&amp;CK des étapes offensives du scénario — techniques distinctes." />
     </section>
 
     <!-- 4. Étapes offensives -->

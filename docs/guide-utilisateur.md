@@ -3,7 +3,9 @@
 Ce guide présente les parcours principaux selon votre rôle. L'interface est bilingue
 (FR/EN, bascule dans la barre supérieure) et propose deux thèmes conformes à la
 direction artistique : **A** (clair, violet) et **B** (SOC sombre) — bascule à côté
-de la langue.
+de la langue. À droite de la barre supérieure, une **pastille de compte** affiche votre
+nom (et un badge **MFA** tant que l'authentification à deux facteurs n'est pas enrôlée) ;
+un clic ouvre « Mon compte ».
 
 ## Connexion
 
@@ -19,6 +21,11 @@ Les rôles opérationnels exigent le MFA. Certaines actions sensibles demandent 
 **ré-authentification récente** (step-up) : l'interface vous invite alors à saisir un
 nouveau code TOTP.
 
+**Continuité de session** : tant que vous travaillez, votre session est **renouvelée
+silencieusement** — vous n'êtes pas redéconnecté toutes les quelques minutes. Une
+nouvelle authentification n'est demandée qu'après une **inactivité prolongée** ou si la
+session est révoquée (compte désactivé, rotation des clés).
+
 ## Rôles
 
 | Rôle       | Vocation principale |
@@ -29,6 +36,7 @@ nouveau code TOTP.
 | `auditeur` | Conduite des audits, dépôt des preuves |
 | `voc`      | Gestion des vulnérabilités (Vulnerability Operations) |
 | `cert`     | Détection : observations, tickets de détection, scénarios |
+| `operateur`| Prestataire multi-clients « super-utilisateur métier » : CRUD complet sur inventaire, scénarios et livrables, validation de ses audits/vulnérabilités/tickets — cloisonné à sa liste de clients |
 
 Ce que vous voyez et pouvez faire est **décidé par le serveur**. Un bouton absent ou
 grisé traduit un droit non accordé : l'interface reflète la décision, elle ne l'invente
@@ -50,6 +58,23 @@ limités à votre périmètre. Les rôles multi-clients voient l'agrégat de leu
   automatiquement, validation par le CISO/Manager.
 - **Scénarios** : bibliothèque transverse de menaces (acteurs émulés, techniques
   ATT&CK, crédibilité) — partagée, hors cloisonnement client.
+
+## Matrice ATT&CK
+
+La page **Matrice ATT&CK** présente la couverture sous forme de tableau : les **tactiques**
+en colonnes (avec un compteur *couvertes / total*), les **techniques** en cartes teintées
+selon leur **statut de couverture**. Un sélecteur de **couches** change la lecture des
+couleurs :
+
+- **Couverture** : nature de la couverture / meilleur verdict défensif ;
+- **Détection** : technique détectée (réponse défensive) vs **écart** (jouée, non détectée) ;
+- **Écart** : met en évidence les seuls écarts de détection ;
+- **Importée** : surligne les techniques d'une couche **ATT&CK Navigator** importée (`.json`).
+
+Chaque carte peut porter des **badges d'activité** (étapes offensives, vulnérabilités,
+tickets, scénarios liés) et se **déplie** pour afficher ses sous-techniques.
+
+![Matrice ATT&CK — couverture par tactique](img/attack-matrix.png)
 
 ## Preuves (coffre-fort)
 

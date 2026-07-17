@@ -242,7 +242,7 @@ Reprise du chemin spec v2 §7, outillé par `make import-maquette` :
 | Famille | Contenu | Bloquant CI |
 |---------|---------|-------------|
 | **Isolation RLS** | Pour chaque table à `client_id` : un compte scopé client A ne lit/n'écrit jamais une ligne client B, y compris par jointure et par API ; test introspectif `pg_policies` (aucune table oubliée) | ✅ |
-| **Matrice RBAC** | Test exhaustif généré : 6 rôles × entités × actions L/C/E/S/V contre la matrice de la spec v2 §3 — toute divergence code/spec échoue | ✅ |
+| **Matrice RBAC** | Test exhaustif généré : 7 rôles × entités × actions L/C/E/S/V contre la matrice de la spec v2 §3 — toute divergence code/spec échoue | ✅ |
 | **Sas d'ingestion** | Fichier EICAR → `rejected` ; MIME menteur → `rejected` ; nominal → `stored` avec double empreinte vérifiée, AAD correcte, entrée de journal chaînée | ✅ |
 | **Custody** | Tentative d'UPDATE sur `evidence` (champs custody), sur `journal`, sur objet Object Lock → refus ; `evidence_access` enregistre les refus | ✅ |
 | **Crypto-shredding** | Destruction DEK → toutes les preuves de l'audit illisibles, métadonnées et journal intacts | ✅ |

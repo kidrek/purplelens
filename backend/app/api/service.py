@@ -502,6 +502,45 @@ async def _derive_audit_actions_from_scenario(
     return created
 
 
+async def _seed_audit_engagement(session: AsyncSession, data: dict[str, Any]) -> None:
+    """Pré-remplit `data['engagement']` (lettre d'engagement / NDA) à la création d'un
+    audit, sauf si un bloc a déjà été fourni explicitement. Le contenu est dérivé des
+    champs de l'audit (miroir serveur de `engagementDefaults` du drawer) afin que la
+    consultation l'affiche sans édition préalable et que la génération de livrable
+    reprenne un contenu riche plutôt que ses seuls replis génériques."""
+    from app.api.engagement_defaults import build_engagement_defaults
+
+    if data.get("engagement"):
+        return  # saisie explicite : on ne l'écrase pas
+    client_id = data.get("client_id")
+    if not client_id:
+        return
+    client_nom = (await session.execute(
+        text("SELECT nom FROM organisation WHERE id = :id"),
+        {"id": uuid.UUID(str(client_id))},
+    )).scalar()
+    app_ids = [str(x) for x in (data.get("applications") or [])]
+    app_names: list[str] = []
+    if app_ids:
+        rows = {
+            str(r.id): r.nom
+            for r in (await session.execute(
+                text("SELECT id, nom FROM application WHERE id = ANY(:ids)"),
+                {"ids": [uuid.UUID(i) for i in app_ids]},
+            )).all()
+        }
+        app_names = [rows[i] for i in app_ids if i in rows]
+    acteur = None
+    if data.get("scenario_id"):
+        acteur = (await session.execute(
+            text("SELECT acteur_emule FROM scenario WHERE id = :id"),
+            {"id": uuid.UUID(str(data["scenario_id"]))},
+        )).scalar()
+    data["engagement"] = build_engagement_defaults(
+        data, client_nom=client_nom, app_names=app_names, acteur_emule=acteur,
+    )
+
+
 async def _audit_scenario_id(session: AsyncSession, audit_id: Any) -> Any:
     """Scénario rattaché à un audit (pour semer la chaîne d'un exercice à sa création)."""
     from app.models.business import Audit
@@ -576,6 +615,7 @@ async def create_entity(
     _apply_d3fend_auto(spec, data)
     if spec.entity == "audits":
         await _validate_audit_links(session, data, client_id=data.get("client_id"))
+        await _seed_audit_engagement(session, data)
     if spec.entity == "vulnerabilities":
         await _validate_vuln_audit_link(session, data, client_id=data.get("client_id"))
     obj = spec.model(**data)

@@ -11,6 +11,7 @@ import { attackUrl } from '../utils/mitreLinks'
 const props = defineProps({
   techniques: { type: Array, default: () => [] },
   stepsCount: { type: Number, default: null }, // affiché dans le méta si fourni
+  description: { type: String, default: '' }, // légende sous l'en-tête (source des techniques)
 })
 const { preload, refName } = useRefNames()
 const attackEntries = ref([])
@@ -46,8 +47,19 @@ const matrix = computed(() => {
     const tac = tacticOf(tq) || 'non-classée'
     ;(byTactic[tac] ||= []).push(tq)
   }
-  const order = [...TACTIC_ORDER, 'non-classée']
-  return order.filter((t) => byTactic[t]?.length).map((t) => ({ tactic: t, techniques: byTactic[t] }))
+  // Colonnes ordonnées selon la kill-chain ATT&CK. IMPORTANT : on part des seaux
+  // RÉELLEMENT présents (pas d'une liste blanche filtrée), pour ne JAMAIS écarter en
+  // silence une technique dont la tactique serait absente de TACTIC_ORDER (libellé
+  // inattendu, format différent, sous-technique hors socle) — elle est simplement
+  // reléguée en fin. « non-classée » reste toujours la dernière colonne.
+  const rank = (t) => {
+    if (t === 'non-classée') return TACTIC_ORDER.length + 1
+    const i = TACTIC_ORDER.indexOf(t)
+    return i === -1 ? TACTIC_ORDER.length : i
+  }
+  return Object.keys(byTactic)
+    .sort((a, b) => rank(a) - rank(b))
+    .map((t) => ({ tactic: t, techniques: byTactic[t] }))
 })
 const tacticCount = computed(() => matrix.value.length)
 // Nombre de lignes du tableau = la colonne (tactique) qui porte le plus de techniques ;
@@ -63,6 +75,7 @@ const rowCount = computed(() => Math.max(0, ...matrix.value.map((c) => c.techniq
         <span v-if="stepsCount !== null">{{ stepsCount }} étape(s) · </span>{{ tacticCount }} tactique(s)
       </div>
     </div>
+    <p v-if="description" class="matrix-desc">{{ description }}</p>
     <div v-if="matrix.length" class="matrix-scroll">
       <table class="ttp-table">
         <thead>
@@ -92,6 +105,7 @@ const rowCount = computed(() => Math.max(0, ...matrix.value.map((c) => c.techniq
 .panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
 .panel-title{display:flex;align-items:center;gap:9px;font-family:var(--font-display);font-weight:600;color:var(--heading);font-size:14px}
 .panel-meta{font-size:11.5px;color:var(--faint)}
+.matrix-desc{font-size:11.5px;color:var(--faint);margin:0 0 12px;line-height:1.4}
 .badge{font-family:var(--font-data);font-size:10px;font-weight:700;border-radius:var(--r-mini);padding:3px 7px;letter-spacing:.02em}
 .badge-red{background:var(--c-red-bg);color:var(--c-red-tx);border:1px solid var(--c-red-bd)}
 

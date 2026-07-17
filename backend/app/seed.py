@@ -2,7 +2,7 @@
 
 Crée :
   - un compte admin local (Argon2id) pour la première connexion ;
-  - un compte auditeur et un compte CISO de démonstration ;
+  - un compte auditeur, un compte CISO et un compte operateur de démonstration ;
   - une organisation cliente et une organisation prestataire ;
   - quelques référentiels ATT&CK/D3FEND/OWASP.
 Idempotent sur l'email/slug (ON CONFLICT DO NOTHING).
@@ -36,7 +36,10 @@ async def seed_reference() -> None:
 
 async def seed_org_and_users() -> tuple[str, str]:
     client_id = str(uuid.uuid4())
-    org_codes = ["ACME", "PRESTA"]
+    # Second client de démo : sert à illustrer le rôle `operateur` (prestataire qui
+    # pilote PLUSIEURS clients) et à tester le cloisonnement multi-clients.
+    client2_id = str(uuid.uuid4())
+    org_codes = ["ACME", "GLOBEX", "PRESTA"]
     async with service_session("admin_service") as session:
         await session.execute(
             text(
@@ -49,12 +52,20 @@ async def seed_org_and_users() -> tuple[str, str]:
         await session.execute(
             text(
                 "INSERT INTO organisation (id, nom, code, role, tlp_defaut, statut, "
+                "created_at, updated_at) VALUES (:id, :n, :c, 'client', 'AMBER', 'actif', "
+                "now(), now()) ON CONFLICT DO NOTHING"
+            ),
+            {"id": client2_id, "n": "Globex SA (démo)", "c": "GLOBEX"},
+        )
+        await session.execute(
+            text(
+                "INSERT INTO organisation (id, nom, code, role, tlp_defaut, statut, "
                 "created_at, updated_at) VALUES (gen_random_uuid(), 'Prestataire Purple', "
                 "'PRESTA', 'prestataire', 'AMBER', 'actif', now(), now()) "
                 "ON CONFLICT DO NOTHING"
             )
         )
-    print(f"[seed] organisation cliente ACME créée ({client_id})")
+    print(f"[seed] organisations clientes ACME ({client_id}) et GLOBEX ({client2_id}) créées")
 
     # Bucket MinIO par organisation, AVEC Object Lock (impératif à la création,
     # cf. storage/minio_client.py). Sans cet appel, toute génération de livrable
@@ -73,6 +84,7 @@ async def seed_org_and_users() -> tuple[str, str]:
     admin_pw = settings.seed_admin_password or settings.seed_default_password
     auditeur_pw = settings.seed_auditeur_password or settings.seed_default_password
     ciso_pw = settings.seed_ciso_password or settings.seed_default_password
+    operateur_pw = settings.seed_default_password
 
     admin_id = str(uuid.uuid4())
     async with auth_session() as session:
@@ -113,10 +125,27 @@ async def seed_org_and_users() -> tuple[str, str]:
             ),
             {"scope": [client_id], "pw": hash_password(ciso_pw)},
         )
-    print("[seed] comptes admin / auditeur / ciso créés.")
+        # Prestataire multi-clients « super-utilisateur métier » (rôle operateur).
+        # Scoppé ici aux DEUX clients démo (ACME + GLOBEX) pour illustrer le profil
+        # prestataire ; en usage réel l'admin lui rattache la liste des clients servis
+        # (client_scope) — jamais global.
+        await session.execute(
+            text(
+                """
+                INSERT INTO app_user (id, email, display_name, role, client_scope, status,
+                                      mfa_enrolled, password_hash, created_at, updated_at)
+                VALUES (gen_random_uuid(), 'operateur@purple.local', 'Opérateur Démo',
+                        'operateur', CAST(:scope AS uuid[]), 'active', false, :pw,
+                        now(), now())
+                ON CONFLICT (email) DO NOTHING
+                """
+            ),
+            {"scope": [client_id, client2_id], "pw": hash_password(operateur_pw)},
+        )
+    print("[seed] comptes admin / auditeur / ciso / operateur créés.")
     # On n'imprime JAMAIS un mot de passe personnalisé dans les logs. On rappelle
     # seulement les identifiants quand le défaut « à changer » est resté en place.
-    if {admin_pw, auditeur_pw, ciso_pw} == {"ChangeMe!2026"}:
+    if {admin_pw, auditeur_pw, ciso_pw, operateur_pw} == {"ChangeMe!2026"}:
         print("[seed] ⚠ mots de passe par défaut (ChangeMe!2026) — À CHANGER via .env "
               "(SEED_*_PASSWORD) avant tout usage réel.")
     return client_id, admin_id

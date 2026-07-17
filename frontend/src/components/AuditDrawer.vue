@@ -91,7 +91,18 @@ const vulnsFound = computed(() => new Set(actions.value.map((a) => a.vulnerabili
 
 const eng = computed(() => audit.value?.engagement || null)
 const engHas = (k) => Array.isArray(eng.value?.[k]) ? eng.value[k].length > 0 : !!eng.value?.[k]
-const scenarioTTPs = computed(() => scenario.value?.techniques || [])
+
+// Techniques ATT&CK de la matrice = techniques distinctes des actions de test réellement
+// présentes sur l'audit. On ne se base plus sur scenario.techniques (champ stocké,
+// dédoublonné et jamais recalculé à la lecture, donc parfois en retard sur les actions).
+const matrixTechniques = computed(() => {
+  const out = []
+  for (const a of actions.value) {
+    const t = a.technique_attack
+    if (t && !out.includes(t)) out.push(t)
+  }
+  return out
+})
 
 // Éditeur du bloc engagement (bouton « Modifier » du panneau, comme la maquette).
 const engOpen = ref(false)
@@ -375,7 +386,7 @@ const fmtDate = (iso) => (iso ? String(iso).slice(0, 10) : '—')
       <section v-if="scenario" class="panel">
         <div class="p-head">Scénario CTI · TTP
           <span v-if="scenario.acteur_emule" class="pill pill-violet">{{ scenario.acteur_emule }}</span>
-          <span class="count">{{ scenarioTTPs.length }} technique(s)</span>
+          <span class="count">{{ matrixTechniques.length }} technique(s)</span>
         </div>
         <dl class="dl">
           <dt>Scénario</dt><dd>{{ scenario.nom }}</dd>
@@ -384,7 +395,8 @@ const fmtDate = (iso) => (iso ? String(iso).slice(0, 10) : '—')
           <dt v-if="scenario.sophistication">Sophistication</dt>
           <dd v-if="scenario.sophistication">{{ scenario.sophistication }}</dd>
         </dl>
-        <AttckTtpMatrix :techniques="scenarioTTPs" />
+        <AttckTtpMatrix :techniques="matrixTechniques"
+                        description="Couverture ATT&amp;CK des actions de test de cet audit — techniques distinctes." />
       </section>
 
       <!-- Engagement (PTES pré-engagement) -->

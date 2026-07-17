@@ -6,7 +6,7 @@ COMPOSE := docker compose
 ENV_FILE := .env
 
 .DEFAULT_GOAL := help
-.PHONY: help bootstrap init init-vault tls secrets up down logs config migrate seed import-maquette \
+.PHONY: help bootstrap init init-vault tls secrets up down logs config migrate seed seed-demo import-maquette \
         test test-e2e test-security backup restore unseal fmt lint frontend-build
 
 help: ## Affiche cette aide
@@ -95,8 +95,11 @@ migrate: secrets ## alembic upgrade head (rôle app_migrator)
 	# source) ; on reconstruit pour qu'une migration ajoutée/éditée soit bien prise.
 	$(COMPOSE) run --build --rm api alembic upgrade head
 
-seed: secrets ## Référentiels ATT&CK/D3FEND/OWASP/CWE/CAPEC + données de démo
+seed: secrets ## Référentiels ATT&CK/D3FEND/OWASP/CWE/CAPEC + organisations & comptes de démo
 	$(COMPOSE) run --build --rm api python -m app.seed
+
+seed-demo: secrets ## Jeu de données de démonstration riche (audits, exercices Purple, vulns, tickets…) — à lancer après `seed`
+	$(COMPOSE) run --build --rm api python -m app.seed_demo
 
 import-maquette: $(ENV_FILE) ## migration §5 : export JSON maquette → API + sas.  FILE=chemin.json
 	@test -n "$(FILE)" || (echo "Usage: make import-maquette FILE=export.json" && exit 1)

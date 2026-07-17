@@ -1,8 +1,10 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api, ApiError } from '../api/client'
 import { useAuthStore } from '../stores/auth'
+import { fieldsFor } from '../fields'
+import EntityForm from '../components/EntityForm.vue'
 const { t } = useI18n()
 
 // « Mon compte » — enrôlement TOTP (D5 : MFA pour les rôles opérationnels).
@@ -38,6 +40,58 @@ async function confirm() {
       text: e instanceof ApiError && e.status === 401 ? 'Code refusé — vérifiez l’heure de votre appareil.' : e.message,
     }
   } finally { busy.value = false }
+}
+
+// ── « Ma fiche » ────────────────────────────────────────────────────────────
+// Fiche ressource (type humaine) liée au compte : sans elle, un compte autonome
+// (operateur/auditeur) ne peut se sélectionner comme auditeur d'un audit (le picker
+// liste des ressources). On réutilise le formulaire ressource générique, avec une
+// soumission redirigée vers /profile/resource (pose type='humaine' + app_user_id).
+const ressourceFields = fieldsFor('ressources')
+const fiches = ref([])       // mes fiches liées [{ id, organisation_id, nom, ... }]
+const orgs = ref([])         // organisations de mon périmètre [{ id, code, nom }]
+const pickedOrg = ref('')    // organisation choisie pour une nouvelle fiche
+const formOpen = ref(false)
+const editing = ref(null)    // fiche en édition, ou null (création)
+
+async function loadFiches() {
+  try {
+    fiches.value = (await api.myResources()).resources || []
+    const rows = await api.list('organisations')
+    orgs.value = Array.isArray(rows) ? rows : (rows.items ?? [])
+  } catch { /* périmètre vide ou hors-ligne : panneau simplement vide */ }
+}
+onMounted(loadFiches)
+
+function orgLabel(id) {
+  const o = orgs.value.find((x) => x.id === id)
+  return o ? `${o.code || ''} ${o.nom}`.trim() : id
+}
+// Organisations de mon périmètre sans fiche liée (candidates à la création).
+const orgsSansFiche = computed(() => {
+  const done = new Set(fiches.value.map((f) => f.organisation_id))
+  return orgs.value.filter((o) => !done.has(o.id))
+})
+// Valeurs imposées / pré-remplies selon création vs édition.
+const fichePrefill = computed(() => editing.value
+  ? { organisation_id: editing.value.organisation_id, type: 'humaine' }
+  : { organisation_id: pickedOrg.value, type: 'humaine',
+      nom: auth.user?.display_name || '', role: 'auditeur' })
+
+function openCreate() {
+  if (!pickedOrg.value) return
+  editing.value = null
+  formOpen.value = true
+}
+function openEdit(f) {
+  editing.value = f
+  formOpen.value = true
+}
+function saveFiche(payload) { return api.saveMyResource(payload) }
+function onFicheSaved() {
+  formOpen.value = false
+  pickedOrg.value = ''
+  loadFiches()
 }
 </script>
 
@@ -87,6 +141,49 @@ async function confirm() {
     </div>
 
     <p v-if="msg" :class="['msg', msg.kind]">{{ msg.text }}</p>
+
+    <div class="panel">
+      <h3>Ma fiche auditeur</h3>
+      <p class="muted">
+        Déclarez-vous comme ressource d'une organisation de votre périmètre pour pouvoir
+        vous sélectionner comme auditeur de ses audits. Vos compétences alimentent la
+        lettre d'engagement.
+      </p>
+
+      <ul v-if="fiches.length" class="fiches">
+        <li v-for="f in fiches" :key="f.id">
+          <div class="f-main">
+            <b>{{ f.nom }}</b>
+            <span v-if="f.role" class="pill pill-violet">{{ f.role }}</span>
+            <span class="org">{{ orgLabel(f.organisation_id) }}</span>
+          </div>
+          <div v-if="(f.competences || []).length" class="f-comp">{{ (f.competences || []).join(' · ') }}</div>
+          <button class="btn" @click="openEdit(f)">Modifier</button>
+        </li>
+      </ul>
+      <p v-else class="muted small">Aucune fiche pour l'instant.</p>
+
+      <div v-if="orgsSansFiche.length" class="row create">
+        <select class="field" v-model="pickedOrg">
+          <option value="">Choisir une organisation…</option>
+          <option v-for="o in orgsSansFiche" :key="o.id" :value="o.id">{{ `${o.code || ''} ${o.nom}`.trim() }}</option>
+        </select>
+        <button class="btn btn-primary" :disabled="!pickedOrg" @click="openCreate">Créer ma fiche</button>
+      </div>
+    </div>
+
+    <EntityForm
+      v-if="formOpen"
+      entity="ressources"
+      :fields="ressourceFields"
+      :record="editing"
+      :title="editing ? 'Modifier ma fiche' : 'Créer ma fiche'"
+      :prefill="fichePrefill"
+      :hidden="['organisation_id', 'type']"
+      :submit-override="saveFiche"
+      @saved="onFicheSaved"
+      @close="formOpen = false"
+    />
   </div>
 </template>
 
@@ -102,4 +199,13 @@ async function confirm() {
 .otpf{max-width:140px}
 .msg{margin-top:12px;font-size:13px}
 .msg.ok{color:var(--green)} .msg.ko{color:var(--red)}
+.small{font-size:12px}
+.fiches{list-style:none;padding:0;margin:12px 0;display:flex;flex-direction:column;gap:8px}
+.fiches li{border:1px solid var(--border);border-radius:var(--r-mini);padding:8px 10px;
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.f-main{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.f-main .org{color:var(--muted);font-size:12px}
+.f-comp{flex-basis:100%;color:var(--faint);font-size:11px}
+.row.create{display:flex;gap:10px;margin-top:10px}
+.row.create .field{max-width:320px}
 </style>

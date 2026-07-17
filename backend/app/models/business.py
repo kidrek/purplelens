@@ -71,6 +71,10 @@ class Ressource(UUIDMixin, TimestampMixin, SoftDeleteMixin, Base):
     contact: Mapped[str | None] = mapped_column(Text)
     description: Mapped[str | None] = mapped_column(Text)
     tags: Mapped[list] = mapped_column(JSONB, default=list, server_default=text("'[]'::jsonb"))
+    # Lien vers le compte propriétaire de cette fiche (self-service « Ma fiche »). Nullable :
+    # les fiches saisies par un admin ne sont pas rattachées à un compte. Posé uniquement par
+    # le routeur /api/profile, jamais par le CRUD générique (absent de writable).
+    app_user_id: Mapped[uuid.UUID | None] = _uuid_fk("app_user.id", nullable=True, index=True)
 
     @property
     def client_id(self):  # pour la résolution de scope (via organisation)

@@ -36,6 +36,25 @@ def _coerce_data(value) -> dict:
     return value or {}
 
 
+_CITATION_RE = re.compile(r"\s*\(Citation:[^)]*\)")
+
+
+def _step_summary(text: str, limit: int = 200) -> str:
+    """Résumé court d'une description ATT&CK pour pré-remplir une étape : retire les
+    marqueurs de citation MITRE « (Citation: …) », aplatit les espaces, tronque à
+    `limit` caractères en coupant au dernier mot et en suffixant « … »."""
+    if not text:
+        return ""
+    cleaned = " ".join(_CITATION_RE.sub("", text).split())
+    if len(cleaned) <= limit:
+        return cleaned
+    cut = cleaned[:limit]
+    sp = cut.rfind(" ")
+    if sp > 0:
+        cut = cut[:sp]
+    return cut.rstrip() + "…"
+
+
 def _norm(s: str) -> str:
     return re.sub(r"[^a-z0-9]", "", (s or "").lower())
 
@@ -123,7 +142,13 @@ async def actor_techniques(key: str, ctx: SecurityContext = Depends(get_security
     """TTPs connues d'un acteur (`key` = "mitre:Gxxxx" | "misp:<id>"), hydratées via ATT&CK.
 
     Lit `data.techniques` de l'acteur et complète chaque ext_id avec son nom/tactique depuis
-    ref_attack_technique (ignore les ext_id absents : partiel honnête si le socle est réduit).
+    ref_attack_technique. Retourne *toutes* les techniques de l'acteur : celles absentes du
+    catalogue importé (socle réduit) sont marquées `covered=false` (nom = ext_id, tactic=None)
+    au lieu d'être omises — le compteur reste ainsi cohérent avec l'affichage (portée honnête).
+
+    Chaque entrée porte un résumé `description` prêt à pré-remplir une étape offensive :
+    priorité au contexte propre à l'acteur (`data.procedures[ext_id]` — relation `uses` STIX),
+    repli sur la description générique de la technique (`ref_attack_technique.data.description`).
     """
     src, _, ext_id = key.partition(":")
     table = _ACTOR_TABLES.get(src)
@@ -137,15 +162,22 @@ async def actor_techniques(key: str, ctx: SecurityContext = Depends(get_security
             raise HTTPException(status.HTTP_404_NOT_FOUND, detail="unknown_actor")
         data = _coerce_data(row["data"])
         tech_ids = list(data.get("techniques", []))
+        procedures = data.get("procedures", {}) or {}
         hydrated: dict[str, dict] = {}
         if tech_ids:
             stmt = _text(
-                "SELECT ext_id, name, tactic FROM ref_attack_technique WHERE ext_id IN :ids"
+                "SELECT ext_id, name, tactic, data FROM ref_attack_technique WHERE ext_id IN :ids"
             ).bindparams(bindparam("ids", expanding=True))
             for h in (await session.execute(stmt, {"ids": tech_ids})).mappings().all():
                 hydrated[h["ext_id"]] = h
+
+    def _describe(tid: str) -> str:
+        generic = _coerce_data(hydrated.get(tid, {}).get("data")).get("description")
+        return _step_summary(procedures.get(tid) or generic or "")
+
     techniques = [{"ext_id": tid, "name": (hydrated.get(tid) or {}).get("name") or tid,
-                   "tactic": (hydrated.get(tid) or {}).get("tactic")} for tid in tech_ids]
+                   "tactic": (hydrated.get(tid) or {}).get("tactic"),
+                   "covered": tid in hydrated, "description": _describe(tid)} for tid in tech_ids]
     return {"key": key, "name": row["name"], "aliases": data.get("aliases", []),
             "techniques": techniques}
 

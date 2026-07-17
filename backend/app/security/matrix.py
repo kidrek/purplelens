@@ -20,8 +20,11 @@ class Action(str, Enum):
     V = "V"  # Validation
 
 
-# Les 6 rôles conservés à l'identique depuis la v1 (spec v2 §2.1).
-ROLES: tuple[str, ...] = ("admin", "manager", "ciso", "auditeur", "voc", "cert")
+# Les 6 rôles de la v1 (spec v2 §2.1) + `operateur` : profil prestataire multi-clients
+# « super-utilisateur métier » (auditeur élevé au CRUD complet sur l'inventaire, les scénarios
+# et les livrables, avec validation de ses propres audits/vulnérabilités/tickets). Reste
+# strictement scoppé (non global) — cf. GLOBAL_SCOPE_ROLES plus bas.
+ROLES: tuple[str, ...] = ("admin", "manager", "ciso", "auditeur", "voc", "cert", "operateur")
 
 # Rôles de service (non interactifs, périmètre minimal — spec v2 §2.2).
 SERVICE_ROLES: tuple[str, ...] = (
@@ -206,6 +209,32 @@ MATRIX: dict[str, dict[str, frozenset[Action]]] = {
         "deliverables": _a(L),
         "journal": _a(L),
         "evidence": _a(L),
+        "evidence_access": _a(),
+        "audit_dek": _a(),
+    },
+    "operateur": {
+        # Prestataire multi-clients « super-utilisateur métier » : auditeur élevé au CRUD
+        # complet sur l'inventaire (Organisations, Applications, Ressources), les Scénarios
+        # (+ étapes) et les Livrables ; validation (V) de ses propres Audits (+ Actions,
+        # Jalons), Vulnérabilités et Tickets. Confiné à son client_scope (NON global) :
+        # provisionne et pilote de bout en bout les engagements de ses clients.
+        "organisations": _a(L, C, E, S),
+        "applications": _a(L, C, E, S),
+        "ressources": _a(L, C, E, S),
+        "audits": _a(L, C, E, S, V),
+        "audit_actions": _a(L, C, E, S, V),
+        "audit_milestones": _a(L, C, E, S, V),
+        "attack_steps": _a(L, C, E, S),
+        "exercices": _a(L, C, E, S),
+        "observations": _a(L, C, E, S),
+        "vulnerabilities": _a(L, C, E, S, V),
+        "tickets": _a(L, C, E, S, V),
+        "scenarios": _a(L, C, E, S),
+        "scenario_steps": _a(L, C, E, S),
+        "corpus": _a(L),
+        "deliverables": _a(L, C, E, S),
+        "journal": _a(L),
+        "evidence": _a(L, C, E),          # L C E¹ — dépose les preuves (pas de S : réservé admin)
         "evidence_access": _a(),
         "audit_dek": _a(),
     },

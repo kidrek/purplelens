@@ -18,7 +18,7 @@ class AppUser(UUIDMixin, TimestampMixin, Base):
     external_sub: Mapped[str | None] = mapped_column(Text, nullable=True)  # 'sub' OIDC
     email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
     display_name: Mapped[str | None] = mapped_column(Text, nullable=True)
-    role: Mapped[str] = mapped_column(String(32), nullable=False)  # admin|manager|ciso|auditeur|voc|cert
+    role: Mapped[str] = mapped_column(String(32), nullable=False)  # admin|manager|ciso|auditeur|voc|cert|operateur
     # clients rattachés ; [] = tous clients (selon droits du rôle)
     client_scope: Mapped[list[uuid.UUID]] = mapped_column(
         ARRAY(PgUUID(as_uuid=True)), default=list, server_default=text("'{}'::uuid[]"), nullable=False

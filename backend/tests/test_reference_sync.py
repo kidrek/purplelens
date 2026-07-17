@@ -11,7 +11,7 @@ from app.reference.sync import (
 
 def test_parse_attack_keeps_active_and_prefers_standard_tactic():
     bundle = {"objects": [
-        {"type": "attack-pattern", "name": "Phishing",
+        {"type": "attack-pattern", "name": "Phishing", "description": "Adversaries send phishing.",
          "external_references": [{"source_name": "mitre-attack", "external_id": "T1566"}],
          "kill_chain_phases": [{"kill_chain_name": "mitre-attack", "phase_name": "initial-access"}]},
         {"type": "attack-pattern", "name": "EWM Injection",
@@ -38,6 +38,9 @@ def test_parse_attack_keeps_active_and_prefers_standard_tactic():
     assert set(by) == {"T1566", "T1055.011", "T1078"}  # révoqué/déprécié exclus
     assert by["T1566"]["tactic"] == "initial-access"
     assert by["T1566"]["tactics"] == ["initial-access"]
+    # La description générique de l'attack-pattern est remontée (pré-remplissage d'étape).
+    assert by["T1566"]["description"] == "Adversaries send phishing."
+    assert by["T1078"]["description"] is None  # absente → None, pas d'erreur
     # Tactique standard préférée à "stealth" (écartée de `tactics`).
     assert by["T1055.011"]["tactic"] == "privilege-escalation"
     assert by["T1055.011"]["tactics"] == ["privilege-escalation"]
@@ -60,8 +63,10 @@ def test_parse_attack_groups_maps_uses_relationships():
         {"type": "intrusion-set", "id": "intrusion-set--dead", "name": "Ghost", "revoked": True,
          "external_references": [{"source_name": "mitre-attack", "external_id": "G9999"}]},
         # Relations : deux `uses` valides (dont une dupliquée) + une non-`uses` ignorée.
+        # La procédure (description) propre à l'acteur est portée par la relation `uses`.
         {"type": "relationship", "relationship_type": "uses",
-         "source_ref": "intrusion-set--a", "target_ref": "attack-pattern--p1"},
+         "source_ref": "intrusion-set--a", "target_ref": "attack-pattern--p1",
+         "description": "APT29 spearphishes targets."},
         {"type": "relationship", "relationship_type": "uses",
          "source_ref": "intrusion-set--a", "target_ref": "attack-pattern--p2"},
         {"type": "relationship", "relationship_type": "uses",
@@ -77,11 +82,14 @@ def test_parse_attack_groups_maps_uses_relationships():
     # L'alias identique au nom est écarté ; l'ordre des relations est préservé, dédupliqué.
     assert g["data"]["aliases"] == ["Cozy Bear", "The Dukes"]
     assert g["data"]["techniques"] == ["T1566", "T1059"]
+    # Procédures : seule la relation porteuse d'une description est indexée (par ext_id).
+    assert g["data"]["procedures"] == {"T1566": "APT29 spearphishes targets."}
 
 
 def test_parse_misp_actors_resolves_techniques_by_alias():
     groups = [{"ext_id": "G0016", "name": "APT29",
-               "data": {"aliases": ["Cozy Bear"], "techniques": ["T1566", "T1059"]}}]
+               "data": {"aliases": ["Cozy Bear"], "techniques": ["T1566", "T1059"],
+                        "procedures": {"T1566": "APT29 spearphishes targets."}}}]
     doc = {"values": [
         # Correspondance via l'alias « Cozy Bear » → hérite des TTPs d'APT29.
         {"value": "The Dukes", "uuid": "uuid-dukes",
@@ -95,7 +103,10 @@ def test_parse_misp_actors_resolves_techniques_by_alias():
     assert set(by) == {"The Dukes", "Unknown Crew"}
     assert by["The Dukes"]["ext_id"] == "uuid-dukes"
     assert by["The Dukes"]["data"]["techniques"] == ["T1566", "T1059"]
+    # Le contexte acteur (procédures) est hérité du groupe MITRE correspondant.
+    assert by["The Dukes"]["data"]["procedures"] == {"T1566": "APT29 spearphishes targets."}
     assert by["Unknown Crew"]["data"]["techniques"] == []
+    assert by["Unknown Crew"]["data"]["procedures"] == {}
 
 
 def test_parse_d3fend_extracts_ids_and_names():

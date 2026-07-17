@@ -28,6 +28,10 @@ const props = defineProps({
   // l'enregistrement créé n'existe qu'à ce moment). Réservé aux entités « constat »
   // (vulnérabilités) portant un audit_id/client_id.
   evidenceUpload: { type: Boolean, default: false },
+  // Surcharge de la soumission : si fournie, appelée avec le payload construit au lieu
+  // du CRUD générique api.create/update (ex. « Ma fiche » → PUT /profile/resource).
+  // Le schéma de champs et le rendu restent réutilisés tels quels.
+  submitOverride: { type: Function, default: null },
 })
 const emit = defineEmits(['saved', 'close'])
 const { t } = useI18n()
@@ -265,6 +269,11 @@ async function submit() {
   }
   try {
     const payload = buildPayload()
+    if (props.submitOverride) {
+      await props.submitOverride(payload)
+      emit('saved')
+      return
+    }
     if (isEdit) {
       await api.update(props.entity, props.record.id, payload)
       emit('saved')

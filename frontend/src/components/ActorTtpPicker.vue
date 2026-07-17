@@ -134,14 +134,26 @@ async function reopenReview() {
 }
 
 const grouped = computed(() => {
+  // Chaque technique atterrit dans un groupe : les couvertes par tactique (repli 'autre'
+  // pour toute tactique hors liste blanche), les non couvertes dans une section dédiée.
+  // Le compteur (techs.length) reste ainsi toujours cohérent avec l'affichage.
   const by = {}
+  const uncovered = []
   for (const t of techs.value) {
-    const k = t.tactic || 'autre'
+    if (t.covered === false) { uncovered.push(t); continue }
+    const k = TACTICS.includes(t.tactic) ? t.tactic : 'autre'
     ;(by[k] ||= []).push(t)
   }
-  return [...TACTICS, 'autre'].filter((k) => by[k]).map((k) => ({ tactic: k, items: by[k] }))
+  // Tri secondaire par ID de technique au sein de chaque tactique (ordre naturel :
+  // les ext_id ATT&CK ont la forme T####[.###], `numeric` gère les largeurs variables).
+  const cmp = (a, b) => a.ext_id.localeCompare(b.ext_id, undefined, { numeric: true })
+  const groups = [...TACTICS, 'autre']
+    .filter((k) => by[k]).map((k) => ({ tactic: k, items: by[k].sort(cmp) }))
+  if (uncovered.length) groups.push({ tactic: 'non-couvertes', items: uncovered.sort(cmp), uncovered: true })
+  return groups
 })
 const checkedCount = computed(() => checked.value.size)
+const uncoveredCount = computed(() => techs.value.filter((t) => t.covered === false).length)
 
 function toggle(id) {
   const s = new Set(checked.value)
@@ -167,10 +179,14 @@ function onKey(e) {
 }
 
 function doImport() {
-  const chosen = techs.value.filter((t) => checked.value.has(t.ext_id))
+  // Ordre kill chain : on parcourt `grouped` (tactiques dans l'ordre TACTICS, puis
+  // 'autre', puis non-couvertes) plutôt que l'ordre brut de l'API, pour que les étapes
+  // créées suivent la chaîne d'attaque — identique à l'ordre du panneau de revue.
+  const ordered = grouped.value.flatMap((g) => g.items)
+  const chosen = ordered.filter((t) => checked.value.has(t.ext_id))
   const steps = chosen.map((t) => ({
     id: `tmp-${t.ext_id}-${Math.random().toString(36).slice(2, 7)}`,
-    technique: t.ext_id, tactique: t.tactic || '', commande: '', description: '',
+    technique: t.ext_id, tactique: t.tactic || '', commande: '', description: t.description || '',
   }))
   emit('import', { steps })
   // Replie le panneau ; la valeur (acteur) reste posée.
@@ -242,20 +258,26 @@ function doImport() {
           {{ techs.length }} technique(s) connue(s) — cochez celles à ajouter comme étapes.
           <span class="faint">La couverture dépend du référentiel importé (socle vs. sync MITRE).</span>
         </p>
-        <div v-for="g in grouped" :key="g.tactic" class="tac-group">
+        <div v-for="g in grouped" :key="g.tactic" class="tac-group" :class="{ uncov: g.uncovered }">
           <div class="tac-head">
             <button type="button" class="tac-toggle" @click="toggleGroup(g.items)">
               {{ g.items.every((t) => checked.has(t.ext_id)) ? '☑' : '☐' }}
             </button>
-            <span class="tac-name">{{ g.tactic }}</span>
+            <span class="tac-name">{{ g.uncovered ? 'Non couvertes — hors référentiel importé' : g.tactic }}</span>
             <span class="tac-count">{{ g.items.length }}</span>
           </div>
           <label v-for="t in g.items" :key="t.ext_id" class="tech" :class="{ on: checked.has(t.ext_id) }">
             <input type="checkbox" :checked="checked.has(t.ext_id)" @change="toggle(t.ext_id)" />
             <span class="code">{{ t.ext_id }}</span>
-            <span class="tn">{{ t.name }}</span>
+            <span class="tn">{{ g.uncovered ? '— hors socle' : t.name }}</span>
           </label>
         </div>
+
+        <p v-if="uncoveredCount" class="uncov-note">
+          {{ uncoveredCount }} technique(s) hors du référentiel importé. Demandez à votre
+          administrateur de synchroniser le référentiel ATT&CK complet (Paramètres → Référentiels)
+          pour couvrir tout le scénario de cet acteur.
+        </p>
 
         <div class="review-foot">
           <span class="sel-count">{{ checkedCount }} / {{ techs.length }} sélectionnée(s)</span>
@@ -303,6 +325,10 @@ function doImport() {
 .tac-toggle{border:0;background:transparent;cursor:pointer;font-size:14px;color:var(--violet-accent);padding:0;line-height:1}
 .tac-name{font-family:var(--font-eyebrow);text-transform:uppercase;letter-spacing:.04em;font-size:10.5px;color:var(--faint)}
 .tac-count{font-size:10px;color:var(--faint);font-family:var(--font-data)}
+.tac-group.uncov{opacity:.72}
+.tac-group.uncov .tac-name{color:var(--muted)}
+.tac-group.uncov .tech .tn{color:var(--faint);font-style:italic}
+.uncov-note{font-size:11px;color:var(--faint);margin:8px 0 0;line-height:1.4}
 .tech{display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:var(--r-mini);cursor:pointer;font-size:12.5px}
 .tech:hover{background:var(--surface-3)}
 .tech.on{background:var(--c-violet-bg)}
