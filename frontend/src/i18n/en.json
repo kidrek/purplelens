@@ -135,7 +135,40 @@
     },
     "applications": {
       "eyebrow": "Scope",
-      "title": "Applications"
+      "title": "Applications",
+      "subtitle": "Mapping of in-scope applications and their posture.",
+      "note": {
+        "lead": "This page gathers the tracked applications, with their risk exposure:",
+        "posture_label": "Technical posture",
+        "posture_text": "— criticality, exposure and linked vulnerabilities (total, high, open) — to prioritise effort.",
+        "audit_label": "Audit coverage",
+        "audit_text": "— indicates whether the application is already part of an audit scope."
+      },
+      "filters": "Filters",
+      "filter_crit": "Criticality",
+      "filter_expo": "Exposure",
+      "filter_owner": "Owner",
+      "filter_owner_ph": "Filter by business contact…",
+      "filter_stack": "Tech stack",
+      "filter_audit": "Audit",
+      "filter_vuln": "Vulnerabilities",
+      "filter_vuln_open": "With open vulns",
+      "filter_vuln_any": "Any vulns",
+      "filter_vuln_none": "No vuln",
+      "new_title": "New application",
+      "edit_title": "Edit application",
+      "confirm_delete": "Delete application “{nom}”? This action is logged.",
+      "kpi": {
+        "total": "Applications",
+        "total_foot": "all criticalities",
+        "total_filtered_foot": "of {total} total",
+        "audited": "Audited applications",
+        "vulns_open": "With open vulns",
+        "critiques": "Critical",
+        "exposes": "Exposed",
+        "foot_scope": "{pct} % of scope",
+        "foot_selection": "{pct} % of selection"
+      }
     },
     "attack": {
       "eyebrow": "Coverage",
@@ -253,7 +286,38 @@
     },
     "organisations": {
       "eyebrow": "Scope",
-      "title": "Organizations"
+      "title": "Organizations",
+      "subtitle": "Map of the scope's entities — audited clients, providers and internal entities.",
+      "note": {
+        "lead": "Each organization is a tenancy boundary: applications, resources, audits and vulnerabilities all attach to it.",
+        "clients_label": "Clients",
+        "clients_text": "— entities on whose behalf the audits are carried out.",
+        "autres_label": "Providers & internal",
+        "autres_text": "— offensive and defensive teams engaged to run those audits."
+      },
+      "filters": "Filters",
+      "filter_role": "Role",
+      "filter_statut": "Status",
+      "filter_secteur": "Activity sector",
+      "filter_secteur_ph": "Search a sector (NACE)…",
+      "filter_tlp": "Default TLP",
+      "kpi": {
+        "organisations": "Organizations",
+        "organisations_foot": "{c} clients · {p} providers · {i} internal",
+        "sous_audit": "Under audit",
+        "sous_audit_foot": "{pct} % of the estate covered by ≥ 1 audit",
+        "inactives": "Inactive",
+        "inactives_foot": "{pct} % of the estate to reactivate or archive",
+        "inactives_ok": "all active"
+      },
+      "repartition": {
+        "title": "Portfolio breakdown",
+        "desc": "Composition of the organization estate by role and activity sector (NACE classification).",
+        "resume": "{clients} clients · {secteurs} sectors",
+        "par_role": "By role · share of estate",
+        "par_secteur": "By sector · share of estate",
+        "no_secteur": "No sector set for this scope."
+      }
     },
     "parametres": {
       "eyebrow": "Settings",
@@ -261,7 +325,37 @@
     },
     "ressources": {
       "eyebrow": "Scope",
-      "title": "Resources"
+      "title": "Resources",
+      "subtitle": "Mapping of staff and assets by organization.",
+      "note": {
+        "lead": "This page brings together the people involved in audits, on both sides:",
+        "contacts_label": "Client contact points",
+        "contacts_text": "— attached to their organization — on whose behalf the audits are carried out.",
+        "externes_label": "External contributors",
+        "externes_text": "— auditors, CTI team — engaged to carry out those audits."
+      },
+      "filters": "Filters",
+      "filter_org": "Organization",
+      "filter_type": "Type",
+      "filter_role": "Role",
+      "filter_org_ph": "Search an organization…",
+      "filter_role_ph": "Search a role…",
+      "kpi": {
+        "ressources": "Resources",
+        "ressources_foot": "all categories",
+        "orgs": "Organizations covered",
+        "orgs_foot": "{pct} % of scope",
+        "renforcer": "Roles to reinforce",
+        "renforcer_foot": "{roles} (≤ {seuil})",
+        "renforcer_ok": "balanced team"
+      },
+      "repartition": {
+        "title": "Resource breakdown",
+        "desc": "Headcount by resource category and role coverage of the Purple team. Under-staffed roles are flagged in amber.",
+        "resume": "{humaines} human · {n} to reinforce",
+        "par_type": "By type · share of pool",
+        "par_role": "By role · headcount (share)"
+      }
     },
     "scenarios": {
       "eyebrow": "Intelligence",
@@ -354,6 +448,27 @@
     "applications": "Target applications"
   },
   "enum": {
+    "nace_a": "Agriculture, forestry and fishing",
+    "nace_b": "Mining and quarrying",
+    "nace_c": "Manufacturing",
+    "nace_d": "Electricity, gas, steam and air conditioning supply",
+    "nace_e": "Water supply; sewerage, waste management and remediation",
+    "nace_f": "Construction",
+    "nace_g": "Wholesale and retail trade; repair of motor vehicles and motorcycles",
+    "nace_h": "Transportation and storage",
+    "nace_i": "Accommodation and food service activities",
+    "nace_j": "Information and communication",
+    "nace_k": "Financial and insurance activities",
+    "nace_l": "Real estate activities",
+    "nace_m": "Professional, scientific and technical activities",
+    "nace_n": "Administrative and support service activities",
+    "nace_o": "Public administration and defence; compulsory social security",
+    "nace_p": "Education",
+    "nace_q": "Human health and social work activities",
+    "nace_r": "Arts, entertainment and recreation",
+    "nace_s": "Other service activities",
+    "nace_t": "Activities of households as employers",
+    "nace_u": "Activities of extraterritorial organisations and bodies",
     "client": "Client",
     "prestataire": "Provider",
     "interne": "Internal",
@@ -370,6 +485,11 @@
     "materielle": "Material",
     "logicielle": "Software",
     "documentaire": "Documentary",
+    "auditeur": "Auditor",
+    "cert": "CERT",
+    "soc": "SOC",
+    "ciso": "CISO",
+    "voc": "VOC",
     "black-box": "Black-box",
     "grey-box": "Grey-box",
     "white-box": "White-box",

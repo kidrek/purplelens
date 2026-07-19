@@ -351,7 +351,8 @@ function onDrawerClose() {
         <select v-else-if="f.type === 'select'" class="field" v-model="model[f.key]">
           <option value="">—</option>
           <option v-for="o in f.options" :key="typeof o === 'object' ? o.value : o"
-                  :value="typeof o === 'object' ? o.value : o">
+                  :value="typeof o === 'object' ? o.value : o"
+                  :disabled="(f.disabledOptions || []).includes(typeof o === 'object' ? o.value : o)">
             {{ typeof o === 'object' ? o.label : enumLabel(o) }}</option>
         </select>
 

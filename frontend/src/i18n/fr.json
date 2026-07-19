@@ -136,7 +136,40 @@
     },
     "applications": {
       "eyebrow": "Périmètre",
-      "title": "Applications"
+      "title": "Applications",
+      "subtitle": "Cartographie des applications du périmètre et de leur posture.",
+      "note": {
+        "lead": "Cette page réunit les applications suivies, avec leur exposition au risque :",
+        "posture_label": "Posture technique",
+        "posture_text": "— criticité, exposition et vulnérabilités liées (total, hautes, ouvertes) — pour prioriser les efforts.",
+        "audit_label": "Couverture d'audit",
+        "audit_text": "— indique si l'application est déjà inscrite dans un périmètre d'audit."
+      },
+      "filters": "Filtres",
+      "filter_crit": "Criticité",
+      "filter_expo": "Exposition",
+      "filter_owner": "Responsable",
+      "filter_owner_ph": "Filtrer par contact métier…",
+      "filter_stack": "Stack technique",
+      "filter_audit": "Audit",
+      "filter_vuln": "Vulnérabilités",
+      "filter_vuln_open": "Avec vulns ouvertes",
+      "filter_vuln_any": "Toutes vulns",
+      "filter_vuln_none": "Sans vuln",
+      "new_title": "Nouvelle application",
+      "edit_title": "Modifier l’application",
+      "confirm_delete": "Supprimer l’application « {nom} » ? Cette action est journalisée.",
+      "kpi": {
+        "total": "Applications",
+        "total_foot": "toutes criticités",
+        "total_filtered_foot": "sur {total} au total",
+        "audited": "Applications auditées",
+        "vulns_open": "Avec vulns ouvertes",
+        "critiques": "Critiques",
+        "exposes": "Exposés",
+        "foot_scope": "{pct} % du périmètre",
+        "foot_selection": "{pct} % de la sélection"
+      }
     },
     "attack": {
       "eyebrow": "Couverture",
@@ -254,7 +287,38 @@
     },
     "organisations": {
       "eyebrow": "Périmètre",
-      "title": "Organisations"
+      "title": "Organisations",
+      "subtitle": "Cartographie des entités du périmètre — clients audités, prestataires et entités internes.",
+      "note": {
+        "lead": "Chaque organisation constitue une frontière de cloisonnement : applications, ressources, audits et vulnérabilités lui sont rattachés.",
+        "clients_label": "Clients",
+        "clients_text": "— entités pour le compte desquelles les audits sont réalisés.",
+        "autres_label": "Prestataires & internes",
+        "autres_text": "— équipes offensives et défensives mobilisées pour conduire ces audits."
+      },
+      "filters": "Filtres",
+      "filter_role": "Rôle",
+      "filter_statut": "Statut",
+      "filter_secteur": "Secteur d'activité",
+      "filter_secteur_ph": "Rechercher un secteur (NACE)…",
+      "filter_tlp": "TLP par défaut",
+      "kpi": {
+        "organisations": "Organisations",
+        "organisations_foot": "{c} clients · {p} prestataires · {i} internes",
+        "sous_audit": "Sous audit",
+        "sous_audit_foot": "{pct} % du parc couvert par ≥ 1 audit",
+        "inactives": "Inactives",
+        "inactives_foot": "{pct} % du parc à réactiver ou archiver",
+        "inactives_ok": "toutes actives"
+      },
+      "repartition": {
+        "title": "Répartition du portefeuille",
+        "desc": "Composition du parc d'organisations par rôle et par secteur d'activité (référentiel NACE).",
+        "resume": "{clients} clients · {secteurs} secteurs",
+        "par_role": "Par rôle · part du parc",
+        "par_secteur": "Par secteur · part du parc",
+        "no_secteur": "Aucun secteur renseigné pour ce périmètre."
+      }
     },
     "parametres": {
       "eyebrow": "Paramètres",
@@ -262,7 +326,37 @@
     },
     "ressources": {
       "eyebrow": "Périmètre",
-      "title": "Ressources"
+      "title": "Ressources",
+      "subtitle": "Cartographie des effectifs et actifs par organisation.",
+      "note": {
+        "lead": "Cette page réunit les personnes impliquées dans les audits, de part et d'autre :",
+        "contacts_label": "Points de contact client",
+        "contacts_text": "— rattachés à leur organisation — pour le compte de laquelle les audits sont réalisés.",
+        "externes_label": "Intervenants externes",
+        "externes_text": "— auditeurs, équipe CTI — mobilisés pour conduire ces audits."
+      },
+      "filters": "Filtres",
+      "filter_org": "Organisation",
+      "filter_type": "Type",
+      "filter_role": "Rôle",
+      "filter_org_ph": "Rechercher une organisation…",
+      "filter_role_ph": "Rechercher un rôle…",
+      "kpi": {
+        "ressources": "Ressources",
+        "ressources_foot": "toutes catégories",
+        "orgs": "Organisations couvertes",
+        "orgs_foot": "{pct} % du périmètre",
+        "renforcer": "Rôles à renforcer",
+        "renforcer_foot": "{roles} (≤ {seuil})",
+        "renforcer_ok": "équipe équilibrée"
+      },
+      "repartition": {
+        "title": "Répartition des ressources",
+        "desc": "Effectif par catégorie de ressource et couverture des rôles de l'équipe Purple. Les rôles sous-dotés sont signalés en ambre.",
+        "resume": "{humaines} humaines · {n} à renforcer",
+        "par_type": "Par type · part du parc",
+        "par_role": "Par rôle · effectif (part)"
+      }
     },
     "scenarios": {
       "eyebrow": "Renseignement",
@@ -354,6 +448,27 @@
     "auditeurs": "Auditeurs assignés"
   },
   "enum": {
+    "nace_a": "Agriculture, sylviculture et pêche",
+    "nace_b": "Industries extractives",
+    "nace_c": "Industrie manufacturière",
+    "nace_d": "Production et distribution d'électricité, de gaz, de vapeur et d'air conditionné",
+    "nace_e": "Production et distribution d'eau ; assainissement, gestion des déchets et dépollution",
+    "nace_f": "Construction",
+    "nace_g": "Commerce ; réparation d'automobiles et de motocycles",
+    "nace_h": "Transports et entreposage",
+    "nace_i": "Hébergement et restauration",
+    "nace_j": "Information et communication",
+    "nace_k": "Activités financières et d'assurance",
+    "nace_l": "Activités immobilières",
+    "nace_m": "Activités spécialisées, scientifiques et techniques",
+    "nace_n": "Activités de services administratifs et de soutien",
+    "nace_o": "Administration publique et défense ; sécurité sociale obligatoire",
+    "nace_p": "Enseignement",
+    "nace_q": "Santé humaine et action sociale",
+    "nace_r": "Arts, spectacles et activités récréatives",
+    "nace_s": "Autres activités de services",
+    "nace_t": "Activités des ménages en tant qu'employeurs",
+    "nace_u": "Activités des organisations et organismes extraterritoriaux",
     "client": "Client",
     "prestataire": "Prestataire",
     "interne": "Interne",
@@ -370,6 +485,11 @@
     "materielle": "Matérielle",
     "logicielle": "Logicielle",
     "documentaire": "Documentaire",
+    "auditeur": "Auditeur",
+    "cert": "CERT",
+    "soc": "SOC",
+    "ciso": "CISO",
+    "voc": "VOC",
     "black-box": "Boîte noire",
     "grey-box": "Boîte grise",
     "white-box": "Boîte blanche",

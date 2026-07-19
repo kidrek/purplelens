@@ -56,6 +56,34 @@ const ROLE_OPTIONS = [
   { value: 'voc', label: 'VOC' },
 ]
 
+// Secteurs d'activité — référentiel NACE Rév. 2 (21 sections officielles A→U, Eurostat).
+// La valeur stockée (`nace_<lettre>`) est indépendante de la langue ; les libellés sont
+// traduits à l'affichage via enumLabel (enum.nace_*). Les `label` ci-dessous ne servent
+// que de repli hors i18n. Champ à autocomplétion (type `refac` → RefacSelect).
+const NACE_SECTIONS = [
+  { value: 'nace_a', label: 'Agriculture, sylviculture et pêche' },
+  { value: 'nace_b', label: 'Industries extractives' },
+  { value: 'nace_c', label: 'Industrie manufacturière' },
+  { value: 'nace_d', label: "Production et distribution d'électricité, de gaz, de vapeur et d'air conditionné" },
+  { value: 'nace_e', label: "Production et distribution d'eau ; assainissement, gestion des déchets et dépollution" },
+  { value: 'nace_f', label: 'Construction' },
+  { value: 'nace_g', label: "Commerce ; réparation d'automobiles et de motocycles" },
+  { value: 'nace_h', label: 'Transports et entreposage' },
+  { value: 'nace_i', label: 'Hébergement et restauration' },
+  { value: 'nace_j', label: 'Information et communication' },
+  { value: 'nace_k', label: "Activités financières et d'assurance" },
+  { value: 'nace_l', label: 'Activités immobilières' },
+  { value: 'nace_m', label: 'Activités spécialisées, scientifiques et techniques' },
+  { value: 'nace_n', label: 'Activités de services administratifs et de soutien' },
+  { value: 'nace_o', label: 'Administration publique et défense ; sécurité sociale obligatoire' },
+  { value: 'nace_p', label: 'Enseignement' },
+  { value: 'nace_q', label: 'Santé humaine et action sociale' },
+  { value: 'nace_r', label: 'Arts, spectacles et activités récréatives' },
+  { value: 'nace_s', label: 'Autres activités de services' },
+  { value: 'nace_t', label: "Activités des ménages en tant qu'employeurs" },
+  { value: 'nace_u', label: 'Activités des organisations et organismes extraterritoriaux' },
+]
+
 // Top 10 compétences suggérées par rôle — saisie libre conservée, ceci n'est qu'une
 // aide à la saisie (cliquer ajoute la compétence à la liste). Ajustable librement.
 const COMPETENCES_BY_ROLE = {
@@ -93,7 +121,8 @@ export const ENTITY_FIELDS = {
     { key: 'nom', label: 'Nom', type: 'text', required: true },
     { key: 'code', label: 'Code court', type: 'text', placeholder: 'auto : slug du nom si vide' },
     { key: 'role', label: 'Rôle', type: 'select', options: ['client', 'prestataire', 'interne'], required: true },
-    { key: 'secteur', label: "Secteur d'activité", type: 'text' },
+    { key: 'secteur', label: "Secteur d'activité", type: 'refac', options: NACE_SECTIONS,
+      placeholder: 'Rechercher un secteur (NACE)…' },
     { key: 'referent_interne', label: 'Référent interne', type: 'text' },
     { key: 'siren', label: 'SIREN', type: 'text' },
     { key: 'tlp_defaut', label: 'TLP par défaut', type: 'tlp' },
@@ -122,7 +151,8 @@ export const ENTITY_FIELDS = {
   ressources: [
     { key: 'organisation_id', label: 'Organisation', type: 'client', role: null, required: true },
     { key: 'nom', label: 'Nom', type: 'text', required: true },
-    { key: 'type', label: 'Type', type: 'select', options: ['humaine', 'materielle', 'logicielle', 'documentaire'] },
+    { key: 'type', label: 'Type', type: 'select', options: ['humaine', 'materielle', 'logicielle', 'documentaire'],
+      disabledOptions: ['materielle', 'logicielle', 'documentaire'] },
     { key: 'role', label: 'Rôle', type: 'refac', options: ROLE_OPTIONS, placeholder: 'Rechercher un rôle…' },
     { key: 'competences', label: 'Compétences', type: 'tags', dependsOn: 'role',
       suggestionsByDep: COMPETENCES_BY_ROLE, placeholder: 'valeurs séparées par des virgules' },

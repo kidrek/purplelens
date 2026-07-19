@@ -43,25 +43,25 @@ async def seed_org_and_users() -> tuple[str, str]:
     async with service_session("admin_service") as session:
         await session.execute(
             text(
-                "INSERT INTO organisation (id, nom, code, role, tlp_defaut, statut, "
-                "created_at, updated_at) VALUES (:id, :n, :c, 'client', 'AMBER', 'actif', "
+                "INSERT INTO organisation (id, nom, code, role, secteur, tlp_defaut, statut, "
+                "created_at, updated_at) VALUES (:id, :n, :c, 'client', 'nace_c', 'AMBER', 'actif', "
                 "now(), now()) ON CONFLICT DO NOTHING"
             ),
             {"id": client_id, "n": "ACME Corp (démo)", "c": "ACME"},
         )
         await session.execute(
             text(
-                "INSERT INTO organisation (id, nom, code, role, tlp_defaut, statut, "
-                "created_at, updated_at) VALUES (:id, :n, :c, 'client', 'AMBER', 'actif', "
+                "INSERT INTO organisation (id, nom, code, role, secteur, tlp_defaut, statut, "
+                "created_at, updated_at) VALUES (:id, :n, :c, 'client', 'nace_j', 'AMBER', 'actif', "
                 "now(), now()) ON CONFLICT DO NOTHING"
             ),
             {"id": client2_id, "n": "Globex SA (démo)", "c": "GLOBEX"},
         )
         await session.execute(
             text(
-                "INSERT INTO organisation (id, nom, code, role, tlp_defaut, statut, "
+                "INSERT INTO organisation (id, nom, code, role, secteur, tlp_defaut, statut, "
                 "created_at, updated_at) VALUES (gen_random_uuid(), 'Prestataire Purple', "
-                "'PRESTA', 'prestataire', 'AMBER', 'actif', now(), now()) "
+                "'PRESTA', 'prestataire', 'nace_m', 'AMBER', 'actif', now(), now()) "
                 "ON CONFLICT DO NOTHING"
             )
         )

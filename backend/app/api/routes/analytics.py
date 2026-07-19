@@ -9,7 +9,7 @@ globaux (CTI transverse).
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -539,3 +539,163 @@ async def scenario_usage(
             "covered_pct": round(covered / len(techniques) * 100) if techniques else 0,
         },
     }
+
+
+async def compute_ressources(
+    s: AsyncSession,
+    org_ids: list[str] | None = None,
+    types: list[str] | None = None,
+    roles: list[str] | None = None,
+) -> dict:
+    """Agrégats de la page Ressources : effectif total, répartition par type et par rôle,
+    couverture des organisations. Les filtres (organisation / type / rôle) narrowent à
+    l'intérieur du périmètre RLS et reflètent les filtres du tableau côté UI. Les valeurs
+    sont toujours paramétrées ; seuls des fragments de clause figés sont interpolés.
+    """
+    clauses = ["deleted_at IS NULL"]
+    params: dict = {}
+    if org_ids:
+        clauses.append("organisation_id = ANY(CAST(:orgs AS uuid[]))")
+        params["orgs"] = list(org_ids)
+    if types:
+        clauses.append("type = ANY(:types)")
+        params["types"] = list(types)
+    if roles:
+        clauses.append("role = ANY(:roles)")
+        params["roles"] = list(roles)
+    where = " AND ".join(clauses)
+
+    total = (await s.execute(text(
+        f"SELECT count(*) FROM ressource WHERE {where}"
+    ), params)).scalar_one()
+
+    by_type = {r.type: r.c for r in (await s.execute(text(
+        f"SELECT type, count(*) c FROM ressource WHERE {where} AND type IS NOT NULL GROUP BY type"
+    ), params)).all()}
+
+    by_role = {r.role: r.c for r in (await s.execute(text(
+        f"SELECT role, count(*) c FROM ressource WHERE {where} AND role IS NOT NULL GROUP BY role"
+    ), params)).all()}
+
+    covered = (await s.execute(text(
+        f"SELECT count(DISTINCT organisation_id) FROM ressource WHERE {where}"
+    ), params)).scalar_one()
+
+    # Dénominateur du parc : toutes les organisations du périmètre RLS, indépendant des
+    # filtres ressource (couverture = orgs représentées / orgs du périmètre).
+    orgs_total = (await s.execute(text(
+        "SELECT count(*) FROM organisation WHERE deleted_at IS NULL"
+    ))).scalar_one()
+
+    return {
+        "total": total,
+        "by_type": by_type,
+        "by_role": by_role,
+        "organisations": {"total": orgs_total, "covered": covered},
+    }
+
+
+@router.get("/ressources")
+async def ressources_stats(
+    organisation_id: list[str] = Query(default=[]),
+    types: list[str] = Query(default=[], alias="type"),
+    roles: list[str] = Query(default=[], alias="role"),
+    ctx: SecurityContext = Depends(require("ressources", Action.L)),
+):
+    async with rls_session(
+        user_id=ctx.user_id, role=ctx.role, client_scope=ctx.client_scope
+    ) as s:
+        return await compute_ressources(s, organisation_id, types, roles)
+
+
+async def compute_organisations(
+    s: AsyncSession,
+    roles: list[str] | None = None,
+    statuts: list[str] | None = None,
+    secteurs: list[str] | None = None,
+    tlps: list[str] | None = None,
+) -> dict:
+    """Agrégats de la page Organisations : effectif du parc, répartition par rôle /
+    statut / secteur / TLP, et couverture transverse (organisations rattachées à au moins
+    un audit, une application, une ressource). Les filtres (rôle / statut / secteur / TLP)
+    narrowent à l'intérieur du périmètre RLS et reflètent les filtres du tableau côté UI.
+    Les valeurs sont toujours paramétrées ; seuls des fragments de clause figés sont
+    interpolés. L'organisation est aliasée `o` pour la corrélation des sous-requêtes EXISTS.
+    """
+    clauses = ["o.deleted_at IS NULL"]
+    params: dict = {}
+    if roles:
+        clauses.append("o.role = ANY(:roles)")
+        params["roles"] = list(roles)
+    if statuts:
+        clauses.append("o.statut = ANY(:statuts)")
+        params["statuts"] = list(statuts)
+    if secteurs:
+        clauses.append("o.secteur = ANY(:secteurs)")
+        params["secteurs"] = list(secteurs)
+    if tlps:
+        clauses.append("o.tlp_defaut = ANY(:tlps)")
+        params["tlps"] = list(tlps)
+    where = " AND ".join(clauses)
+
+    total = (await s.execute(text(
+        f"SELECT count(*) FROM organisation o WHERE {where}"
+    ), params)).scalar_one()
+
+    by_role = {r.role: r.c for r in (await s.execute(text(
+        f"SELECT o.role, count(*) c FROM organisation o WHERE {where} AND o.role IS NOT NULL GROUP BY o.role"
+    ), params)).all()}
+
+    by_statut = {r.statut: r.c for r in (await s.execute(text(
+        f"SELECT o.statut, count(*) c FROM organisation o WHERE {where} AND o.statut IS NOT NULL GROUP BY o.statut"
+    ), params)).all()}
+
+    by_secteur = {r.secteur: r.c for r in (await s.execute(text(
+        f"SELECT o.secteur, count(*) c FROM organisation o WHERE {where} AND o.secteur IS NOT NULL GROUP BY o.secteur"
+    ), params)).all()}
+
+    by_tlp = {r.tlp_defaut: r.c for r in (await s.execute(text(
+        f"SELECT o.tlp_defaut, count(*) c FROM organisation o WHERE {where} "
+        "AND o.tlp_defaut IS NOT NULL GROUP BY o.tlp_defaut"
+    ), params)).all()}
+
+    # Couverture transverse : organisations (du périmètre filtré) rattachées à au moins
+    # un audit / une application / une ressource. La RLS filtre déjà les tables liées au
+    # même périmètre client ; EXISTS corrélé, jamais de fuite hors scope.
+    audited = (await s.execute(text(
+        f"SELECT count(*) FROM organisation o WHERE {where} "
+        "AND EXISTS (SELECT 1 FROM audit a WHERE a.client_id = o.id AND a.deleted_at IS NULL)"
+    ), params)).scalar_one()
+
+    with_apps = (await s.execute(text(
+        f"SELECT count(*) FROM organisation o WHERE {where} "
+        "AND EXISTS (SELECT 1 FROM application ap WHERE ap.client_id = o.id AND ap.deleted_at IS NULL)"
+    ), params)).scalar_one()
+
+    with_ress = (await s.execute(text(
+        f"SELECT count(*) FROM organisation o WHERE {where} "
+        "AND EXISTS (SELECT 1 FROM ressource r WHERE r.organisation_id = o.id AND r.deleted_at IS NULL)"
+    ), params)).scalar_one()
+
+    return {
+        "total": total,
+        "by_role": by_role,
+        "by_statut": by_statut,
+        "by_secteur": by_secteur,
+        "by_tlp": by_tlp,
+        "coverage": {"audited": audited, "with_apps": with_apps, "with_ress": with_ress},
+    }
+
+
+@router.get("/organisations")
+async def organisations_stats(
+    roles: list[str] = Query(default=[], alias="role"),
+    statuts: list[str] = Query(default=[], alias="statut"),
+    secteurs: list[str] = Query(default=[], alias="secteur"),
+    tlps: list[str] = Query(default=[], alias="tlp"),
+    ctx: SecurityContext = Depends(require("organisations", Action.L)),
+):
+    async with rls_session(
+        user_id=ctx.user_id, role=ctx.role, client_scope=ctx.client_scope
+    ) as s:
+        return await compute_organisations(s, roles, statuts, secteurs, tlps)
