@@ -1,0 +1,17 @@
+# Override LOCAL (non versionné) — force l'émulation x86_64 pour les images
+# sans build ARM natif (utile sur Apple Silicon). Docker Compose le fusionne
+# automatiquement avec docker-compose.yml ; ne pas committer, ne pas dupliquer
+# en prod/CI (verrouillerait aussi les hôtes ARM natifs).
+services:
+  frontend: {platform: linux/x86_64}
+  api: {platform: linux/x86_64}
+  api-test: {platform: linux/x86_64}
+  worker: {platform: linux/x86_64}
+  beat: {platform: linux/x86_64}
+  pdf-renderer: {platform: linux/x86_64}
+  postgres: {platform: linux/x86_64}
+  redis: {platform: linux/x86_64}
+  minio: {platform: linux/x86_64}
+  vault: {platform: linux/x86_64}
+  keycloak: {platform: linux/x86_64}
+  clamav: {platform: linux/x86_64}
