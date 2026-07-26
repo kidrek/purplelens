@@ -25,14 +25,21 @@ def test_every_role_covers_every_entity():
             assert entity in MATRIX[role], f"{role}/{entity} manquant dans la matrice"
 
 
+# Lecture du journal réservée à la gouvernance ; les autres rôles n'y ont pas accès.
+JOURNAL_ROLES = {"admin", "manager", "ciso"}
+
+
 @pytest.mark.parametrize("role", ROLES)
-def test_journal_is_read_only_for_everyone(role):
-    """Le journal est immuable applicativement : L seul, pour tous (admin compris)."""
+def test_journal_never_writable_and_read_only_for_governance(role):
+    """Journal immuable applicativement (jamais C/E/S/V) ; L réservé à admin/manager/ciso."""
     acts = MATRIX[role]["journal"]
-    assert Action.L in acts
     assert not ({Action.C, Action.E, Action.S, Action.V} & acts), (
-        f"{role} ne doit avoir que L sur le journal"
+        f"{role} ne doit jamais écrire le journal"
     )
+    if role in JOURNAL_ROLES:
+        assert Action.L in acts, f"{role} (gouvernance) doit lire le journal"
+    else:
+        assert Action.L not in acts, f"{role} ne doit pas avoir accès au journal"
 
 
 @pytest.mark.parametrize("role", ROLES)

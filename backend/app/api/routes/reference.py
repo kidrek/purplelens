@@ -81,12 +81,21 @@ async def catalog_entries(catalog_id: str, ctx: SecurityContext = Depends(get_se
         "ext_id, name"
         + (", tactic" if cat["has_tactic"] else "")
         + (", category" if cat.get("has_category") else "")
+        # Domaine(s) ATT&CK (Enterprise/Mobile/ICS) pour le badge côté formulaire.
+        + (", data->'domains' AS domains" if cat["has_tactic"] else "")
     )
     async with service_session("admin_service") as session:
         rows = (await session.execute(
             _text(f"SELECT {cols} FROM {cat['table']} ORDER BY ext_id")
         )).mappings().all()
-    return {"catalog": catalog_id, "entries": [dict(r) for r in rows]}
+    entries = []
+    for r in rows:
+        d = dict(r)
+        if "domains" in d:  # JSONB peut revenir en chaîne (asyncpg) → normalise en liste
+            dom = _coerce_data(d["domains"]) if isinstance(d["domains"], str) else d["domains"]
+            d["domains"] = dom if isinstance(dom, list) else []
+        entries.append(d)
+    return {"catalog": catalog_id, "entries": entries}
 
 
 @router.get("/actors")
@@ -256,24 +265,10 @@ async def import_all(ctx: SecurityContext = Depends(get_security_context)):
     """
     if ctx.role != "admin":
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="forbidden")
-    from app.reference.catalogs import CATALOGS
-    from app.reference.sync import SYNCABLE, SyncUnavailable, sync_catalog
+    from app.reference.sync import sync_all_catalogs
 
-    result: dict[str, dict] = {}
     async with service_session("admin_service") as session:
-        for cat in CATALOGS:
-            cid = cat["id"]
-            if cid in SYNCABLE:
-                try:
-                    n = await sync_catalog(session, cid)
-                    source = "upstream"
-                except SyncUnavailable:
-                    n = await import_catalog(session, cid)
-                    source = "fallback"
-            else:
-                n = await import_catalog(session, cid)
-                source = "embedded"
-            result[cid] = {"entries": n, "source": source}
+        result = await sync_all_catalogs(session, prefer_online=True)
         await journal_append(
             session, event_type="reference.synced", actor_id=ctx.user_id,
             subject="all", detail={

@@ -51,3 +51,6 @@ class WhoAmI(BaseModel):
     client_scope: list[str]
     mfa: bool
     is_multi_client: bool
+    # Projection de la matrice (entités lisibles) — pilote l'affichage côté client
+    # (ex. masquer un lien de menu). L'autorisation reste décidée côté serveur.
+    readable_entities: list[str] = []

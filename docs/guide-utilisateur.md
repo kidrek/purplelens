@@ -1,5 +1,7 @@
 # Guide utilisateur — Cockpit Purple Team
 
+🇬🇧 [English version](en/user-guide.md)
+
 Ce guide présente les parcours principaux selon votre rôle. L'interface est bilingue
 (FR/EN, bascule dans la barre supérieure) et propose deux thèmes conformes à la
 direction artistique : **A** (clair, violet) et **B** (SOC sombre) — bascule à côté
@@ -30,7 +32,7 @@ session est révoquée (compte désactivé, rotation des clés).
 
 | Rôle       | Vocation principale |
 |------------|---------------------|
-| `admin`    | Administration, gestion des comptes, CRUD large (jamais le journal ni les clés) |
+| `admin`    | Administration, gestion des comptes, CRUD large (journal en **lecture seule**, jamais les clés de chiffrement) |
 | `manager`  | Pilotage et validation ; lecture seule sur Ressources/Applications/Actions (D6) |
 | `ciso`     | Validation des vulnérabilités et tickets, vision de son périmètre |
 | `auditeur` | Conduite des audits, dépôt des preuves |
@@ -40,24 +42,55 @@ session est révoquée (compte désactivé, rotation des clés).
 
 Ce que vous voyez et pouvez faire est **décidé par le serveur**. Un bouton absent ou
 grisé traduit un droit non accordé : l'interface reflète la décision, elle ne l'invente
-pas et ne la contourne pas.
+pas et ne la contourne pas. Le **menu latéral lui-même s'adapte** : les entrées dont le
+serveur ne vous accorde pas la lecture (par exemple le Journal pour les rôles non
+transverses) n'apparaissent pas.
+
+**Astuce navigation** : la **palette de commandes** (⌘K / Ctrl-K) donne accès en
+recherche libre aux vues et aux articles de la bibliothèque méthodologique.
 
 ## Cockpit
 
-Écran d'accueil : compteurs de haut niveau (audits, exercices, vulnérabilités, preuves)
-limités à votre périmètre. Les rôles multi-clients voient l'agrégat de leurs clients.
+Écran d'accueil : taux de détection, angles morts, dépassements de SLA P1, posture par
+tactique (bande kill-chain), tendance, derniers événements — limités à votre périmètre.
+Les rôles multi-clients voient l'agrégat de leurs clients ; le **sélecteur de périmètre**
+de la barre supérieure restreint l'affichage (jamais ne l'élargit). La plupart des vues
+de liste portent en outre leur propre **bandeau de KPI** calculé côté serveur avec les
+mêmes filtres que le tableau.
 
 ## Parcours métier
 
-- **Organisations** : clients et prestataires, secteur, référent, TLP par défaut.
-- **Audits** : engagements (référence auto `AUD-AAAA-NNN`), catégorie, type de test,
-  jalons, statut, priorité.
-- **Exercices Purple** : sessions d'émulation, équipes, *runs*, verdicts par étape
-  d'attaque (prévenu / alerté / journalisé / sans télémétrie / non testé).
+- **Organisations** : clients et prestataires, secteur (taxonomie **NACE Rév. 2**),
+  référent, TLP par défaut.
+- **Applications** : inventaire applicatif (criticité, exposition, valeur métier) avec
+  posture consolidée — vulnérabilités liées, couverture d'audit ; le panneau latéral
+  d'une application est un mini-cockpit dédié.
+- **Ressources** : intervenants humains (rôle auditeur/SOC/CISO…, compétences) —
+  sélectionnables comme auditeurs sur les audits.
+- **Audits** : engagements (référence auto `TYPE_AAAAMM-NN_CLIENT_APP`, ex.
+  `PEN_202602-01_ACME_PORTAIL`), catégorie, type de test, jalons PTES, statut, priorité.
+  Le **bloc engagement** (objectifs, périmètre, règles, contacts, clauses NDA — 18
+  rubriques) est **pré-rempli à la création** et alimente la lettre d'engagement. Lier un
+  **scénario CTI** à l'audit **dérive automatiquement les actions PTES** (une action par
+  étape du scénario, dédoublonnée par technique).
+- **Exercices Purple** : sessions d'émulation rattachées à un audit, équipes, *runs*
+  successifs, verdicts par étape d'attaque (prévenu / alerté / journalisé / sans
+  télémétrie / non testé), délais de détection (MTTD) et de réaction (MTTR) calculés à
+  partir des horodatages saisis. La vue groupe les runs par audit et le panneau montre la
+  progression de la détection d'un run à l'autre.
 - **Vulnérabilités** : CVE/CWE, score CVSS, niveau et échéance de SLA calculés
-  automatiquement, validation par le CISO/Manager.
+  automatiquement, contre-mesures **D3FEND dérivées des techniques ATT&CK**, validation
+  par le CISO/Manager ; enrichissement CIRCL à la demande (EPSS, KEV, SSVC).
+- **Tickets de détection** : issus des **angles morts** d'un exercice (étape sans
+  télémétrie) — un ticket ne se crée que depuis une étape d'attaque source ; référence
+  auto `TICK_AAAAMM-NN_CLIENT_APP_TECHNIQUE`, mesure D3FEND associée, règle Sigma
+  éventuelle, cycle ouvert → en cours → traité → clos avec validation. Un ticket clos
+  fait passer la technique correspondante à l'état « couvert ».
 - **Scénarios** : bibliothèque transverse de menaces (acteurs émulés, techniques
-  ATT&CK, crédibilité) — partagée, hors cloisonnement client.
+  ATT&CK, crédibilité échelle Admiralty, export/import STIX 2.1) — partagée, hors
+  cloisonnement client. Le champ « acteur émulé » s'appuie sur les **catalogues
+  d'acteurs** (groupes ATT&CK + MISP Galaxy) : sélectionnez un acteur puis **importez ses
+  TTPs** comme étapes du scénario.
 
 ## Matrice ATT&CK
 
@@ -81,9 +114,12 @@ tickets, scénarios liés) et se **déplie** pour afficher ses sous-techniques.
 Le coffre affiche les preuves de votre périmètre avec leur **état de scellement** et leur
 marquage **TLP**. Points essentiels :
 
-- Les fichiers **ne transitent jamais par l'application**. Le dépôt et le téléchargement
-  se font par **URL présignée à durée courte**, délivrée par le serveur après un triple
-  contrôle (droits, cloisonnement, TLP/PAP).
+- Le **dépôt** ne transite jamais par l'application : il se fait par **URL présignée à
+  durée courte**, délivrée par le serveur après un triple contrôle (droits,
+  cloisonnement, TLP/PAP). Le **téléchargement déchiffré** est la seule exception
+  documentée : seuls les serveurs détiennent la clé, le fichier en clair est donc servi
+  par l'API, sous contrôle d'accès renforcé (step-up récent exigé pour le TLP:RED) et
+  trace systématique — les preuves marquées « secrets » ne sont jamais servies en clair.
 - Une preuve déposée passe par un **sas** : mise en quarantaine, analyse antivirus,
   vérification du type réel du fichier, chiffrement enveloppe, dépôt en stockage WORM,
   puis scellement dans le journal. La barre de progression reflète ces étapes.
@@ -93,15 +129,47 @@ marquage **TLP**. Points essentiels :
 
 ## Journal
 
-Consultable par tous en **lecture seule** (personne ne peut le modifier, pas même
-l'administrateur). Le bouton « Vérifier l'intégrité de la chaîne » demande au serveur de
-recalculer le chaînage par hachage et signale toute rupture.
+Réservé aux rôles transverses (`admin`, `manager`, `ciso`), en **lecture seule** —
+personne ne peut le modifier, pas même l'administrateur ; les rôles cloisonnés n'y voient
+que les événements de leur périmètre. La vue offre des **filtres serveur** (recherche
+libre, domaine d'événement, résultat ok/refusé, acteur, plage de dates), un panneau de
+**statistiques**, et un **export JSON** (step-up exigé). Le bouton « Vérifier l'intégrité
+de la chaîne » demande au serveur de recalculer le chaînage par hachage et signale toute
+rupture ; en arrière-plan, la tête de chaîne est en outre **ancrée en stockage WORM**
+toutes les 6 heures.
 
 ## Livrables
 
-Lettres d'engagement, NDA et rapports (format PTES) sont générés en PDF avec un
-**bandeau de classification TLP** et déposés en stockage verrouillé. Les éléments
-marqués comme secrets sont masqués dans les rendus selon votre contexte.
+Quatre types sont générés en PDF : **lettre d'engagement**, **NDA**, **rapport PTES** et
+**rapport d'exercice Purple** (tous les runs d'un audit : chronologie des étapes,
+verdicts, couverture par tactique). Gabarits bilingues FR/EN, **bandeau de
+classification TLP**, registre des preuves avec aperçus intégrés, dépôt en stockage
+verrouillé. Les éléments marqués comme secrets sont masqués dans les rendus.
+
+## Bibliothèque
+
+Corpus méthodologique bilingue (procédures, processus, fiches métier), filtrable par
+profil, consultable depuis le menu **Bibliothèque** ou via la palette ⌘K. Les articles
+s'ouvrent dans un panneau latéral partout dans l'application (liens profonds `?open=`).
+
+## Paramètres
+
+État des **catalogues de référence** (ATT&CK multi-domaines Enterprise/Mobile/ICS,
+D3FEND, OWASP, CWE, CAPEC, groupes ATT&CK, acteurs MISP) avec import hors-ligne et
+**synchronisation en ligne** (« Tout synchroniser », réservé aux administrateurs).
+
+## Administration
+
+Gestion des comptes (création, changement de rôle, désactivation) — chaque action est
+**à haut risque** : un code TOTP de step-up est demandé à la volée. Les rôles et leurs
+droits sont figés dans la matrice serveur, jamais configurables à chaud.
+
+## Mon compte — « Ma fiche »
+
+La page **Mon compte** permet d'enrôler le MFA (TOTP) et de tenir sa **fiche auditeur**
+(« Ma fiche ») : une fiche ressource liée à votre compte, par organisation de votre
+périmètre. Une fois créée, vous devenez sélectionnable comme auditeur d'un audit — sans
+attendre qu'un gestionnaire crée la fiche pour vous.
 
 ## Bonnes pratiques
 

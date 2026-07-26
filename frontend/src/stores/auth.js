@@ -16,6 +16,8 @@ export const useAuthStore = defineStore('auth', {
     role: (s) => s.user?.role || null,
     isMultiClient: (s) => (s.user?.client_scope?.length ?? 0) === 0,
     scope: (s) => s.user?.client_scope || [],
+    // Entités lisibles (projection serveur de la matrice) — masque les liens de menu.
+    readableEntities: (s) => s.user?.readable_entities || [],
   },
   actions: {
     async fetchMe() {

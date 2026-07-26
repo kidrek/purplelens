@@ -6,8 +6,9 @@ COMPOSE := docker compose
 ENV_FILE := .env
 
 .DEFAULT_GOAL := help
-.PHONY: help bootstrap init init-vault tls secrets up down logs config migrate seed seed-demo import-maquette \
-        test test-e2e test-security backup restore unseal fmt lint frontend-build
+.PHONY: help bootstrap init init-vault tls secrets up down logs config migrate seed seed-demo seed-demo-fresh \
+        import-maquette test test-e2e test-security backup restore unseal fmt lint frontend-build \
+        verify-journal sync-reference
 
 help: ## Affiche cette aide
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -101,6 +102,9 @@ seed: secrets ## Référentiels ATT&CK/D3FEND/OWASP/CWE/CAPEC + organisations & 
 seed-demo: secrets ## Jeu de données de démonstration riche (audits, exercices Purple, vulns, tickets…) — à lancer après `seed`
 	$(COMPOSE) run --build --rm api python -m app.seed_demo
 
+seed-demo-fresh: secrets ## Purge les données métier (pollution de tests comprise ; référentiels/comptes/journal préservés) puis re-seed le jeu de démo
+	$(COMPOSE) run --build --rm api python -m app.seed_demo --purge
+
 import-maquette: $(ENV_FILE) ## migration §5 : export JSON maquette → API + sas.  FILE=chemin.json
 	@test -n "$(FILE)" || (echo "Usage: make import-maquette FILE=export.json" && exit 1)
 	$(COMPOSE) run --rm -v $(abspath $(FILE)):/import.json api python -m app.import_maquette /import.json
@@ -153,5 +157,5 @@ frontend-build: ## Build de production du frontend (dans le conteneur — étage
 verify-journal: ## Vérifie l'intégrité de la chaîne du journal d'audit
 	$(COMPOSE) run --rm api python -m scripts.verify_journal
 
-sync-reference: ## Synchronise les référentiels ATT&CK/D3FEND depuis MITRE
+sync-reference: ## Synchronise les référentiels (ATT&CK, D3FEND, CWE, CAPEC, groupes, acteurs MISP)
 	$(COMPOSE) run --rm api python -m scripts.sync_reference

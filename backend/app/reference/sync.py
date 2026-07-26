@@ -11,8 +11,11 @@ URLs et délai configurables (instances miroir / air-gap possibles).
 """
 from __future__ import annotations
 
+import io
 import json
 import re
+import xml.etree.ElementTree as ET
+import zipfile
 from typing import Any
 
 import httpx
@@ -39,22 +42,116 @@ async def _fetch_json(url: str, timeout: float | None = None) -> Any:
         raise SyncUnavailable("réponse non-JSON") from exc
 
 
+async def _fetch_bytes(url: str, timeout: float | None = None) -> bytes:
+    """Récupère un contenu binaire (XML brut ou archive) depuis une source amont.
+
+    Même politique de dégradation gracieuse que `_fetch_json` : toute erreur réseau/HTTP
+    lève `SyncUnavailable` pour que l'appelant retombe sur le socle embarqué.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=timeout or settings.reference_sync_timeout_seconds,
+                                     follow_redirects=True) as c:
+            r = await c.get(url)
+    except (httpx.HTTPError, OSError) as exc:
+        raise SyncUnavailable(str(exc)) from exc
+    if r.status_code >= 400:
+        raise SyncUnavailable(f"HTTP {r.status_code}")
+    return r.content
+
+
+def _local_name(tag: str) -> str:
+    """Nom local d'une balise XML, sans son namespace (`{ns}Weakness` → `Weakness`)."""
+    return tag.rsplit("}", 1)[-1]
+
+
+def parse_capec(xml_bytes: bytes) -> list[dict]:
+    """Extrait les patterns d'attaque du catalogue CAPEC complet (XML MITRE).
+
+    On retient chaque `Attack_Pattern` non déprécié → ext_id `CAPEC-<ID>`, nom.
+    Robuste au namespace par défaut du XML (match sur le nom local).
+    """
+    try:
+        root = ET.fromstring(xml_bytes)
+    except ET.ParseError as exc:
+        raise SyncUnavailable(f"XML CAPEC illisible: {exc}") from exc
+    out: list[dict] = []
+    for el in root.iter():
+        if _local_name(el.tag) != "Attack_Pattern":
+            continue
+        if el.get("Status", "") in {"Deprecated", "Obsolete"}:
+            continue
+        ext, name = el.get("ID"), el.get("Name")
+        if ext and name:
+            out.append({"ext_id": f"CAPEC-{ext}", "name": name})
+    return out
+
+
+def parse_cwe(xml_bytes: bytes) -> list[dict]:
+    """Extrait les faiblesses du dictionnaire CWE complet (XML MITRE).
+
+    On retient chaque `Weakness` non dépréciée → ext_id `CWE-<ID>`, nom (on ignore les
+    éléments `Category`/`View`). Robuste au namespace par défaut du XML.
+    """
+    try:
+        root = ET.fromstring(xml_bytes)
+    except ET.ParseError as exc:
+        raise SyncUnavailable(f"XML CWE illisible: {exc}") from exc
+    out: list[dict] = []
+    for el in root.iter():
+        if _local_name(el.tag) != "Weakness":
+            continue
+        if el.get("Status", "") in {"Deprecated", "Obsolete"}:
+            continue
+        ext, name = el.get("ID"), el.get("Name")
+        if ext and name:
+            out.append({"ext_id": f"CWE-{ext}", "name": name})
+    return out
+
+
+def _unzip_first_xml(raw: bytes) -> bytes:
+    """Renvoie le premier membre `*.xml` d'une archive ZIP téléchargée."""
+    try:
+        with zipfile.ZipFile(io.BytesIO(raw)) as zf:
+            member = next(n for n in zf.namelist() if n.lower().endswith(".xml"))
+            return zf.read(member)
+    except (zipfile.BadZipFile, StopIteration, KeyError, OSError) as exc:
+        raise SyncUnavailable(f"archive illisible: {exc}") from exc
+
+
 _STD_TACTICS = {
     "reconnaissance", "resource-development", "initial-access", "execution",
     "persistence", "privilege-escalation", "defense-evasion", "credential-access",
     "discovery", "lateral-movement", "collection", "command-and-control",
     "exfiltration", "impact",
 }
+# Tactiques propres aux matrices Mobile et ICS (les autres recouvrent l'Enterprise).
+# Mobile actuel : « stealth » et « defense-impairment » (les anciennes network-effects /
+# remote-service-effects ont été retirées par MITRE).
+_MOBILE_TACTICS = {"stealth", "defense-impairment"}
+_ICS_TACTICS = {"evasion", "inhibit-response-function", "impair-process-control"}
+_ALL_TACTICS = _STD_TACTICS | _MOBILE_TACTICS | _ICS_TACTICS
+
+# Domaines ATT&CK et leurs identifiants STIX (source_name des références + kill_chain_name).
+# La même clé sert au tag `data.domains` persisté en base.
+_ATTACK_DOMAINS = {
+    "enterprise": "mitre-attack",
+    "mobile": "mitre-mobile-attack",
+    "ics": "mitre-ics-attack",
+}
+_ATTACK_SOURCES = set(_ATTACK_DOMAINS.values())
 
 
-def parse_attack(bundle: dict) -> list[dict]:
-    """Extrait les techniques ATT&CK actives d'un bundle STIX → [{ext_id, name, tactic, tactics}].
+def parse_attack(bundle: dict, domain: str = "enterprise") -> list[dict]:
+    """Extrait les techniques ATT&CK actives d'un bundle STIX → [{ext_id, name, tactic,
+    tactics, domains, description}].
 
-    Une technique ATT&CK relève souvent de PLUSIEURS tactiques (ex. T1078 « Valid Accounts »
-    → initial-access, persistence, privilege-escalation, defense-evasion). On conserve
-    l'ensemble des tactiques standard rattachées (`tactics`) afin que la matrice affiche la
-    technique dans chaque colonne concernée, comme le Navigator officiel. `tactic` reste la
-    tactique primaire (première rattachée) pour la rétro-compatibilité.
+    Prend en charge les trois matrices (Enterprise, Mobile, ICS) : l'`ext_id` (T-number) et
+    les phases sont reconnus quel que soit le `source_name`/`kill_chain_name` du domaine
+    (`mitre-attack`, `mitre-mobile-attack`, `mitre-ics-attack`). Une technique relève souvent
+    de PLUSIEURS tactiques (ex. T1078 « Valid Accounts ») ; on conserve l'ensemble des
+    tactiques MITRE connues (`tactics`, toutes matrices) afin que la matrice affiche la
+    technique dans chaque colonne, comme le Navigator officiel. `tactic` reste la tactique
+    primaire (première rattachée). `domains` marque la ou les matrices d'origine.
     """
     out: list[dict] = []
     for o in bundle.get("objects", []):
@@ -63,21 +160,36 @@ def parse_attack(bundle: dict) -> list[dict]:
         if o.get("revoked") or o.get("x_mitre_deprecated"):
             continue
         ext_id = next((r.get("external_id") for r in o.get("external_references", [])
-                       if isinstance(r, dict) and r.get("source_name") == "mitre-attack"
+                       if isinstance(r, dict) and r.get("source_name") in _ATTACK_SOURCES
                        and r.get("external_id")), None)
         if not ext_id:
             continue
         phases = [p.get("phase_name") for p in o.get("kill_chain_phases", [])
-                  if isinstance(p, dict) and p.get("kill_chain_name") == "mitre-attack"]
-        # Toutes les tactiques du jeu standard (ordre du bundle préservé, dédupliqué) ;
-        # repli sur la première phase brute si aucune n'est standard.
-        tactics = list(dict.fromkeys(p for p in phases if p in _STD_TACTICS))
+                  if isinstance(p, dict) and p.get("kill_chain_name") in _ATTACK_SOURCES]
+        # Toutes les tactiques MITRE connues (ordre du bundle préservé, dédupliqué) ;
+        # repli sur la première phase brute si aucune n'est reconnue.
+        tactics = list(dict.fromkeys(p for p in phases if p in _ALL_TACTICS))
         if not tactics and phases:
             tactics = [phases[0]]
         out.append({"ext_id": ext_id, "name": o.get("name") or ext_id,
                     "tactic": tactics[0] if tactics else None, "tactics": tactics,
-                    "description": o.get("description")})
+                    "domains": [domain], "description": o.get("description")})
     return out
+
+
+def _merge_technique(merged: dict[str, dict], t: dict) -> None:
+    """Fusionne une technique dans l'index par ext_id : union des tactiques et des domaines
+    (ordre préservé), nom/description existants conservés (Enterprise chargé en premier),
+    `tactic` primaire recalculé sur les tactiques fusionnées."""
+    cur = merged.get(t["ext_id"])
+    if cur is None:
+        merged[t["ext_id"]] = t
+        return
+    cur["tactics"] = list(dict.fromkeys([*cur.get("tactics", []), *t.get("tactics", [])]))
+    cur["domains"] = list(dict.fromkeys([*cur.get("domains", []), *t.get("domains", [])]))
+    cur["tactic"] = cur["tactics"][0] if cur["tactics"] else cur.get("tactic")
+    if not cur.get("description") and t.get("description"):
+        cur["description"] = t["description"]
 
 
 _CAMEL = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
@@ -216,7 +328,26 @@ def parse_misp_actors(doc: dict, groups: list[dict] | None = None) -> list[dict]
 
 
 async def fetch_attack(url: str | None = None, timeout: float | None = None) -> list[dict]:
-    return parse_attack(await _fetch_json(url or settings.attack_stix_url, timeout))
+    """Techniques ATT&CK des trois matrices fusionnées dans le même catalogue.
+
+    Enterprise est REQUIS (échec → SyncUnavailable → repli sur le socle embarqué). Mobile et
+    ICS sont best-effort : une source injoignable est simplement ignorée (on conserve
+    l'Enterprise déjà chargé). Fusion par ext_id (T-number) : union des tactiques et des
+    domaines (`data.domains`).
+    """
+    merged: dict[str, dict] = {}
+    for t in parse_attack(await _fetch_json(url or settings.attack_stix_url, timeout),
+                          "enterprise"):
+        merged[t["ext_id"]] = t
+    for domain, source in (("mobile", settings.attack_mobile_stix_url),
+                           ("ics", settings.attack_ics_stix_url)):
+        try:
+            extra = parse_attack(await _fetch_json(source, timeout), domain)
+        except SyncUnavailable:
+            continue  # matrice secondaire injoignable → on garde l'Enterprise
+        for t in extra:
+            _merge_technique(merged, t)
+    return list(merged.values())
 
 
 async def fetch_d3fend(url: str | None = None, timeout: float | None = None) -> list[dict]:
@@ -234,6 +365,17 @@ async def fetch_misp_actors(url: str | None = None, timeout: float | None = None
     return parse_misp_actors(doc, groups)
 
 
+async def fetch_capec(url: str | None = None, timeout: float | None = None) -> list[dict]:
+    # CAPEC est publié en XML non compressé (capec_latest.xml).
+    return parse_capec(await _fetch_bytes(url or settings.capec_xml_url, timeout))
+
+
+async def fetch_cwe(url: str | None = None, timeout: float | None = None) -> list[dict]:
+    # CWE est publié en XML compressé (cwec_latest.xml.zip) → décompression en mémoire.
+    raw = await _fetch_bytes(url or settings.cwe_xml_zip_url, timeout)
+    return parse_cwe(_unzip_first_xml(raw))
+
+
 # Catalogues synchronisables en ligne et leur source.
 SYNCABLE = {
     "attack": {"fetch": fetch_attack, "table": "ref_attack_technique", "has_tactic": True},
@@ -242,6 +384,9 @@ SYNCABLE = {
                       "has_tactic": False, "has_data": True, "source": "attack.mitre.org"},
     "misp_actors": {"fetch": fetch_misp_actors, "table": "ref_misp_actor",
                     "has_tactic": False, "has_data": True, "source": "misp-galaxy"},
+    # Catalogues « name-only » (branche else de sync_catalog) : dictionnaires complets MITRE.
+    "capec": {"fetch": fetch_capec, "table": "ref_capec", "has_tactic": False},
+    "cwe": {"fetch": fetch_cwe, "table": "ref_cwe", "has_tactic": False},
 }
 
 
@@ -277,7 +422,8 @@ async def sync_catalog(session, catalog_id: str) -> int:
                 "ON CONFLICT (ext_id) DO UPDATE SET name = EXCLUDED.name, "
                 "tactic = EXCLUDED.tactic, data = EXCLUDED.data, updated_at = now()"
             ), {"e": r["ext_id"], "n": r["name"][:255], "t": r.get("tactic"),
-                "d": json.dumps({"tactics": tactics, "description": r.get("description")})})
+                "d": json.dumps({"tactics": tactics, "description": r.get("description"),
+                                 "domains": r.get("domains", [])})})
         else:
             await session.execute(text(
                 f"INSERT INTO {table} (id, ext_id, name, data) "
@@ -285,3 +431,33 @@ async def sync_catalog(session, catalog_id: str) -> int:
                 "ON CONFLICT (ext_id) DO UPDATE SET name = EXCLUDED.name, updated_at = now()"
             ), {"e": r["ext_id"], "n": r["name"][:255]})
     return len(rows)
+
+
+async def sync_all_catalogs(session, *, prefer_online: bool = True) -> dict[str, dict]:
+    """(Ré)synchronise tous les catalogues et retourne un récap par catalogue.
+
+    Pour chaque catalogue : s'il est synchronisable (SYNCABLE) et que `prefer_online`,
+    tente l'amont MITRE avec repli gracieux sur le socle embarqué en cas de source
+    injoignable (SyncUnavailable) ; sinon charge directement le socle embarqué.
+
+    Retourne `{cid: {"entries": n, "source": "upstream"|"fallback"|"embedded"}}`.
+    Idempotent (upserts ON CONFLICT). Partagé par l'endpoint « Tout synchroniser »
+    et le seed initial (bootstrap des conteneurs).
+    """
+    from app.reference.catalogs import CATALOGS, import_catalog
+
+    result: dict[str, dict] = {}
+    for cat in CATALOGS:
+        cid = cat["id"]
+        if prefer_online and cid in SYNCABLE:
+            try:
+                n = await sync_catalog(session, cid)
+                source = "upstream"
+            except SyncUnavailable:
+                n = await import_catalog(session, cid)
+                source = "fallback"
+        else:
+            n = await import_catalog(session, cid)
+            source = "embedded"
+        result[cid] = {"entries": n, "source": source}
+    return result

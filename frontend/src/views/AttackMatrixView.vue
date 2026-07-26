@@ -3,7 +3,9 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api, ApiError } from '../api/client'
 import { icons } from '../icons'
-const { t } = useI18n()
+const { t, te } = useI18n()
+// Libellé lisible d'une tactique (Enterprise/Mobile/ICS) ; repli sur le slug brut si absent.
+const tacLabel = (k) => (k && te('views.cockpit.tactics.' + k) ? t('views.cockpit.tactics.' + k) : k)
 
 // Matrice ATT&CK multi-couches : tactiques en colonnes, techniques en cellules.
 // 4 couches d'analyse changent la lecture des couleurs :
@@ -213,7 +215,7 @@ function collapseAll() { expanded.value = new Set() }
       <div v-else class="grid">
         <div v-for="col in visibleTactics" :key="col.tactic" class="col">
           <div class="col-head">
-            <span class="tac">{{ col.tactic }}</span>
+            <span class="tac">{{ tacLabel(col.tactic) }}</span>
             <span class="tac-count">{{ col.coveredCount }} / {{ col.total }}</span>
           </div>
           <div class="cells">

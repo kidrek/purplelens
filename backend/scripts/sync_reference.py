@@ -1,10 +1,12 @@
-"""Synchronise les référentiels ATT&CK/D3FEND depuis les sources amont MITRE (CLI ops).
+"""Synchronise les référentiels depuis les sources amont (CLI ops).
 
-Recommandé pour la synchronisation initiale : le bundle ATT&CK fait ~50 Mo, ce qui est
-plus sain en tâche d'administration qu'en requête web. Idempotent (upsert par ext_id).
+Catalogues couverts : ATT&CK multi-domaines, D3FEND, dictionnaires complets CWE/CAPEC,
+groupes ATT&CK et acteurs MISP Galaxy. Recommandé pour la synchronisation initiale : le
+téléchargement cumulé fait ~50 Mo, ce qui est plus sain en tâche d'administration qu'en
+requête web. Idempotent (upsert par ext_id).
 
 Usage :
-    python -m scripts.sync_reference            # attack + d3fend
+    python -m scripts.sync_reference            # tous les catalogues synchronisables
     python -m scripts.sync_reference attack     # un seul catalogue
 """
 from __future__ import annotations

@@ -30,6 +30,10 @@ onMounted(async () => {
 })
 
 const byId = computed(() => Object.fromEntries(entries.value.map((e) => [e.ext_id, e])))
+// Domaines ATT&CK non-Enterprise à signaler par un badge (Mobile/ICS) ; l'Enterprise reste
+// implicite pour ne pas surcharger une liste dense. Vide pour les autres catalogues.
+const badgeDomains = (e) => (e?.domains || []).filter((d) => d === 'mobile' || d === 'ics')
+const domLabel = (d) => (d === 'ics' ? 'ICS' : 'Mobile')
 const selected = computed(() => {
   if (props.multiple) return Array.isArray(props.modelValue) ? props.modelValue : []
   return props.modelValue ? [props.modelValue] : []
@@ -77,6 +81,7 @@ function onKey(e) {
     <div v-if="selected.length" class="chips">
       <span v-for="id in selected" :key="id" class="chip">
         {{ label(id) }}
+        <span v-for="d in badgeDomains(byId[id])" :key="d" class="dom" :class="'dom-' + d">{{ domLabel(d) }}</span>
         <button type="button" class="x" @click="removeAt(id)" aria-label="Retirer">×</button>
       </span>
     </div>
@@ -95,6 +100,7 @@ function onKey(e) {
         >
           <span class="code">{{ e.ext_id }}</span>
           <span class="nm">{{ e.name }}</span>
+          <span v-for="d in badgeDomains(e)" :key="d" class="dom" :class="'dom-' + d">{{ domLabel(d) }}</span>
           <span v-if="e.tactic" class="tac">{{ e.tactic }}</span>
         </button>
       </div>
@@ -121,4 +127,9 @@ function onKey(e) {
 .opt .nm{flex:1;font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .opt .tac{font-size:10px;color:var(--faint);font-family:var(--font-eyebrow);text-transform:uppercase}
 .menu.empty{padding:10px;color:var(--faint);font-size:12px}
+/* Badges de domaine ATT&CK (Mobile violet, ICS ambre) — Enterprise implicite. */
+.dom{font-size:9.5px;line-height:1.4;letter-spacing:.03em;text-transform:uppercase;font-family:var(--font-eyebrow);
+  padding:1px 6px;border-radius:var(--r-pill);border:1px solid transparent;flex:0 0 auto}
+.dom-mobile{background:var(--c-violet-bg);border-color:var(--c-violet-bd);color:var(--c-violet-tx)}
+.dom-ics{background:var(--c-amber-bg);border-color:var(--c-amber-bd);color:var(--c-amber-tx)}
 </style>

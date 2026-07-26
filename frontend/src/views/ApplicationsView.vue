@@ -141,7 +141,10 @@ function onSaved() { showForm.value = false; load() }
     <div class="subrow">
       <p class="subtitle">{{ t('views.applications.subtitle') }}</p>
       <div class="acts">
-        <input class="field search" v-model="q" :placeholder="t('av.search')" />
+        <label class="search">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+          <input v-model="q" type="search" :placeholder="t('av.search')" />
+        </label>
         <button class="filters-toggle" :class="{ open: showAdvanced }" @click="showAdvanced = !showAdvanced">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
           {{ t('views.applications.filters') }}
@@ -277,7 +280,12 @@ function onSaved() { showForm.value = false; load() }
 .subrow{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:8px 0 0}
 .subtitle{font-size:13px;color:var(--muted);margin:0}
 .acts{display:flex;gap:8px;align-items:center}
-.acts .search{height:34px;width:200px}
+.search{display:inline-flex;align-items:center;gap:7px;height:34px;border:1px solid var(--border);
+  background:var(--surface);border-radius:var(--r-pill);padding:0 12px;color:var(--faint);
+  transition:border-color var(--t) var(--ease)}
+.search:focus-within{border-color:var(--violet)}
+.search input{border:none;background:transparent;outline:none;color:var(--text);font-size:13px;width:170px}
+.search input::placeholder{color:var(--faint)}
 .note{margin:16px 0 4px;color:var(--muted);font-size:12.5px;line-height:1.55;
   border-left:3px solid var(--violet);padding:2px 0 2px 14px;max-width:92ch}
 .note .lead{color:var(--text);font-weight:500}

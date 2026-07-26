@@ -4,6 +4,7 @@ import { api, ApiError } from '../api/client'
 import DetailDrawer from './DetailDrawer.vue'
 import EntityForm from './EntityForm.vue'
 import { fieldsFor } from '../fields'
+import { VERDICT_TONE } from '../tones'
 
 // Éditeur des étapes d'un exercice Purple, en drawer (miroir de l'exoStepEd de la maquette) :
 // chaîne d'attaque (édition/réordonnancement/suppression par étape), observations défensives,
@@ -12,13 +13,14 @@ const props = defineProps({ exercise: { type: Object, required: true } })
 const emit = defineEmits(['close', 'changed'])
 
 // Verdicts (spec §2) : prévenu / alerté / journalisé / sans télémétrie / non testé.
-const VERDICTS = {
-  prevented: { label: 'Prévenu', pill: 'green' },
-  alerted: { label: 'Alerté', pill: 'cyan' },
-  logged: { label: 'Journalisé', pill: 'amber' },
-  no_telemetry: { label: 'Sans télémétrie', pill: 'red' },
-  not_tested: { label: 'Non testé', pill: 'gray' },
+// Ton de pill partagé via tones.js (source unique) ; libellés FR locaux.
+const VERDICT_LABEL = {
+  prevented: 'Prévenu', alerted: 'Alerté', logged: 'Journalisé',
+  no_telemetry: 'Sans télémétrie', not_tested: 'Non testé',
 }
+const VERDICTS = Object.fromEntries(
+  Object.entries(VERDICT_LABEL).map(([k, label]) => [k, { label, pill: VERDICT_TONE[k] || 'gray' }]),
+)
 
 const id = props.exercise.id
 const steps = ref([])

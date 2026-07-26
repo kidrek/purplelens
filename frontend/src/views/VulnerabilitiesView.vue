@@ -10,6 +10,7 @@ import EntityForm from '../components/EntityForm.vue'
 import RefacSelect from '../components/RefacSelect.vue'
 import VulnDrawer from '../components/VulnDrawer.vue'
 import DetailDrawer from '../components/DetailDrawer.vue'
+import VulnerabilitiesStats from '../components/VulnerabilitiesStats.vue'
 const { t } = useI18n()
 const { enumLabel } = useLabels()
 const { preload: preloadOrgs, orgName } = useOrgNames()
@@ -29,18 +30,21 @@ const orgOptions = ref([])
 const appOptions = ref([])
 const appMap = ref({})
 
-// Filtres — alignés sur la maquette : recherche CVE, clients/applications en
-// autocomplétion multi-valeurs, sévérité/SLA/statut en puces à sélection multiple.
-const fCve = ref('')
+// Recherche du haut (barre d'actions) : nom + CVE, à l'image de la page Ressources.
+const q = ref('')
+// Filtres repliables : clients/applications en autocomplétion multi-valeurs,
+// sévérité/SLA/statut/KEV/SSVC en puces à sélection multiple.
 const fClients = ref([])
 const fApps = ref([])
 const fSeverites = ref([])
 const fSlas = ref([])
 const fStatuts = ref([])
+const fKev = ref([])
+const fSsvc = ref([])
 const showFilters = ref(false)
 const activeFilterCount = computed(() =>
-  (fCve.value ? 1 : 0) + fClients.value.length + fApps.value.length +
-  fSeverites.value.length + fSlas.value.length + fStatuts.value.length)
+  fClients.value.length + fApps.value.length + fSeverites.value.length +
+  fSlas.value.length + fStatuts.value.length + fKev.value.length + fSsvc.value.length)
 
 function toggleIn(arr, val) {
   const i = arr.indexOf(val)
@@ -50,6 +54,14 @@ function toggleIn(arr, val) {
 
 const STATUT_VULN = ['ouverte', 'en_cours', 'corrigee', 'acceptee', 'faux_positif']
 const SLA_LEVELS = ['P1', 'P2', 'P3', 'P4']
+const SEVERITES = ['basse', 'moyenne', 'haute', 'critique']
+const KEV_FLAGS = ['kev', 'ransomware']
+const SSVC_DECISIONS = ['Act', 'Attend', 'Track*', 'Track']
+// Légende SSVC : les puces restent brutes ; on n'affiche la définition que des décisions
+// cochées (valeurs officielles CISA/CMU-SEI, cf. compute_ssvc côté backend).
+const SSVC_KEY = { Act: 'act', Attend: 'attend', 'Track*': 'track_star', Track: 'track' }
+const ssvcLegend = computed(() =>
+  fSsvc.value.map((s) => ({ key: s, desc: t('views.vulnerabilities.ssvc.' + SSVC_KEY[s]) })))
 
 // Modales
 const showForm = ref(false)
@@ -96,15 +108,19 @@ function appNames(ids) {
 
 const filtered = computed(() => items.value.filter((v) => {
   if (ui.activeClient && v.client_id !== ui.activeClient) return false
-  if (fCve.value) {
+  const needle = q.value.trim().toLowerCase()
+  if (needle) {
     const h = `${v.cve || ''} ${v.titre || ''}`.toLowerCase()
-    if (!h.includes(fCve.value.toLowerCase())) return false
+    if (!h.includes(needle)) return false
   }
   if (fClients.value.length && !fClients.value.includes(v.client_id)) return false
   if (fApps.value.length && !(v.applications || []).some((a) => fApps.value.includes(a))) return false
   if (fSeverites.value.length && !fSeverites.value.includes(v.severite)) return false
   if (fSlas.value.length && !fSlas.value.includes(v.sla_niveau)) return false
   if (fStatuts.value.length && !fStatuts.value.includes(v.statut)) return false
+  if (fKev.value.includes('kev') && !v.kev) return false
+  if (fKev.value.includes('ransomware') && !v.kev_ransomware) return false
+  if (fSsvc.value.length && !fSsvc.value.includes(v.ssvc_decision)) return false
   return true
 }))
 
@@ -190,74 +206,106 @@ onMounted(async () => {
 
 <template>
   <div>
-    <div class="head">
-      <div>
-        <div class="eyebrow">{{ t('views.vulnerabilities.eyebrow') }}</div>
-        <h1>{{ t('views.vulnerabilities.title') }}</h1>
-        <p class="subtitle">{{ t('views.vulnerabilities.subtitle') }}</p>
-      </div>
-      <div class="head-actions">
-        <button class="btn" @click="exportCsv">Exporter</button>
-        <button class="btn btn-primary" @click="openNew">+ Nouvelle vulnérabilité</button>
+    <div class="eyebrow">{{ t('views.vulnerabilities.eyebrow') }}</div>
+    <h1>{{ t('views.vulnerabilities.title') }}</h1>
+    <div class="subrow">
+      <p class="subtitle">{{ t('views.vulnerabilities.subtitle') }}</p>
+      <div class="acts">
+        <label class="search">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+          <input v-model="q" type="search" :placeholder="t('views.vulnerabilities.search_ph')" />
+        </label>
+        <button class="filters-toggle" :class="{ open: showFilters }" @click="showFilters = !showFilters">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
+          {{ t('views.vulnerabilities.filters') }}
+          <span v-if="activeFilterCount" class="count-badge sm">{{ activeFilterCount }}</span>
+          <span class="chevron">{{ showFilters ? '⌃' : '⌄' }}</span>
+        </button>
+        <button class="btn btn-primary" @click="openNew">+ {{ t('common.new') }}</button>
+        <button class="icon-btn" :title="t('common.refresh')" :aria-label="t('common.refresh')" @click="load">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+        </button>
       </div>
     </div>
+
+    <div class="note">
+      <span class="lead">{{ t('views.vulnerabilities.note.lead') }}</span>
+      <ul>
+        <li><b>{{ t('views.vulnerabilities.note.sla_label') }}</b> {{ t('views.vulnerabilities.note.sla_text') }}</li>
+        <li><b>{{ t('views.vulnerabilities.note.cti_label') }}</b> {{ t('views.vulnerabilities.note.cti_text') }}</li>
+      </ul>
+    </div>
+
+    <div v-if="showFilters" class="filters-panel">
+      <div class="f-row">
+        <label class="f-label">{{ t('views.vulnerabilities.filter_clients') }}</label>
+        <RefacSelect :options="orgOptions" multiple :placeholder="t('views.vulnerabilities.filter_clients_ph')" v-model="fClients" />
+      </div>
+      <div class="f-row">
+        <label class="f-label">{{ t('views.vulnerabilities.filter_apps') }}</label>
+        <RefacSelect :options="appOptions" multiple :placeholder="t('views.vulnerabilities.filter_apps_ph')" v-model="fApps" />
+      </div>
+      <div class="f-row">
+        <label class="f-label">{{ t('views.vulnerabilities.filter_severite') }}</label>
+        <div class="chipset">
+          <button v-for="s in SEVERITES" :key="s" type="button"
+                  :class="['chip-toggle', { on: fSeverites.includes(s) }]" @click="toggleIn(fSeverites, s)">
+            {{ enumLabel(s) }}
+          </button>
+        </div>
+      </div>
+      <div class="f-row">
+        <label class="f-label">{{ t('views.vulnerabilities.filter_sla') }}</label>
+        <div class="chipset">
+          <button v-for="p in SLA_LEVELS" :key="p" type="button"
+                  :class="['chip-toggle', { on: fSlas.includes(p) }]" @click="toggleIn(fSlas, p)">{{ p }}</button>
+        </div>
+      </div>
+      <div class="f-row">
+        <label class="f-label">{{ t('views.vulnerabilities.filter_statut') }}</label>
+        <div class="chipset">
+          <button v-for="st in STATUT_VULN" :key="st" type="button"
+                  :class="['chip-toggle', { on: fStatuts.includes(st) }]" @click="toggleIn(fStatuts, st)">
+            {{ enumLabel(st) }}
+          </button>
+        </div>
+      </div>
+      <div class="f-row">
+        <label class="f-label">{{ t('views.vulnerabilities.filter_kev') }}</label>
+        <div class="chipset">
+          <button v-for="k in KEV_FLAGS" :key="k" type="button"
+                  :class="['chip-toggle', { on: fKev.includes(k) }]" @click="toggleIn(fKev, k)">
+            {{ k === 'kev' ? t('views.vulnerabilities.filter_kev_only') : t('views.vulnerabilities.filter_kev_ransom') }}
+          </button>
+        </div>
+      </div>
+      <div class="f-row">
+        <label class="f-label">{{ t('views.vulnerabilities.filter_ssvc') }}</label>
+        <div class="chipset">
+          <button v-for="s in SSVC_DECISIONS" :key="s" type="button"
+                  :class="['chip-toggle', { on: fSsvc.includes(s) }]" @click="toggleIn(fSsvc, s)">{{ s }}</button>
+        </div>
+        <div v-if="ssvcLegend.length" class="ssvc-legend">
+          <div v-for="l in ssvcLegend" :key="l.key" class="lrow">
+            <span class="lk">{{ l.key }}</span><span class="ld">{{ l.desc }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <VulnerabilitiesStats :items="filtered" />
 
     <p v-if="msg" :class="['msg', msg.kind]">{{ msg.text }}</p>
 
     <div class="panel">
       <div class="panel-head">
         <div class="panel-title">{{ t('views.vulnerabilities.title') }}</div>
-        <div class="panel-meta"><span class="count-badge">{{ filtered.length }}</span> vulnérabilité(s)</div>
-      </div>
-
-      <button class="filters-toggle" :class="{ open: showFilters }" @click="showFilters = !showFilters">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"/>
-          <line x1="4" y1="12" x2="20" y2="12"/><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"/>
-          <line x1="4" y1="18" x2="20" y2="18"/><circle cx="11" cy="18" r="2" fill="currentColor" stroke="none"/>
-        </svg>
-        Filtres
-        <span v-if="activeFilterCount" class="count-badge sm">{{ activeFilterCount }}</span>
-        <span class="chevron">{{ showFilters ? '⌃' : '⌄' }}</span>
-      </button>
-
-      <div v-if="showFilters" class="filters-panel">
-        <div class="f-row">
-          <label class="f-label">CVE ID</label>
-          <input class="field" v-model="fCve" placeholder="Rechercher un CVE…" />
-        </div>
-        <div class="f-row">
-          <label class="f-label">Clients</label>
-          <RefacSelect :options="orgOptions" multiple placeholder="Ajouter un client…" v-model="fClients" />
-        </div>
-        <div class="f-row">
-          <label class="f-label">Applications</label>
-          <RefacSelect :options="appOptions" multiple placeholder="Ajouter une application…" v-model="fApps" />
-        </div>
-        <div class="f-row">
-          <label class="f-label">Sévérité</label>
-          <div class="chipset">
-            <button v-for="s in ['faible', 'moyenne', 'haute', 'critique']" :key="s" type="button"
-                    :class="['chip-toggle', { on: fSeverites.includes(s) }]" @click="toggleIn(fSeverites, s)">
-              {{ enumLabel(s) }}
-            </button>
-          </div>
-        </div>
-        <div class="f-row">
-          <label class="f-label">SLA</label>
-          <div class="chipset">
-            <button v-for="p in SLA_LEVELS" :key="p" type="button"
-                    :class="['chip-toggle', { on: fSlas.includes(p) }]" @click="toggleIn(fSlas, p)">{{ p }}</button>
-          </div>
-        </div>
-        <div class="f-row">
-          <label class="f-label">Statut</label>
-          <div class="chipset">
-            <button v-for="st in STATUT_VULN" :key="st" type="button"
-                    :class="['chip-toggle', { on: fStatuts.includes(st) }]" @click="toggleIn(fStatuts, st)">
-              {{ enumLabel(st) }}
-            </button>
-          </div>
+        <div class="panel-meta">
+          <button class="btn export-btn" @click="exportCsv">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+            Exporter
+          </button>
+          <span class="count-badge">{{ filtered.length }}</span> vulnérabilité(s)
         </div>
       </div>
 
@@ -336,24 +384,44 @@ onMounted(async () => {
 
 <style scoped>
 .mono{font-family:var(--font-data);font-size:12px}
-.head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
-.subtitle{font-size:13px;color:var(--muted);margin:2px 0 0}
-.head-actions{display:flex;gap:8px;flex:0 0 auto}
+.subrow{display:flex;align-items:center;justify-content:space-between;gap:24px;margin:8px 0 0}
+.subtitle{font-size:13px;color:var(--muted);margin:0;flex:1;min-width:0}
+.acts{display:flex;gap:8px;align-items:center;flex-shrink:0}
+.search{display:inline-flex;align-items:center;gap:7px;height:34px;border:1px solid var(--border);
+  background:var(--surface);border-radius:var(--r-pill);padding:0 12px;color:var(--faint);
+  transition:border-color var(--t) var(--ease)}
+.search:focus-within{border-color:var(--violet)}
+.search input{border:none;background:transparent;outline:none;color:var(--text);font-size:13px;width:170px}
+.search input::placeholder{color:var(--faint)}
+.icon-btn{width:34px;height:34px;border:1px solid var(--border);background:var(--surface);color:var(--muted);
+  border-radius:var(--r-pill);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:border-color var(--t) var(--ease), color var(--t) var(--ease)}
+.icon-btn:hover{border-color:var(--violet-accent);color:var(--violet-accent)}
+.note{margin:16px 0 4px;color:var(--muted);font-size:12.5px;line-height:1.55;
+  border-left:3px solid var(--violet);padding:2px 0 2px 14px;max-width:92ch}
+.note .lead{color:var(--text);font-weight:500}
+.note ul{margin:6px 0 0;padding-left:18px}
+.note li{margin:3px 0}
+.note b{color:var(--c-violet-tx);font-weight:600}
 .msg{font-size:13px;margin:8px 0} .msg.ok{color:var(--green)} .msg.ko{color:var(--red)} .msg.warn{color:var(--amber)}
 
 .panel{margin-top:16px}
-.panel-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}
+.panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
 .panel-title{font-family:var(--font-display);color:var(--heading);font-weight:600;font-size:15px}
-.panel-meta{font-size:12px;color:var(--faint)}
+.panel-meta{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--faint)}
+.export-btn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;font-size:12.5px;
+  background:transparent;color:var(--muted)}
+.export-btn:hover{border-color:var(--violet);color:var(--violet-accent)}
 .count-badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;
   border-radius:99px;background:var(--surface-3);color:var(--text);font-size:11px;font-family:var(--font-data);padding:0 6px;margin-left:4px}
 .count-badge.sm{min-width:16px;height:16px;font-size:10px;background:var(--violet);color:#fff}
 
-.filters-toggle{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--violet);
-  background:var(--c-violet-bg);color:var(--violet-accent);border-radius:var(--r-mini);
-  padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:4px}
+.filters-toggle{display:inline-flex;align-items:center;gap:8px;height:34px;border:1px solid var(--violet);
+  background:var(--c-violet-bg);color:var(--violet-accent);border-radius:var(--r-pill);
+  padding:0 14px;font-size:13px;font-weight:600;cursor:pointer}
 .filters-toggle .chevron{font-size:11px;margin-left:2px}
-.filters-panel{display:flex;flex-direction:column;gap:14px;padding:16px 2px 6px;margin-bottom:6px}
+.filters-panel{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;
+  padding:16px;margin:16px 0 0;border:1px solid var(--border);border-radius:var(--r-card);background:var(--surface-2)}
 .f-row{display:flex;flex-direction:column;gap:6px}
 .f-label{font-family:var(--font-eyebrow);text-transform:uppercase;letter-spacing:.04em;font-size:10.5px;color:var(--faint);font-weight:var(--eyebrow-weight)}
 .chipset{display:flex;flex-wrap:wrap;gap:8px}
@@ -361,6 +429,11 @@ onMounted(async () => {
   border-radius:var(--r-pill);padding:6px 14px;font-size:12.5px;cursor:pointer;transition:border-color var(--t) var(--ease)}
 .chip-toggle:hover{border-color:var(--violet)}
 .chip-toggle.on{background:var(--c-violet-bg);border-color:var(--c-violet-bd);color:var(--c-violet-tx);font-weight:600}
+.ssvc-legend{margin-top:10px;display:flex;flex-direction:column;gap:6px;border:1px solid var(--border-2);
+  border-radius:var(--r-mini);background:var(--field);padding:9px 11px}
+.ssvc-legend .lrow{display:flex;gap:8px;align-items:baseline;font-size:12px;line-height:1.4}
+.ssvc-legend .lk{font-family:var(--font-data);font-size:11.5px;font-weight:500;color:var(--c-violet-tx);flex:0 0 auto;min-width:48px}
+.ssvc-legend .ld{color:var(--muted)}
 
 .vtable{width:100%;border-collapse:collapse;margin-top:14px}
 .vtable th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--faint);padding:8px 8px;border-bottom:1px solid var(--border)}
@@ -370,11 +443,15 @@ onMounted(async () => {
 .row-clickable{cursor:pointer}
 .row-clickable:hover td{background:var(--surface-2)}
 .vtable tr.over.row-clickable:hover td{background:var(--c-red-bg)}
-.cve-cell{display:flex;align-items:center;gap:5px}
-.kev-dot{width:6px;height:6px;border-radius:50%;background:var(--red);display:inline-block}
+.cve-cell{white-space:nowrap}
+.cve-cell span{vertical-align:middle}
+.kev-dot{width:6px;height:6px;border-radius:50%;background:var(--red);
+  display:inline-block;vertical-align:middle;margin-left:5px}
 .apps-cell{color:var(--muted);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-.ta{text-align:right;white-space:nowrap;display:flex;gap:6px;justify-content:flex-end}
+.ta{text-align:right;white-space:nowrap}
+.ta .icon-btn-sm{vertical-align:middle}
+.ta .icon-btn-sm + .icon-btn-sm{margin-left:6px}
 .icon-btn-sm{border:1px solid var(--border);background:var(--surface);color:var(--muted);
   border-radius:var(--r-mini);width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
 .icon-btn-sm:hover{border-color:var(--violet-accent);color:var(--violet-accent)}

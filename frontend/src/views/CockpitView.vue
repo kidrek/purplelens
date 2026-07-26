@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import { useUiStore } from '../stores/ui'
+import { useAuthStore } from '../stores/auth'
 import { api } from '../api/client'
 import { useLabels } from '../composables/useLabels'
 const { t, te, locale } = useI18n()
@@ -10,6 +11,10 @@ const { enumLabel } = useLabels()
 
 const d = ref(null)
 const ui = useUiStore()
+const auth = useAuthStore()
+// Panneau « derniers événements » : réservé aux rôles ayant accès au journal
+// (droit projeté par /whoami — le serveur renvoie de toute façon une liste vide sinon).
+const canReadJournal = computed(() => auth.readableEntities.includes('journal'))
 const loading = ref(true)
 const error = ref(null)
 
@@ -241,7 +246,7 @@ onMounted(load)
         </section>
       </div>
 
-      <section class="panel">
+      <section v-if="canReadJournal" class="panel">
         <div class="p-head"><span class="p-title">{{ t('views.cockpit.journal.title') }}</span>
           <RouterLink class="link" to="/journal">{{ t('views.cockpit.journal.all') }}</RouterLink></div>
         <div class="table-wrap">

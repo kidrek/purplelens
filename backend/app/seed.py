@@ -5,7 +5,9 @@ Crée :
   - un compte auditeur, un compte CISO et un compte operateur de démonstration ;
   - une organisation cliente et une organisation prestataire ;
   - quelques référentiels ATT&CK/D3FEND/OWASP.
-Idempotent sur l'email/slug (ON CONFLICT DO NOTHING).
+Idempotent : comptes par email, organisations par `code` (index unique partiel
+`uq_organisation_code`, cf. migration 0018), référentiels par clé naturelle — tous en
+ON CONFLICT DO NOTHING.
 """
 from __future__ import annotations
 
@@ -23,49 +25,59 @@ from app.security.passwords import hash_password
 
 async def seed_reference() -> None:
     """Charge tous les catalogues de référence (ATT&CK, D3FEND, OWASP, CWE, CAPEC,
-    ATT&CK Groups, MISP Actors) depuis le socle embarqué — mêmes données que la page
-    Paramètres. Idempotent."""
-    from app.reference.catalogs import CATALOGS, import_catalog
+    ATT&CK Groups, MISP Actors). Idempotent.
+
+    Si SEED_SYNC_ONLINE (défaut : activé), tente de tirer les catalogues complets depuis
+    les sources amont MITRE dès le bootstrap, avec repli automatique sur le socle embarqué
+    si Internet est indisponible — même logique que « Tout synchroniser ». Sinon, charge
+    uniquement le socle embarqué (installs air-gap / CI rapide)."""
+    from app.reference.sync import sync_all_catalogs
 
     async with service_session("admin_service") as session:
-        total = 0
-        for cat in CATALOGS:
-            total += await import_catalog(session, cat["id"])
-    print(f"[seed] référentiels : {total} entrées chargées ({len(CATALOGS)} catalogues)")
+        result = await sync_all_catalogs(session, prefer_online=settings.seed_sync_online)
+    total = sum(r["entries"] for r in result.values())
+    up = sum(1 for r in result.values() if r["source"] == "upstream")
+    fb = sum(1 for r in result.values() if r["source"] == "fallback")
+    emb = sum(1 for r in result.values() if r["source"] == "embedded")
+    print(
+        f"[seed] référentiels : {total} entrées chargées ({len(result)} catalogues) — "
+        f"upstream={up} fallback={fb} embedded={emb}"
+    )
 
 
 async def seed_org_and_users() -> tuple[str, str]:
-    client_id = str(uuid.uuid4())
-    # Second client de démo : sert à illustrer le rôle `operateur` (prestataire qui
-    # pilote PLUSIEURS clients) et à tester le cloisonnement multi-clients.
-    client2_id = str(uuid.uuid4())
+    # Organisations démo : upsert idempotent par `code` (cible = index unique partiel
+    # uq_organisation_code, cf. migration 0018). GLOBEX illustre le rôle `operateur`
+    # (prestataire pilotant PLUSIEURS clients) et teste le cloisonnement multi-clients.
+    # On NE réutilise PAS un uuid généré ici : sur une base déjà seedée, le ON CONFLICT ne
+    # réinsère rien et un uuid neuf serait un id fantôme — les comptes démo seraient alors
+    # scoppés à une organisation inexistante. On résout donc l'id CANONIQUE par `code`.
     org_codes = ["ACME", "GLOBEX", "PRESTA"]
     async with service_session("admin_service") as session:
-        await session.execute(
-            text(
-                "INSERT INTO organisation (id, nom, code, role, secteur, tlp_defaut, statut, "
-                "created_at, updated_at) VALUES (:id, :n, :c, 'client', 'nace_c', 'AMBER', 'actif', "
-                "now(), now()) ON CONFLICT DO NOTHING"
-            ),
-            {"id": client_id, "n": "ACME Corp (démo)", "c": "ACME"},
-        )
-        await session.execute(
-            text(
-                "INSERT INTO organisation (id, nom, code, role, secteur, tlp_defaut, statut, "
-                "created_at, updated_at) VALUES (:id, :n, :c, 'client', 'nace_j', 'AMBER', 'actif', "
-                "now(), now()) ON CONFLICT DO NOTHING"
-            ),
-            {"id": client2_id, "n": "Globex SA (démo)", "c": "GLOBEX"},
-        )
-        await session.execute(
-            text(
-                "INSERT INTO organisation (id, nom, code, role, secteur, tlp_defaut, statut, "
-                "created_at, updated_at) VALUES (gen_random_uuid(), 'Prestataire Purple', "
-                "'PRESTA', 'prestataire', 'nace_m', 'AMBER', 'actif', now(), now()) "
-                "ON CONFLICT DO NOTHING"
+        for nom, code, secteur, role in (
+            ("ACME Corp (démo)", "ACME", "nace_c", "client"),
+            ("Globex SA (démo)", "GLOBEX", "nace_j", "client"),
+            ("Prestataire Purple", "PRESTA", "nace_m", "prestataire"),
+        ):
+            await session.execute(
+                text(
+                    "INSERT INTO organisation (nom, code, role, secteur, tlp_defaut, statut) "
+                    "VALUES (:n, :c, :r, :s, 'AMBER', 'actif') "
+                    "ON CONFLICT (code) WHERE deleted_at IS NULL DO NOTHING"
+                ),
+                {"n": nom, "c": code, "r": role, "s": secteur},
             )
-        )
-    print(f"[seed] organisations clientes ACME ({client_id}) et GLOBEX ({client2_id}) créées")
+
+        async def _org_id(code: str) -> str:
+            res = await session.execute(
+                text("SELECT id FROM organisation WHERE code = :c AND deleted_at IS NULL LIMIT 1"),
+                {"c": code},
+            )
+            return str(res.scalar_one())
+
+        client_id = await _org_id("ACME")
+        client2_id = await _org_id("GLOBEX")
+    print(f"[seed] organisations clientes ACME ({client_id}) et GLOBEX ({client2_id}) prêtes")
 
     # Bucket MinIO par organisation, AVEC Object Lock (impératif à la création,
     # cf. storage/minio_client.py). Sans cet appel, toute génération de livrable
@@ -84,7 +96,7 @@ async def seed_org_and_users() -> tuple[str, str]:
     admin_pw = settings.seed_admin_password or settings.seed_default_password
     auditeur_pw = settings.seed_auditeur_password or settings.seed_default_password
     ciso_pw = settings.seed_ciso_password or settings.seed_default_password
-    operateur_pw = settings.seed_default_password
+    operateur_pw = settings.seed_operateur_password or settings.seed_default_password
 
     admin_id = str(uuid.uuid4())
     async with auth_session() as session:

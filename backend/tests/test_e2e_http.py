@@ -254,8 +254,10 @@ async def test_journal_read_is_client_filtered_for_scoped_role():
         await jappend(s, event_type="test.j.a", actor_id=None, client_id=ca, subject="A")
         await jappend(s, event_type="test.j.b", actor_id=None, client_id=cb, subject="B")
 
+    # Rôle de gouvernance cloisonné : ciso conserve journal:L (auditeur/voc/cert/operateur
+    # n'y ont plus accès), tout en restant limité à son périmètre client.
     email = f"recette-journ-{tag}@purple.local"
-    await _mkuser(email, "auditeur", scope=[ca])
+    await _mkuser(email, "ciso", scope=[ca])
     try:
         async with _client() as c:
             await _login(c, email)

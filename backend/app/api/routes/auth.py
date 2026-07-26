@@ -25,6 +25,7 @@ from app.schemas.auth import (
     WhoAmI,
 )
 from app.security.context import SecurityContext
+from app.security.matrix import readable_entities
 from app.security.mfa import consume_totp, new_secret, provisioning_uri
 from app.security.oidc import authorization_url, exchange_code, generate_pkce, userinfo
 from app.security.oidc_state import pop_pkce, store_pkce
@@ -438,4 +439,5 @@ async def whoami(ctx: SecurityContext = Depends(get_security_context)):
         user_id=ctx.user_id, email=ctx.email, display_name=ctx.display_name,
         role=ctx.role, client_scope=ctx.client_scope, mfa=ctx.mfa,
         is_multi_client=ctx.is_multi_client,
+        readable_entities=readable_entities(ctx.role),
     )

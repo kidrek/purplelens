@@ -37,7 +37,7 @@ const drawerStack = []
         <header class="d-head">
           <div class="d-titles">
             <div v-if="subtitle" class="d-eyebrow">{{ subtitle }}</div>
-            <h2 class="d-title">{{ title }}</h2>
+            <h2 v-if="title" class="d-title">{{ title }}</h2>
           </div>
           <div class="d-actions">
             <slot name="actions" />

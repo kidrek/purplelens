@@ -163,7 +163,7 @@ MATRIX: dict[str, dict[str, frozenset[Action]]] = {
         "scenario_steps": _a(L),
 "corpus": _a(L),
         "deliverables": _a(L, C),
-        "journal": _a(L),
+        "journal": _a(),                  # tracabilité réservée à la gouvernance (admin/manager/ciso)
         "evidence": _a(L, C, E),          # L C E¹ — dépose les preuves (§6quater.7)
         "evidence_access": _a(),
         "audit_dek": _a(),
@@ -185,7 +185,7 @@ MATRIX: dict[str, dict[str, frozenset[Action]]] = {
         "scenario_steps": _a(L),
 "corpus": _a(L),
         "deliverables": _a(L),
-        "journal": _a(L),
+        "journal": _a(),                  # tracabilité réservée à la gouvernance (admin/manager/ciso)
         "evidence": _a(L),
         "evidence_access": _a(),
         "audit_dek": _a(),
@@ -207,7 +207,7 @@ MATRIX: dict[str, dict[str, frozenset[Action]]] = {
         "scenario_steps": _a(L, C, E, S),
 "corpus": _a(L, C, E, S),
         "deliverables": _a(L),
-        "journal": _a(L),
+        "journal": _a(),                  # tracabilité réservée à la gouvernance (admin/manager/ciso)
         "evidence": _a(L),
         "evidence_access": _a(),
         "audit_dek": _a(),
@@ -233,7 +233,7 @@ MATRIX: dict[str, dict[str, frozenset[Action]]] = {
         "scenario_steps": _a(L, C, E, S),
         "corpus": _a(L),
         "deliverables": _a(L, C, E, S),
-        "journal": _a(L),
+        "journal": _a(),                  # tracabilité réservée à la gouvernance (admin/manager/ciso)
         "evidence": _a(L, C, E),          # L C E¹ — dépose les preuves (pas de S : réservé admin)
         "evidence_access": _a(),
         "audit_dek": _a(),
@@ -244,3 +244,14 @@ MATRIX: dict[str, dict[str, frozenset[Action]]] = {
 def allowed(role: str, entity: str, action: Action) -> bool:
     """Consultation pure de la matrice (porte 3 du moteur de décision)."""
     return action in MATRIX.get(role, {}).get(entity, frozenset())
+
+
+def readable_entities(role: str) -> list[str]:
+    """Entités que le rôle peut lire (Action.L) — dérivé de la matrice.
+
+    Source de vérité unique pour piloter l'affichage côté client (ex. masquer un lien
+    de menu). L'autorisation reste décidée côté serveur : ceci n'est qu'une projection
+    de la matrice exposée via /whoami."""
+    return sorted(
+        entity for entity, acts in MATRIX.get(role, {}).items() if Action.L in acts
+    )

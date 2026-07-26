@@ -18,10 +18,6 @@ const meta = computed(() => d.value.meta || {})
 
 <template>
   <DetailDrawer :title="d.titre" :subtitle="typeLabel || 'Livrable'" wide @close="emit('close')">
-    <template #actions>
-      <button class="btn btn-primary slim" @click="emit('open', d)">Ouvrir le document</button>
-    </template>
-
     <div class="badges">
       <span v-if="d.statut" class="pill pill-green">{{ d.statut }}</span>
       <span v-if="d.langue" class="pill pill-gray">{{ d.langue === 'fr' ? 'Français' : d.langue }}</span>
@@ -62,7 +58,6 @@ const meta = computed(() => d.value.meta || {})
 </template>
 
 <style scoped>
-.slim{padding:3px 9px;font-size:11.5px}
 .badges{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;align-items:center}
 .sec{margin-bottom:18px}
 .sec-t{font-family:var(--font-eyebrow);text-transform:uppercase;letter-spacing:.05em;font-size:10.5px;color:var(--faint);font-weight:var(--eyebrow-weight);margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border-2)}

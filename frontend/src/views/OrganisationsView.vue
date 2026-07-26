@@ -43,6 +43,7 @@ const secteurOptions = computed(() =>
 
 // État de filtre local + filtrage client-side (aucun paramètre envoyé à l'API liste).
 const showFilters = ref(false)
+const q = ref('')
 const fRoles = ref([])
 const fStatuts = ref([])
 const fSecteurs = ref([])
@@ -58,6 +59,11 @@ const activeFilterCount = computed(() =>
   + (fSecteurs.value.length ? 1 : 0) + (fTlp.value.length ? 1 : 0))
 
 const filterFn = (r) => {
+  const needle = q.value.trim().toLowerCase()
+  if (needle) {
+    const hay = `${r.nom || ''} ${r.code || ''} ${enumLabel(r.secteur) || ''} ${r.secteur || ''}`.toLowerCase()
+    if (!hay.includes(needle)) return false
+  }
   if (fRoles.value.length && !fRoles.value.includes(r.role)) return false
   if (fStatuts.value.length && !fStatuts.value.includes(r.statut)) return false
   if (fSecteurs.value.length && !fSecteurs.value.includes(r.secteur)) return false
@@ -73,6 +79,10 @@ const filterFn = (r) => {
     <div class="subrow">
       <p class="subtitle">{{ t('views.organisations.subtitle') }}</p>
       <div class="acts">
+        <label class="search">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+          <input v-model="q" type="search" :placeholder="t('views.organisations.search_ph')" />
+        </label>
         <button class="filters-toggle" :class="{ open: showFilters }" @click="showFilters = !showFilters">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
           {{ t('views.organisations.filters') }}
@@ -131,6 +141,12 @@ const filterFn = (r) => {
 .note li{margin:3px 0}
 .note b{color:var(--c-violet-tx);font-weight:600}
 .acts{display:flex;gap:8px;align-items:center}
+.search{display:inline-flex;align-items:center;gap:7px;height:34px;border:1px solid var(--border);
+  background:var(--surface);border-radius:var(--r-pill);padding:0 12px;color:var(--faint);
+  transition:border-color var(--t) var(--ease)}
+.search:focus-within{border-color:var(--violet)}
+.search input{border:none;background:transparent;outline:none;color:var(--text);font-size:13px;width:170px}
+.search input::placeholder{color:var(--faint)}
 .icon-btn{width:34px;height:34px;border:1px solid var(--border);background:var(--surface);color:var(--muted);
   border-radius:var(--r-pill);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;
   transition:border-color var(--t) var(--ease), color var(--t) var(--ease)}

@@ -58,11 +58,15 @@ watch(() => ui.activeClient, loadCounts)
 const showShell = computed(() => auth.isAuthenticated && route.name !== 'login')
 const isAdmin = computed(() => auth.role === 'admin')
 
-// Groupes visibles selon le rôle (admin masqué hors admin).
+// Groupes visibles selon le rôle : admin masqué hors admin ; un item porteur d'une
+// `entity` n'apparaît que si le serveur l'a listée dans readable_entities (/whoami).
 const groups = computed(() =>
   NAV_GROUPS.map((g) => ({
     ...g,
-    items: g.items.filter((it) => !it.adminOnly || isAdmin.value),
+    items: g.items.filter(
+      (it) => (!it.adminOnly || isAdmin.value)
+        && (!it.entity || auth.readableEntities.includes(it.entity)),
+    ),
   })).filter((g) => g.items.length)
 )
 
@@ -145,7 +149,7 @@ async function doLogout() {
     </div>
 
     <CommandPalette
-      ref="palette" :is-admin="isAdmin"
+      ref="palette" :is-admin="isAdmin" :readable-entities="auth.readableEntities"
       :on-toggle-theme="() => ui.toggleTheme()" :on-logout="doLogout"
     />
 

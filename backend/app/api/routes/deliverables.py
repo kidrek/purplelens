@@ -244,7 +244,10 @@ async def generate(
                 and e.get("dek_id") and e.get("bucket") and e.get("object_key")
                 and e.get("nonce") and e.get("sha256_plaintext")
             ]
-            if img_candidates:
+            # Aperçus (déchiffrement + journalisation evidence_access) réservés au
+            # rapport PTES : un rapport d'exercice ne doit pas déclencher d'accès aux
+            # preuves qui n'y figurent pas.
+            if img_candidates and payload.type == "rapport":
                 dek_ids = {str(e["dek_id"]) for e in img_candidates}
                 wrapped_by_dek: dict[str, str] = {}
                 async with service_session("admin_service") as svc:
@@ -305,6 +308,65 @@ async def generate(
                 actions=actions, findings=findings, evidence=evidence, tlp=payload.tlp,
                 langue=payload.langue, previews=previews,
                 preview_max_bytes=settings.evidence_preview_max_bytes,
+            )
+        elif payload.type == "exercice":
+            # Rapport d'exercice Purple : tous les RUNs de l'audit (chaîne d'étapes
+            # offensives + verdicts défensifs + observations), reflet du tableau de
+            # bord de la page. Cloisonné RLS ; aucune preuve chiffrée n'y transite.
+            if not payload.audit_id:
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="exercice_requires_audit")
+            ex_rows = (
+                await session.execute(
+                    text(
+                        "SELECT id, nom, run_number, date, statut, tlp, equipe, notes, "
+                        "period, seq FROM purple_exercise "
+                        "WHERE audit_id = :a AND deleted_at IS NULL "
+                        "ORDER BY date NULLS LAST, created_at"
+                    ),
+                    {"a": str(payload.audit_id)},
+                )
+            ).mappings().all()
+            ex_ids = [str(r["id"]) for r in ex_rows]
+            steps_by_ex: dict[str, list[dict]] = {i: [] for i in ex_ids}
+            obs_by_step: dict[str, list[dict]] = {}
+            if ex_ids:
+                step_rows = (
+                    await session.execute(
+                        text(
+                            "SELECT id, exercise_id, ordre, technique, titre, verdict, "
+                            "horodatage, horodatage_detection, horodatage_reponse "
+                            "FROM attack_step WHERE exercise_id = ANY(:ids) "
+                            "ORDER BY ordre NULLS LAST, created_at"
+                        ),
+                        {"ids": ex_ids},
+                    )
+                ).mappings().all()
+                step_ids = [str(s["id"]) for s in step_rows]
+                for s in step_rows:
+                    steps_by_ex.setdefault(str(s["exercise_id"]), []).append(dict(s))
+                if step_ids:
+                    obs_rows = (
+                        await session.execute(
+                            text(
+                                "SELECT attack_step_id, source, resultat, description "
+                                "FROM defense_observation WHERE attack_step_id = ANY(:ids) "
+                                "ORDER BY created_at"
+                            ),
+                            {"ids": step_ids},
+                        )
+                    ).mappings().all()
+                    for o in obs_rows:
+                        obs_by_step.setdefault(str(o["attack_step_id"]), []).append(dict(o))
+            runs = []
+            for ex in ex_rows:
+                steps = steps_by_ex.get(str(ex["id"]), [])
+                for s in steps:
+                    s["observations"] = obs_by_step.get(str(s["id"]), [])
+                runs.append({**dict(ex), "steps": steps})
+            content = deliverable_service.render_exercise_report(
+                client=client, prestataire=prestataire, audit=audit,
+                applications=applications, runs=runs, tlp=payload.tlp,
+                langue=payload.langue,
             )
         else:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="unknown_type")

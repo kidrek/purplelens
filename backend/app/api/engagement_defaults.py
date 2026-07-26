@@ -20,9 +20,9 @@ from datetime import date
 from typing import Any
 
 _BOX_LABELS = {
-    "blackbox": "boîte noire",
-    "graybox": "boîte grise",
-    "whitebox": "boîte blanche",
+    "black-box": "boîte noire",
+    "grey-box": "boîte grise",
+    "white-box": "boîte blanche",
 }
 
 

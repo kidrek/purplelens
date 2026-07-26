@@ -41,6 +41,7 @@ function refreshAll() {
 
 // État de filtre local + filtrage client-side (aucun paramètre envoyé à l'API).
 const showFilters = ref(false)
+const q = ref('')
 const fOrgs = ref([])
 const fTypes = ref([])
 const fRoles = ref([])
@@ -55,6 +56,11 @@ const activeFilterCount = computed(() =>
   (fOrgs.value.length ? 1 : 0) + (fTypes.value.length ? 1 : 0) + (fRoles.value.length ? 1 : 0))
 
 const filterFn = (r) => {
+  const needle = q.value.trim().toLowerCase()
+  if (needle) {
+    const hay = `${r.nom || ''} ${r.contact || ''}`.toLowerCase()
+    if (!hay.includes(needle)) return false
+  }
   if (fOrgs.value.length && !fOrgs.value.includes(r.organisation_id)) return false
   if (fTypes.value.length && !fTypes.value.includes(r.type)) return false
   if (fRoles.value.length && !fRoles.value.includes(r.role)) return false
@@ -77,6 +83,10 @@ onMounted(async () => {
     <div class="subrow">
       <p class="subtitle">{{ t('views.ressources.subtitle') }}</p>
       <div class="acts">
+        <label class="search">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+          <input v-model="q" type="search" :placeholder="t('views.ressources.search_ph')" />
+        </label>
         <button class="filters-toggle" :class="{ open: showFilters }" @click="showFilters = !showFilters">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
           {{ t('views.ressources.filters') }}
@@ -127,6 +137,12 @@ onMounted(async () => {
 .note li{margin:3px 0}
 .note b{color:var(--c-violet-tx);font-weight:600}
 .acts{display:flex;gap:8px;align-items:center}
+.search{display:inline-flex;align-items:center;gap:7px;height:34px;border:1px solid var(--border);
+  background:var(--surface);border-radius:var(--r-pill);padding:0 12px;color:var(--faint);
+  transition:border-color var(--t) var(--ease)}
+.search:focus-within{border-color:var(--violet)}
+.search input{border:none;background:transparent;outline:none;color:var(--text);font-size:13px;width:170px}
+.search input::placeholder{color:var(--faint)}
 .icon-btn{width:34px;height:34px;border:1px solid var(--border);background:var(--surface);color:var(--muted);
   border-radius:var(--r-pill);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;
   transition:border-color var(--t) var(--ease), color var(--t) var(--ease)}

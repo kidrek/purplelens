@@ -112,6 +112,17 @@ class Settings(BaseSettings):
         "refs/heads/master/enterprise-attack/enterprise-attack.json",
         alias="ATTACK_STIX_URL",
     )
+    # Matrices ATT&CK Mobile et ICS — fusionnées dans le même catalogue « attack ».
+    attack_mobile_stix_url: str = Field(
+        "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/"
+        "refs/heads/master/mobile-attack/mobile-attack.json",
+        alias="ATTACK_MOBILE_STIX_URL",
+    )
+    attack_ics_stix_url: str = Field(
+        "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/"
+        "refs/heads/master/ics-attack/ics-attack.json",
+        alias="ATTACK_ICS_STIX_URL",
+    )
     d3fend_ontology_url: str = Field(
         "https://raw.githubusercontent.com/d3fend/d3fend/"
         "refs/heads/gh-pages/ontologies/d3fend.json",
@@ -124,7 +135,17 @@ class Settings(BaseSettings):
         "main/clusters/threat-actor.json",
         alias="MISP_THREAT_ACTOR_URL",
     )
+    # Dictionnaires complets CAPEC (XML) et CWE (XML zippé) — sources amont MITRE.
+    capec_xml_url: str = Field(
+        "https://capec.mitre.org/data/xml/capec_latest.xml", alias="CAPEC_XML_URL"
+    )
+    cwe_xml_zip_url: str = Field(
+        "https://cwe.mitre.org/data/xml/cwec_latest.xml.zip", alias="CWE_XML_ZIP_URL"
+    )
     reference_sync_timeout_seconds: float = Field(90.0, alias="REFERENCE_SYNC_TIMEOUT_SECONDS")
+    # Synchronise en ligne les référentiels dès le seed/bootstrap (repli gracieux sur le
+    # socle embarqué si Internet est indisponible). false = socle embarqué seul (air-gap/CI).
+    seed_sync_online: bool = Field(True, alias="SEED_SYNC_ONLINE")
 
     # Rendu des livrables (micro-service Chromium headless)
     pdf_renderer_url: str = Field("http://pdf-renderer:3000/pdf", alias="PDF_RENDERER_URL")
@@ -137,6 +158,7 @@ class Settings(BaseSettings):
     seed_admin_password: str | None = Field(None, alias="SEED_ADMIN_PASSWORD")
     seed_auditeur_password: str | None = Field(None, alias="SEED_AUDITEUR_PASSWORD")
     seed_ciso_password: str | None = Field(None, alias="SEED_CISO_PASSWORD")
+    seed_operateur_password: str | None = Field(None, alias="SEED_OPERATEUR_PASSWORD")
 
     @model_validator(mode="after")
     def _validate_secrets(self) -> Settings:

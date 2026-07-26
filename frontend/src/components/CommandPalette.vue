@@ -12,6 +12,7 @@ import { useUiStore } from '../stores/ui'
 // titre résolu par langue"). Navigation clavier : ↑/↓, Entrée, Échap.
 const props = defineProps({
   isAdmin: { type: Boolean, default: false },
+  readableEntities: { type: Array, default: () => [] },
   onToggleTheme: { type: Function, default: null },
   onLogout: { type: Function, default: null },
 })
@@ -26,10 +27,11 @@ const q = ref('')
 const idx = ref(0)
 const inputEl = ref(null)
 
-// Commandes = destinations de nav (respectant adminOnly) + actions + articles corpus.
+// Commandes = destinations de nav (respectant adminOnly + droit de lecture serveur)
+// + actions + articles corpus.
 const commands = computed(() => {
   const nav = NAV_FLAT
-    .filter((it) => !it.adminOnly || props.isAdmin)
+    .filter((it) => (!it.adminOnly || props.isAdmin) && (!it.entity || props.readableEntities.includes(it.entity)))
     .map((it) => ({
       group: 'nav', label: t('nav.' + it.id), hint: t('cmd.go'),
       run: () => router.push(it.to),

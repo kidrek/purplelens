@@ -8,15 +8,17 @@ ressources, scénarios de menace, audits, exercices Purple, chaînes d'attaque,
 observations défensives, vulnérabilités, tickets de détection, livrables — et un
 **sous-système de preuves chiffrées** de bout en bout.
 
-Ce dépôt implémente les documents normatifs du projet : cahier des charges v5.0,
-architecture technique (DAT) v1.1, spécification Auth & RBAC v2.0 et direction
-artistique v2.7.
+Ce dépôt implémente les documents normatifs du projet (à la racine du dépôt) : cahier
+des charges v2 (`cahier_des_charges_v2.md`), architecture technique DAT v1.0
+(`dat_v1.1.md`), spécification Auth & RBAC v2.1
+(`Backend_specification_auth_rbac_v2.md`) et direction artistique v2.7.
 
 ## Visite guidée
 
 Tour complet de la plateforme, écran par écran, dans l'ordre de la navigation. Captures en
 thème SOC sombre (thème B), prises sur le jeu de démonstration. Les parcours détaillés par
-rôle sont dans le [guide utilisateur](docs/guide-utilisateur.md).
+rôle sont dans le [guide utilisateur](docs/guide-utilisateur.md)
+([English version](docs/en/user-guide.md)).
 
 ### Connexion & compte
 
@@ -45,6 +47,18 @@ MITRE, posture agrégée et derniers événements du journal — limités à vot
 étapes jouées, détections, angles morts), décomposition de la posture, timeline des étapes
 d'attaque avec verdict défensif (prévenu / alerté / journalisé / sans télémétrie) et création
 de tickets de remédiation à la volée.*
+
+![Fiche exercice Purple — tous les runs](docs/img/exercice-drawer.png)
+
+*Fiche d'un exercice Purple : le tableau de posture agrégé sur **tous les runs** de
+l'audit — détection qui progresse de run en run, verdicts par technique, indicateurs
+MTTD/MTTR et étapes passées « couvertes » par un ticket de détection clos.*
+
+![Page de détail d'un exercice Purple](docs/img/exercice-detail.png)
+
+*La vue plein écran d'un exercice (`/exercices/:id`) : la chaîne d'attaque rejouée pas à
+pas face à la réponse défensive — verdict, horodatages de détection et de réaction, et
+observations de la Blue Team pour chaque technique.*
 
 ![Fiche d'audit — engagement de pentest](docs/img/audit-drawer.png)
 
@@ -79,7 +93,9 @@ Détection / Écart / couche ATT&CK Navigator importée.*
 ![Scénarios de menace](docs/img/scenarios.png)
 
 *Scénarios de menace : bibliothèque CTI transverse (acteurs émulés, sophistication,
-crédibilité Admiralty), import / export **STIX 2.1**.*
+crédibilité Admiralty), import / export **STIX 2.1**. Le champ « acteur émulé »
+interroge les **catalogues d'acteurs** (groupes ATT&CK + MISP Galaxy, alias compris) et
+peut **importer les TTPs de l'acteur** directement comme étapes du scénario.*
 
 ![Fiche scénario FIN7](docs/img/scenario-drawer.png)
 
@@ -106,8 +122,11 @@ engagements.*
 
 ![Générateur de livrables](docs/img/deliverables.png)
 
-*Livrables : lettres d'engagement, NDA et rapports PTES générés en PDF (headless Chromium)
-avec **bandeau de classification TLP**, scellés en stockage verrouillé et tracés au journal.*
+*Livrables : quatre types — lettres d'engagement, NDA, rapports PTES et **rapports
+d'exercice Purple** (tous les runs d'un audit : chronologie des étapes, verdicts,
+couverture par tactique) — générés en PDF (headless Chromium) sur gabarits bilingues
+FR/EN avec **bandeau de classification TLP**, registre des preuves avec aperçus intégrés
+(secrets masqués), scellés en stockage verrouillé et tracés au journal.*
 
 ![Fiche livrable](docs/img/deliverable-drawer.png)
 
@@ -116,14 +135,21 @@ consultation est tracée au journal.*
 
 ![Coffre de preuves](docs/img/evidence.png)
 
-*Coffre de preuves : dépôt par URL présignée (les binaires ne transitent jamais par l'API),
+*Coffre de preuves : dépôt par URL présignée (l'API ne voit jamais le fichier en clair),
 sas d'ingestion (antivirus, type réel, chiffrement enveloppe AES-256-GCM), stockage **WORM**
-et marquage TLP. Nécessite `make init-vault` pour les premiers dépôts.*
+et marquage TLP. Le téléchargement déchiffré est l'unique exception documentée : seule
+l'API peut désenvelopper la clé de données, elle sert donc le clair sous contrôle d'accès
+en ligne (step-up récent pour le TLP:RED), chaque accès étant tracé. Nécessite
+`make init-vault` pour les premiers dépôts.*
 
 ![Journal inviolable](docs/img/journal.png)
 
-*Journal : chaîné par hachage, consultable par tous en lecture seule, modifiable par
-personne — le bouton « Vérifier l'intégrité » recalcule la chaîne côté serveur.*
+*Journal : chaîné par hachage, modifiable par personne (lecture réservée aux rôles
+transverses, cloisonnée par client pour les autres) — filtres serveur (texte, domaine
+d'événement, résultat, acteur, plage de dates), statistiques, export JSON sous step-up,
+et bouton « Vérifier l'intégrité » recalculant la chaîne côté serveur. En arrière-plan,
+la tête de chaîne est **ancrée toutes les 6 h en stockage WORM** pour détecter une
+falsification hors-bande.*
 
 ### Système
 
@@ -151,11 +177,28 @@ socle embarqué hors-ligne).*
 utilisateur (sécurité « fail-closed » : périmètre vide = aucun accès pour les rôles
 non-manager), création de comptes et désactivation.*
 
+### Hors captures
+
+- **Palette de commandes ⌘K** — navigation en recherche libre entre vues et articles
+  méthodologiques.
+- **Page de détail plein écran des audits** (`/audits/:id`) : actions PTES groupées par
+  phase, jalons, générateur de livrables ancré sur l'audit.
+- **Bandeaux de KPI par vue** — chaque liste (audits, exercices, vulnérabilités,
+  organisations, ressources, scénarios, journal) porte des agrégats calculés côté
+  serveur, avec les mêmes filtres que le tableau.
+- **Navigation pilotée par le serveur** — une entrée de menu n'apparaît que si le serveur
+  accorde la lecture de l'entité (`readable_entities` de `/whoami`).
+- **Cascades de scénario** — lier un scénario CTI à un audit dérive automatiquement ses
+  actions de test PTES ; créer un exercice sur cet audit amorce sa chaîne d'attaque.
+
 ## Doctrine de sécurité — défense en profondeur (4 couches)
 
 Aucune autorisation n'est décidée côté client : **le serveur décide, toujours**.
-Les binaires ne transitent jamais par l'API. Quatre couches indépendantes se
-superposent, de sorte que la défaillance d'une seule ne compromet pas l'ensemble :
+Les binaires ne transitent jamais par l'API — à une exception documentée près : le
+téléchargement déchiffré des preuves, servi par l'API (seule détentrice de la clé de
+données) sous contrôle d'accès en ligne et traçabilité complète. Quatre couches
+indépendantes se superposent, de sorte que la défaillance d'une seule ne compromet pas
+l'ensemble :
 
 1. **`can()` applicatif** — un moteur à 5 portes (authentification, MFA/step-up,
    matrice RBAC, cloisonnement client, TLP/PAP) évalué à chaque appel, refus par défaut.
@@ -170,7 +213,14 @@ superposent, de sorte que la défaillance d'une seule ne compromet pas l'ensembl
 4. **Stockage WORM + journal inviolable** — les objets chiffrés sont déposés en MinIO
    avec *Object Lock* (write-once-read-many) ; le journal d'audit est chaîné par hachage
    (tamper-evident) et **immuable applicativement** : aucun rôle, pas même `admin`, ne
-   peut le modifier ou le supprimer.
+   peut le modifier ou le supprimer. Sa tête de chaîne est en outre **ancrée toutes les
+   6 heures dans un bucket WORM** et re-vérifiée quotidiennement — même une réécriture
+   privilégiée au niveau base est détectée.
+
+Durcissement de l'authentification en complément : limitation de débit Redis sur
+`/login`, `/refresh` et `/step-up` ; anti-rejeu TOTP avec secrets chiffrés au repos
+(AES-256-GCM) ; état OIDC/PKCE à usage unique ; Swagger/OpenAPI désactivé en production
+(`ENVIRONMENT=production`).
 
 Le déploiement respecte la **règle d'un seul point d'entrée** (DAT §4.1bis) : seul le
 reverse proxy `frontend` publie des ports ; tous les autres services ne communiquent
@@ -196,7 +246,9 @@ un autre service expose un port.
 Prérequis : Docker, Docker Compose, Make.
 
 ```bash
-cp .env.example .env          # ajuster les secrets (SEED_DEFAULT_PASSWORD, APP_*_PASSWORD…)
+cp .env.example .env          # `make up` remplace ensuite les valeurs « change-me-* » via
+                              # `make secrets` (VAULT_TOKEN / OIDC_CLIENT_SECRET restent
+                              # manuels ; poser ENVIRONMENT=production en production)
 make bootstrap                # premier démarrage complet : stack + schéma + comptes de démo
 make init-vault               # (avant le dépôt de preuves) descellement + transit + KEK
 ```
@@ -216,7 +268,10 @@ make seed-demo                # (optionnel) jeu de démo riche — audits, exerc
 ```
 
 `make seed-demo` est idempotent (UUID déterministes) et séparé de `seed`, pour qu'une
-instance de production reste exempte de données fictives.
+instance de production reste exempte de données fictives. Pour repartir d'une base
+propre, `make seed-demo-fresh` purge d'abord toutes les lignes métier (y compris les
+résidus des exécutions de tests, qui partagent la base de démo) en préservant
+référentiels, corpus, comptes, organisations du socle et journal, puis re-seed.
 
 Accès : `https://localhost/` (certificat auto-signé en dev — accepter l'avertissement).
 Comptes de démonstration : `admin@purple.local`, `auditeur@purple.local`,
@@ -252,15 +307,19 @@ backend/            API FastAPI, workers Celery, migrations, tests
     journal/        journal chaîné (tamper-evident)
     storage/        chiffrement enveloppe, Vault, MinIO (WORM)
     models/         ORM (métier + sécurité + preuves)
-    api/routes/     auth, entités (CRUD générique), preuves, livrables, admin
-    workers/        sas d'ingestion (antivirus, type réel, chiffrement, WORM), jobs
-    deliverables/   génération de livrables HTML→PDF (bandeaux TLP)
+    api/routes/     11 routeurs : auth, entités (CRUD générique), preuves, livrables,
+                    admin (comptes + journal), analytics, stix, référentiels,
+                    vulnérabilités, exercices, profil (« ma fiche »)
+    workers/        sas d'ingestion (antivirus, type réel, chiffrement, WORM), jobs,
+                    ancrage WORM du journal
+    deliverables/   génération de livrables HTML→PDF (4 types, FR/EN, bandeaux TLP)
   sql/              roles.sql (rôles PG) + schema_evidence.sql (DDL preuves + RLS)
   migrations/       Alembic (schéma initial complet)
+  scripts/          verify_journal.py, sync_reference.py (CLIs d'exploitation)
 frontend/           Vue 3 + Vite (tokens DA repris verbatim)
 deploy/             nginx (reverse proxy unique), keycloak (realm), vault
-scripts/            check_ports.py, backup.sh, restore.sh
-docs/               guide utilisateur, déploiement, exploitation, runbook Vault, captures (img/)
+scripts/            check_ports.py, gen_secrets.sh, backup.sh, restore.sh
+docs/               docs FR + miroirs docs/en/ (guide utilisateur, déploiement, exploitation, runbook Vault), captures (img/)
 ```
 
 ## Décisions d'architecture (DAT)
@@ -273,14 +332,16 @@ Actions · D7 Keycloak embarqué (OIDC + PKCE) · D8 sur-chiffrement côté clie
 
 ## Documentation
 
-| Document | Objet |
-|---|---|
-| `docs/deploiement.md` | Déploiement en production (secrets, ordre d'installation, intégrations, TLS, montée de version) |
-| `docs/exploitation.md` | Exploitation courante (synchro référentiels, sauvegarde, vérification du journal, réponse à incident, crypto-shredding) |
-| `docs/runbook-vault.md` | Vault en détail (descellement, rotation KEK, crypto-shredding) |
-| `docs/guide-utilisateur.md` | Prise en main par rôle et parcours métier |
-| `docs/validation.md` | Preuves d'exécution — couverture des tests |
-| `docs/RECETTE.md` | Recette et durcissement |
+Chaque document existe en français et en anglais (liens croisés en tête de fichier).
+
+| Document (FR) | English version | Objet |
+|---|---|---|
+| [deploiement.md](docs/deploiement.md) | [deployment.md](docs/en/deployment.md) | Déploiement en production (secrets, ordre d'installation, intégrations, TLS, montée de version) |
+| [exploitation.md](docs/exploitation.md) | [operations.md](docs/en/operations.md) | Exploitation courante (synchro référentiels, sauvegarde, vérification du journal, réponse à incident, crypto-shredding) |
+| [runbook-vault.md](docs/runbook-vault.md) | [runbook-vault.md](docs/en/runbook-vault.md) | Vault en détail (descellement, rotation KEK, crypto-shredding) |
+| [guide-utilisateur.md](docs/guide-utilisateur.md) | [user-guide.md](docs/en/user-guide.md) | Prise en main par rôle et parcours métier |
+| [validation.md](docs/validation.md) | [validation.md](docs/en/validation.md) | Preuves d'exécution — couverture des tests |
+| [RECETTE.md](docs/RECETTE.md) | [ACCEPTANCE.md](docs/en/ACCEPTANCE.md) | Recette et durcissement |
 
 ## Licence
 

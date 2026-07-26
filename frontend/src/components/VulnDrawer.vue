@@ -308,13 +308,13 @@ async function enrichCircl() {
 
     <!-- 6. Preuves attachées -->
     <section class="sec">
-      <div class="sec-t">{{ t('sec.evidence') }}</div>
-      <div class="evidence-actions">
+      <div class="evi-head">
+        <div class="sec-t sec-t-inline">{{ t('sec.evidence') }}</div>
         <button v-if="full?.audit_id" class="btn slim" @click="showUploader = !showUploader">
           {{ showUploader ? t('common.close') : t('upload.attach') }}
         </button>
-        <span v-else class="muted">{{ t('upload.requires_audit') }}</span>
       </div>
+      <p v-if="!full?.audit_id" class="muted">{{ t('upload.requires_audit') }}</p>
 
       <!-- Formulaire d'upload (pliable) -->
       <EvidenceUpload
@@ -423,8 +423,10 @@ async function enrichCircl() {
 .ref-block .mt{margin-top:10px}
 .ref-block b{color:var(--text)}
 
-/* Preuves */
-.evidence-actions{display:flex;gap:8px;margin-bottom:12px}
+/* Preuves — en-tête aligné (titre à gauche, action à droite), calqué sur .voc-head */
+.evi-head{display:flex;justify-content:space-between;align-items:center;gap:12px;
+  margin-bottom:12px;padding-bottom:5px;border-bottom:1px solid var(--border-2)}
+.sec-t-inline{margin-bottom:0;padding-bottom:0;border-bottom:0}
 .evidence-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
 .evi-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--border-2);border-radius:var(--r-mini);font-size:12px}
 .evi-name{font-family:var(--font-data);color:var(--heading);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

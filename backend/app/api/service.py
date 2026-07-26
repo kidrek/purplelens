@@ -435,9 +435,11 @@ async def _sync_scenario_steps(
     await session.flush()
 
 
-# Tactique ATT&CK (slug kill-chain, cf. ref/sync._STD_TACTICS) → phase PTES d'une action
-# d'audit. Règle validée : reconnaissance→reconnaissance, initial-access/execution→exploitation,
-# tout le reste → post-exploitation ; tactique absente/inconnue au dict → défaut « exploitation ».
+# Tactique ATT&CK (slug kill-chain, cf. ref/sync._ALL_TACTICS — Enterprise/Mobile/ICS) →
+# phase PTES d'une action d'audit. Règle validée : reconnaissance→reconnaissance,
+# initial-access/execution→exploitation, tout le reste (y compris les tactiques Mobile/ICS
+# comme evasion, inhibit-response-function) → post-exploitation ; tactique absente → défaut
+# « exploitation ».
 _TACTIC_TO_PTES = {
     "reconnaissance": "reconnaissance",
     "initial-access": "exploitation",
@@ -651,6 +653,7 @@ async def create_entity(
         session,
         event_type=f"{spec.entity}.create",
         actor_id=actor_id,
+        subject=str(obj.id),
         detail={"entity": spec.entity, "id": str(obj.id)},
     )
     return obj
@@ -711,6 +714,7 @@ async def update_entity(
         session,
         event_type=f"{spec.entity}.update",
         actor_id=actor_id,
+        subject=str(obj.id),
         detail={"entity": spec.entity, "id": str(obj.id), "fields": sorted(data.keys())},
     )
     return obj
@@ -720,6 +724,8 @@ async def delete_entity(
     session: AsyncSession, spec: EntitySpec, obj: Any, *, actor_id: str | None
 ) -> None:
     """Suppression logique quand le modèle la supporte, sinon physique."""
+    # Fige l'id AVANT une éventuelle suppression physique (l'objet peut être expiré ensuite).
+    obj_id = str(obj.id)
     if hasattr(obj, "deleted_at"):
         obj.deleted_at = _now()
     else:
@@ -728,5 +734,6 @@ async def delete_entity(
         session,
         event_type=f"{spec.entity}.delete",
         actor_id=actor_id,
-        detail={"entity": spec.entity, "id": str(obj.id)},
+        subject=obj_id,
+        detail={"entity": spec.entity, "id": obj_id},
     )

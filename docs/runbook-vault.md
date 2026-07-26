@@ -1,5 +1,7 @@
 # Runbook — HashiCorp Vault (KEK des preuves)
 
+🇬🇧 [English version](en/runbook-vault.md)
+
 Vault détient les **clés maîtres (KEK)**, une par client, via le moteur *transit*.
 Ces clés enveloppent les clés de données (DEK) qui chiffrent les preuves. Vault est
 la frontière cryptographique du système : la compromission de la base ou du stockage
@@ -16,10 +18,14 @@ par des opérateurs distincts — aucune personne seule ne descelle Vault.
 
 ```bash
 # Initialisation (une seule fois) : 5 parts, seuil de 3.
-make unseal            # enveloppe le flux ci-dessous ; sortie à conserver hors-ligne
+make init-vault        # enveloppe le flux ci-dessous ; sortie à conserver hors-ligne
 # équivaut à :
 vault operator init -key-shares=5 -key-threshold=3
 ```
+
+(`make unseal` ne fait que le **descellement** — `vault operator unseal`, à lancer après
+chaque redémarrage ; l'initialisation et l'activation du moteur transit passent par
+`make init-vault`.)
 
 Les parts et le jeton racine (*root token*) **ne doivent jamais** être stockés au même
 endroit que la base ou les objets chiffrés. Répartir les parts entre opérateurs ;
@@ -79,12 +85,21 @@ avant toute opération manuelle.
 ## 5. Sauvegarde de Vault
 
 Sauvegarder l'état de Vault **séparément** de la base et des objets (ne jamais réunir
-KEK et DEK/données au même endroit). Suivre la procédure officielle de *snapshot* et
-protéger le média au niveau de classification le plus élevé des clients hébergés.
+KEK et DEK/données au même endroit) et protéger le média au niveau de classification le
+plus élevé des clients hébergés. Le déploiement utilise le backend de stockage **file**
+(`deploy/vault/` — pas de cluster Raft : `raft snapshot` ne s'applique pas) ; la
+sauvegarde consiste à archiver le volume de données de Vault, service arrêté ou scellé :
 
 ```bash
-vault operator raft snapshot save vault-$(date -u +%Y%m%dT%H%M%SZ).snap
+docker compose stop vault
+docker run --rm --volumes-from $(docker compose ps -aq vault) -v "$PWD/backups:/backup" \
+  alpine tar czf /backup/vault-$(date -u +%Y%m%dT%H%M%SZ).tar.gz /vault/file
+docker compose start vault   # puis descellement (make unseal)
 ```
+
+Cette sauvegarde est **volontairement séparée** de `make backup` (base + objets) — le
+manifeste de `scripts/backup.sh` le rappelle : ne jamais réunir les KEK et les données
+chiffrées au même endroit. Les données copiées restent scellées (chiffrées par Vault).
 
 Une restauration des données (base + objets) sans la sauvegarde Vault correspondante est
 **inexploitable par conception**. C'est la garantie même du crypto-shredding.

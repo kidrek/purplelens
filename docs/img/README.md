@@ -10,6 +10,8 @@ Images référencées par le [README](../../README.md) (section « Visite guidé
 | `account.png` | Mon compte `/account` — enrôlement TOTP, fiche auditeur | Connexion & compte |
 | `cockpit.png` | Cockpit `/` — KPIs, couverture par tactique, posture | Pilotage |
 | `exercices.png` | Exercices Purple `/exercices` — boucle Red→Blue→Détection | Pilotage |
+| `exercice-drawer.png` | Fiche exercice (drawer) — tous les runs, progression détection, MTTD/MTTR | Pilotage |
+| `exercice-detail.png` | Détail exercice `/exercices/:id` — chaîne d'attaque vs défense | Pilotage |
 | `audit-drawer.png` | Fiche d'audit (drawer sur `/audits`) — PTES, scénario CTI, TTPs | Pilotage |
 | `vulnerabilities.png` | Vulnérabilités `/vulnerabilities` — sévérité, CVSS, SLA | Pilotage |
 | `vuln-drawer.png` | Fiche vulnérabilité (drawer) — OWASP/CWE, enrichissement CIRCL | Pilotage |

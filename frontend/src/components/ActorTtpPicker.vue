@@ -29,8 +29,9 @@ const techErr = ref(null)
 
 const TACTICS = [
   'reconnaissance', 'resource-development', 'initial-access', 'execution', 'persistence',
-  'privilege-escalation', 'defense-evasion', 'credential-access', 'discovery',
-  'lateral-movement', 'collection', 'command-and-control', 'exfiltration', 'impact',
+  'privilege-escalation', 'defense-evasion', 'evasion', 'defense-impairment', 'stealth',
+  'credential-access', 'discovery', 'lateral-movement', 'collection', 'command-and-control',
+  'exfiltration', 'inhibit-response-function', 'impair-process-control', 'impact',
 ]
 const SOURCE_LABEL = { attack: 'ATT&CK', misp: 'MISP' }
 

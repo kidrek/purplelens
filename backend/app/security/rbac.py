@@ -31,6 +31,7 @@ HIGH_RISK_ACTIONS: frozenset[str] = frozenset(
         "legal_hold.release",
         "crypto.shredding",
         "audit.export",
+        "journal.export",
         "kek.rotation",
         "user.create",
         "user.role_change",

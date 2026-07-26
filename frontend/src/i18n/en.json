@@ -168,6 +168,41 @@
         "exposes": "Exposed",
         "foot_scope": "{pct} % of scope",
         "foot_selection": "{pct} % of selection"
+      },
+      "drawer": {
+        "organisation": "Organisation",
+        "posture_eyebrow": "Aggregated posture · this application",
+        "posture_panel_note": "latest Purple exercise",
+        "kpi_detection": "Detection rate",
+        "kpi_detection_foot": "{caught} / {tested} detected",
+        "kpi_blind": "Blind spots",
+        "kpi_blind_foot": "no telemetry",
+        "kpi_crit": "Active critical vulns",
+        "kpi_crit_foot": "{n} active total",
+        "kpi_audits": "Audits performed",
+        "kpi_audits_foot": "{n} Purple exercises",
+        "mitre_title": "MITRE tactic coverage",
+        "mitre_note": "last run · kill-chain",
+        "matrix_show": "Show full ATT&CK matrix",
+        "matrix_hide": "Hide ATT&CK matrix",
+        "matrix_desc": "ATT&CK techniques run against this application.",
+        "trend_title": "Detection rate evolution",
+        "trend_note": "last 5 Purple exercises",
+        "audits_title": "Top 5 audits performed",
+        "col_audit": "Audit",
+        "col_type": "Type",
+        "col_auditor": "Auditor",
+        "col_date": "Date",
+        "col_detection": "Detection",
+        "vulns_title": "Active vulnerabilities",
+        "col_vuln": "Vulnerability",
+        "col_severity": "Severity",
+        "col_status": "Status",
+        "col_created": "Created",
+        "col_sla": "SLA",
+        "empty_posture": "No Purple activity on this application yet.",
+        "empty_vulns": "No active vulnerabilities on this application.",
+        "load_error": "Couldn’t load the application posture."
       }
     },
     "attack": {
@@ -176,7 +211,38 @@
     },
     "audits": {
       "eyebrow": "Engagements",
-      "title": "Audits"
+      "title": "Audits",
+      "subtitle": "Steer offensive and defensive engagements, by client organization and target application.",
+      "search_ph": "Search a reference…",
+      "note": {
+        "lead": "Each audit is a Purple Team engagement tied to a client organization and one or more target applications:",
+        "categories_label": "Categories",
+        "categories_text": "— Red Team (simulated adversary), Pentest (targeted test), BAS (automated breach simulation).",
+        "cycle_label": "Lifecycle",
+        "cycle_text": "— planned → in progress → completed, with PTES progress, test actions, vulnerabilities and deliverables."
+      },
+      "filters": "Filters",
+      "filter_org": "Organization",
+      "filter_org_ph": "Search an organization…",
+      "filter_app": "Application",
+      "filter_app_ph": "Search an application…",
+      "filter_cat": "Category",
+      "filter_statut": "Status",
+      "filter_type": "Test type",
+      "filter_prio": "Priority",
+      "filter_tlp": "TLP",
+      "col_org": "Organization",
+      "col_app": "Application",
+      "kpi": {
+        "audits": "Audits",
+        "audits_foot": "{covered} / {total} organizations covered",
+        "en_cours": "In progress",
+        "en_cours_foot": "{pct}% of portfolio",
+        "planifies": "Planned",
+        "planifies_foot": "upcoming",
+        "p1": "Priority P1",
+        "p1_foot": "critical engagements"
+      }
     },
     "bibliotheque": {
       "eyebrow": "Reference",
@@ -218,6 +284,11 @@
         "collection": "Collection",
         "command-and-control": "C2",
         "exfiltration": "Exfiltration",
+        "stealth": "Stealth",
+        "defense-impairment": "Defense impair.",
+        "evasion": "Evasion",
+        "inhibit-response-function": "Inhibit response",
+        "impair-process-control": "Impair process ctrl",
         "impact": "Impact"
       },
       "trend": {
@@ -274,20 +345,195 @@
     },
     "deliverables": {
       "eyebrow": "Production",
-      "title": "Deliverable generator"
+      "title": "Deliverable generator",
+      "subtitle": "Produce and track client deliverables — engagement letters, NDAs, PTES reports — sealed and journaled.",
+      "search_ph": "Search title, client, audit…",
+      "filters": "Filters",
+      "generate": "Generate deliverable",
+      "empty": "No deliverable generated.",
+      "statut_genere": "Generated",
+      "filter_client_all": "All clients",
+      "filter_audit_all": "All audits",
+      "note": {
+        "lead": "Every deliverable is rendered server-side, sealed (Object Lock) and journaled.",
+        "contenu_label": "Content —",
+        "contenu_text": "the PTES report embeds the audit findings and masks evidence marked “secret”.",
+        "usage_label": "Usage —",
+        "usage_text": "access goes through a short presigned URL; the binary never transits the API."
+      },
+      "kpi": {
+        "total": "Total deliverables",
+        "total_foot": "all types combined",
+        "rapports": "PTES reports",
+        "rapports_foot": "with audit findings",
+        "clients": "Clients covered",
+        "clients_foot": "distinct perimeters",
+        "recents": "Generated (30 d)",
+        "recents_foot": "recent activity"
+      },
+      "col": {
+        "type": "Type",
+        "client": "Client",
+        "audit": "Audit",
+        "langue": "Language",
+        "tlp": "TLP",
+        "statut": "Status",
+        "generation": "Generated"
+      },
+      "actions": {
+        "view": "View",
+        "download": "Download"
+      },
+      "types": {
+        "engagement": "Engagement letter",
+        "nda": "Non-disclosure agreement (NDA)",
+        "rapport": "PTES report"
+      },
+      "langues": {
+        "fr": "Français",
+        "en": "English"
+      },
+      "gen": {
+        "title": "Generate a deliverable",
+        "type": "Deliverable type",
+        "client": "Client",
+        "client_search_ph": "Search a client…",
+        "audit": "Audit",
+        "audit_optional": "(optional)",
+        "audit_search_ph": "Search an audit…",
+        "audit_locked": "Choose a client first.",
+        "langue": "Language",
+        "tlp": "TLP marking",
+        "hint": "The PTES report automatically embeds the audit findings and masks evidence marked “secret”. The file is sealed (Object Lock) and its access is journaled.",
+        "submit": "Generate deliverable",
+        "submitting": "Generating…"
+      },
+      "msg": {
+        "need_client": "Choose a client.",
+        "need_audit": "The PTES report requires an audit.",
+        "generated": "Deliverable generated ({type}).",
+        "gen_denied": "Generation denied (rights or tenancy).",
+        "client_not_found": "Client not found in your perimeter.",
+        "gen_error": "Generation error.",
+        "dl_not_ready": "Deliverable not ready yet.",
+        "dl_denied": "Download denied.",
+        "error": "Error."
+      }
     },
     "exercices": {
       "eyebrow": "Purple",
-      "title": "Purple exercises"
+      "title": "Purple exercises",
+      "subtitle": "Purple campaign tracking: each exercise groups its successive RUNs against one audit.",
+      "search_ph": "Search client, application, audit…",
+      "filters": "Filters",
+      "group": "Group",
+      "group_hint": "Group by exercise: fold an audit's RUNs onto the current RUN.",
+      "download": "Download PDF report",
+      "download_denied": "Deliverable generation denied (insufficient rights).",
+      "download_unavailable": "PDF rendering unavailable right now.",
+      "note": {
+        "lead": "In grouped view each row is an exercise; its successive RUNs are folded and available in the drawer.",
+        "ligne_label": "Row —",
+        "ligne_text": "the exercise's current RUN; successive RUNs are folded, expandable via the Group toggle.",
+        "cotation_label": "Rating —",
+        "cotation_text": "status, TLP marking and creation date feed the KPIs, computed over the visible rows."
+      },
+      "filter_statut": "Status",
+      "filter_tlp": "TLP",
+      "filter_client": "Client",
+      "filter_client_ph": "Search a client…",
+      "filter_app": "Application",
+      "filter_app_ph": "Search an application…",
+      "kpi": {
+        "total": "Exercises",
+        "total_foot": "Purple campaigns",
+        "total_runs_foot": "{n} RUNs total",
+        "active": "RUNs in progress",
+        "active_foot": "active campaigns",
+        "done": "Completed",
+        "done_foot": "{pct}% of visible",
+        "clients": "Clients covered",
+        "clients_foot": "organisations"
+      },
+      "repartition": {
+        "title": "Breakdown",
+        "resume": "{actifs} in progress · {total} exercises",
+        "desc": "Visible exercises split by status and by TLP marking.",
+        "par_statut": "By status",
+        "par_tlp": "By TLP"
+      }
     },
     "journal": {
       "eyebrow": "Traceability",
-      "title": "Journal (tamper-evident)"
+      "title": "Journal (tamper-evident)",
+      "subtitle": "Tamper-proof hash-chained ledger of every security event (SHA-256 fingerprints).",
+      "search_ph": "Search event, actor, subject…",
+      "filters": "Filters",
+      "verify": "Verify chain integrity",
+      "note": {
+        "lead": "Each row is a sealed event, chained to the previous one by a cryptographic digest — any alteration, deletion or reordering is detectable:",
+        "contenu_label": "Content —",
+        "contenu_text": "event type, actor, target subject, timestamp and fingerprint (SHA-256) linked to the previous link.",
+        "garantie_label": "Guarantee —",
+        "garantie_text": "append-only ledger, non-modifiable (no role, not even admin); “Verify integrity” recomputes the whole chain server-side."
+      },
+      "filter_domain": "Event domain",
+      "filter_result": "Result",
+      "filter_actor": "Actor",
+      "filter_actor_ph": "Filter by actor…",
+      "filter_periode": "Period (timestamp)",
+      "filter_from": "From",
+      "filter_to": "to",
+      "domains": {
+        "auth": "Authentication",
+        "evidence": "Evidence",
+        "deliverable": "Deliverables",
+        "admin": "Administration",
+        "reference": "Reference data",
+        "scenario": "Scenarios / Exercises",
+        "journal": "Journal / Anchoring"
+      },
+      "results": {
+        "ok": "Success",
+        "denied": "Denied / failed"
+      },
+      "kpi": {
+        "total": "Sealed events",
+        "total_foot": "on the global chain",
+        "integrity": "Chain integrity",
+        "integrity_ok": "✔ Intact",
+        "integrity_ko": "✘ Break",
+        "integrity_ko_seq": "✘ Break (seq. {seq})",
+        "integrity_unknown": "— Not verified",
+        "integrity_foot_ok": "chain verified",
+        "integrity_foot_ko": "recompute required",
+        "integrity_foot_unknown": "run “Verify integrity”",
+        "actors": "Distinct actors",
+        "actors_foot": "event authors",
+        "denied": "Denied / failed",
+        "denied_foot": "{pct}% — denied access & auth"
+      },
+      "col": {
+        "seq": "Seq.",
+        "event": "Event",
+        "actor": "Actor",
+        "subject": "Subject",
+        "hash": "Fingerprint",
+        "date": "Date"
+      },
+      "export": {
+        "label": "Export JSON",
+        "full": "Full chain (backup)",
+        "filtered": "Filtered selection",
+        "denied": "Export restricted to global roles.",
+        "done": "Export downloaded ({count} entries)."
+      }
     },
     "organisations": {
       "eyebrow": "Scope",
       "title": "Organizations",
       "subtitle": "Map of the scope's entities — audited clients, providers and internal entities.",
+      "search_ph": "Search name, sector…",
       "note": {
         "lead": "Each organization is a tenancy boundary: applications, resources, audits and vulnerabilities all attach to it.",
         "clients_label": "Clients",
@@ -321,12 +567,54 @@
     },
     "parametres": {
       "eyebrow": "Settings",
-      "title": "Security reference catalogs"
+      "title": "Security reference catalogs",
+      "intro": "Catalog and refresh the security reference sets used across forms and analytics. Import is idempotent.",
+      "loading": "Loading…",
+      "readonly_notice": "Read-only — importing reference sets is reserved to administrators.",
+      "online_tag": "Online",
+      "embedded_tag": "Embedded baseline",
+      "sync": {
+        "title": "Sync all",
+        "desc": "Refresh every catalog in a single action.",
+        "button": "Sync all",
+        "button_busy": "Refreshing…"
+      },
+      "legend_online_cats": "ATT&CK, D3FEND, ATT&CK Groups, MISP Actors, CWE, CAPEC",
+      "legend_embedded_cats": "OWASP",
+      "meta": {
+        "imported": "Imported",
+        "not_imported": "Not imported",
+        "updated": "Updated: {date}",
+        "source": "Source: {source}",
+        "entries": "{count} entry(ies)"
+      },
+      "btn": {
+        "sync_online": "Sync online",
+        "sync_busy": "Sync…",
+        "sync_title": "Fetch the full catalog from MITRE",
+        "import": "Import",
+        "reimport": "Re-import",
+        "import_busy": "Import…"
+      },
+      "note": "Embedded baseline (works offline). OWASP bundles the Top 10 families (Web, API, LLM, Mobile); ATT&CK, D3FEND, CAPEC and CWE ship a common subset. ATT&CK, D3FEND, ATT&CK Groups, MISP Actors, CWE and CAPEC can be synced to their full MITRE catalog via “Sync online” (or “Sync all”), with automatic fallback to the baseline if the source is unreachable.",
+      "msg": {
+        "import_ok": "{name}: {n} entry(ies) loaded.",
+        "sync_ok": "{name} synced from MITRE: {n} entries.",
+        "sync_fallback": "Upstream source unreachable — embedded baseline loaded ({n} entries).",
+        "all_ok": "Reference sets synced — {up} from MITRE online.",
+        "all_ok_partial": "Reference sets synced — {up} from MITRE online, {fb} fell back to the baseline (source unreachable).",
+        "all_fallback": "MITRE sources unreachable — all catalogs reloaded from the embedded baseline.",
+        "forbidden": "Administrators only.",
+        "error": "Error.",
+        "error_load": "Failed to load.",
+        "error_sync": "Sync error."
+      }
     },
     "ressources": {
       "eyebrow": "Scope",
       "title": "Resources",
       "subtitle": "Mapping of staff and assets by organization.",
+      "search_ph": "Search name, contact…",
       "note": {
         "lead": "This page brings together the people involved in audits, on both sides:",
         "contacts_label": "Client contact points",
@@ -359,7 +647,67 @@
     },
     "scenarios": {
       "eyebrow": "Intelligence",
-      "title": "Threat scenarios"
+      "title": "Threat scenarios",
+      "subtitle": "Cross-cutting CTI library of adversary playbooks (STIX 2.1).",
+      "note": {
+        "lead": "Each scenario describes an emulatable adversary playbook, ready to feed audits and Purple exercises:",
+        "contenu_label": "Content",
+        "contenu_text": "— emulated actor, ATT&CK TTP chain (offensive steps), engagement type and required sophistication.",
+        "usage_label": "Rating",
+        "usage_text": "— source credibility on the Admiralty scale (1–6) and TLP/PAP dissemination markings."
+      },
+      "search_ph": "Search name, reference, actor…",
+      "filters": "Filters",
+      "filter_engagement": "Engagement",
+      "filter_sophistication": "Sophistication",
+      "filter_credibilite": "Credibility (Admiralty)",
+      "filter_tlp": "TLP",
+      "filter_acteur": "Emulated actor",
+      "filter_acteur_ph": "Search an actor…",
+      "filter_techniques": "ATT&CK techniques",
+      "filter_techniques_ph": "Search by ID or name (T1566, phishing…)",
+      "filter_techniques_any": "at least one",
+      "filter_techniques_all": "all",
+      "cred": {
+        "1": "Confirmed",
+        "2": "Probable",
+        "3": "Possible",
+        "4": "Doubtful",
+        "5": "Improbable",
+        "6": "Unverifiable"
+      },
+      "cred_groups": {
+        "fiable": "1–2 · Reliable",
+        "confirmer": "3–4 · To confirm",
+        "faible": "5–6 · Weak"
+      },
+      "kpi": {
+        "total": "Scenarios",
+        "total_foot": "global CTI library",
+        "acteurs": "Emulated actors",
+        "acteurs_none": "no actor specified",
+        "cred": "High credibility",
+        "cred_foot": "{pct} % rated 1–2 (Admiralty)",
+        "apt": "Advanced / APT",
+        "apt_foot": "{pct} % of scenarios"
+      },
+      "repartition": {
+        "title": "Scenario breakdown",
+        "desc": "Scenario volume by engagement type and by sophistication level, according to the active filters.",
+        "resume": "{acteurs} emulated actors · {apt} advanced/APT",
+        "par_engagement": "By engagement · share of library",
+        "par_sophistication": "By sophistication · share of library"
+      },
+      "stix": {
+        "import": "Import a bundle (STIX 2.1)",
+        "export_all": "Export all (STIX 2.1)",
+        "importing": "Importing…",
+        "imported": "{n} scenario(s) imported from STIX.",
+        "import_denied": "Import denied (create permission required).",
+        "import_invalid": "Invalid STIX bundle.",
+        "import_bad_file": "Invalid JSON file.",
+        "export_denied": "Export denied."
+      }
     },
     "tickets": {
       "eyebrow": "Detection",
@@ -368,7 +716,48 @@
     "vulnerabilities": {
       "eyebrow": "Steering",
       "title": "Vulnerabilities & gaps",
-      "subtitle": "VOC enrichment, prioritization, SLA."
+      "subtitle": "Inventory of gaps found during audits, prioritized by severity, SLA and CTI enrichment (CVE, EPSS, KEV, SSVC).",
+      "search_ph": "Search a name, a CVE…",
+      "note": {
+        "lead": "Each gap is attached to an audit and one or more applications, then prioritized and tracked until remediation:",
+        "sla_label": "SLA P1–P4",
+        "sla_text": "— derived from severity (CVSS), with a remediation deadline; overdue rows are highlighted.",
+        "cti_label": "CIRCL / VOC enrichment",
+        "cti_text": "— EPSS exploitation probability, presence in the CISA KEV catalog, SSVC decision and VEX status."
+      },
+      "filters": "Filters",
+      "filter_clients": "Clients",
+      "filter_apps": "Applications",
+      "filter_severite": "Severity",
+      "filter_sla": "SLA",
+      "filter_statut": "Status",
+      "filter_clients_ph": "Add a client…",
+      "filter_apps_ph": "Add an application…",
+      "filter_kev": "CISA KEV",
+      "filter_kev_only": "KEV only",
+      "filter_kev_ransom": "Ransomware",
+      "filter_ssvc": "SSVC",
+      "ssvc": {
+        "act": "act now — highest urgency",
+        "attend": "address soon, escalate to leadership",
+        "track_star": "monitor closely (PoC exploit or critical severity without active exploitation)",
+        "track": "remediate within standard timelines",
+        "hint": "Select a decision to see its definition."
+      },
+      "kpi": {
+        "total": "Vulnerabilities",
+        "total_foot": "{clients} client(s) · {apps} application(s)",
+        "critiques": "Open criticals",
+        "critiques_foot": "out of {n} critical(s) total",
+        "sla": "SLA overdue",
+        "sla_foot": "incl. {n} at P1",
+        "sla_ok": "none overdue",
+        "kev": "Active CISA KEV",
+        "kev_foot": "{n} linked to ransomware",
+        "kev_none": "no known exploitation",
+        "remediation": "Remediation",
+        "remediation_foot": "{corrigees} fixed · {acceptees} accepted"
+      }
     }
   },
   "fields": {
@@ -535,6 +924,8 @@
     "faux_positif": "False positive",
     "planifie": "Planned",
     "termine": "Completed",
+    "suspendu": "Suspended",
+    "annule": "Cancelled",
     "elevee": "High",
     "red_team": "Red Team",
     "pentest": "Pentest",

@@ -5,6 +5,7 @@ import { api, ApiError } from '../api/client'
 import EntityForm from '../components/EntityForm.vue'
 import DetailDrawer from '../components/DetailDrawer.vue'
 import { fieldsFor } from '../fields'
+import { VERDICT_TONE } from '../tones'
 
 // Détail d'un exercice Purple : la chaîne d'attaque (étapes ordonnées) confrontée à
 // la défense (verdict par étape + observations défensives). C'est la vue qui donne
@@ -13,13 +14,15 @@ const route = useRoute()
 const id = route.params.id
 
 // Verdicts (spec §2) : prévenu / alerté / journalisé / sans télémétrie / non testé.
-const VERDICTS = {
-  prevented: { label: 'Prévenu', pill: 'green' },
-  alerted: { label: 'Alerté', pill: 'cyan' },
-  logged: { label: 'Journalisé', pill: 'amber' },
-  no_telemetry: { label: 'Sans télémétrie', pill: 'red' },
-  not_tested: { label: 'Non testé', pill: 'gray' },
+// Le ton de pill vient de `tones.js` (source unique partagée avec le tiroir d'exercice) ;
+// seuls les libellés FR restent locaux à cette page.
+const VERDICT_LABEL = {
+  prevented: 'Prévenu', alerted: 'Alerté', logged: 'Journalisé',
+  no_telemetry: 'Sans télémétrie', not_tested: 'Non testé',
 }
+const VERDICTS = Object.fromEntries(
+  Object.entries(VERDICT_LABEL).map(([k, label]) => [k, { label, pill: VERDICT_TONE[k] || 'gray' }]),
+)
 
 const exercise = ref(null)
 const steps = ref([])

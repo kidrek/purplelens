@@ -12,7 +12,7 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -27,6 +27,15 @@ def _uuid_fk(target: str, **kw):
 # ── Référentiel client ───────────────────────────────────────────────────────
 class Organisation(UUIDMixin, TimestampMixin, SoftDeleteMixin, Base):
     __tablename__ = "organisation"
+    # `code` unique parmi les organisations VIVANTES (partiel : compatible soft-delete).
+    # Empêche les doublons que le seed non idempotent recréait à chaque run (cf. migration
+    # 0018). L'index partiel est aussi la cible du `ON CONFLICT (code) WHERE deleted_at IS NULL`.
+    __table_args__ = (
+        Index(
+            "uq_organisation_code", "code",
+            unique=True, postgresql_where=text("deleted_at IS NULL"),
+        ),
+    )
 
     nom: Mapped[str] = mapped_column(Text, nullable=False)
     code: Mapped[str] = mapped_column(String(32), nullable=False)  # code court (arborescence S3)
@@ -54,7 +63,7 @@ class Application(UUIDMixin, TimestampMixin, SoftDeleteMixin, Base):
     url: Mapped[str | None] = mapped_column(Text)
     contact_metier: Mapped[str | None] = mapped_column(Text)
     statut: Mapped[str] = mapped_column(String(16), default="actif", server_default=text("'actif'"))
-    exposition: Mapped[str | None] = mapped_column(String(16))  # Interne|DMZ|Externe
+    exposition: Mapped[str | None] = mapped_column(String(16))  # interne|externe|partenaire
     valeur_metier: Mapped[int | None] = mapped_column(Integer)  # 1..5
     tags: Mapped[list] = mapped_column(JSONB, default=list, server_default=text("'[]'::jsonb"))
     tlp: Mapped[str] = mapped_column(String(16), default="AMBER", server_default=text("'AMBER'"))
@@ -66,7 +75,7 @@ class Ressource(UUIDMixin, TimestampMixin, SoftDeleteMixin, Base):
     organisation_id: Mapped[uuid.UUID] = _uuid_fk("organisation.id", nullable=False, index=True)
     nom: Mapped[str] = mapped_column(Text, nullable=False)
     type: Mapped[str | None] = mapped_column(String(64))
-    role: Mapped[str | None] = mapped_column(String(32))  # Red|Blue|Purple
+    role: Mapped[str | None] = mapped_column(String(32))  # auditeur|cert|soc|ciso|voc
     competences: Mapped[list] = mapped_column(JSONB, default=list, server_default=text("'[]'::jsonb"))
     contact: Mapped[str | None] = mapped_column(Text)
     description: Mapped[str | None] = mapped_column(Text)
@@ -89,7 +98,7 @@ class Audit(UUIDMixin, TimestampMixin, SoftDeleteMixin, Base):
     nom: Mapped[str] = mapped_column(Text, nullable=False)  # auto-généré, figé
     period: Mapped[str | None] = mapped_column(String(8))
     seq: Mapped[int | None] = mapped_column(Integer)
-    categorie: Mapped[str] = mapped_column(String(16), nullable=False)  # Red|Purple|Pentest|BAS
+    categorie: Mapped[str] = mapped_column(String(16), nullable=False)  # red_team|pentest|bas (purple_team hérité)
     type_test: Mapped[str | None] = mapped_column(String(16))
     scenario_id: Mapped[uuid.UUID | None] = _uuid_fk("scenario.id", nullable=True)
     applications: Mapped[list] = mapped_column(
@@ -331,7 +340,7 @@ class Deliverable(UUIDMixin, TimestampMixin, SoftDeleteMixin, Base):
 
     client_id: Mapped[uuid.UUID] = _uuid_fk("organisation.id", nullable=False, index=True)
     audit_id: Mapped[uuid.UUID | None] = _uuid_fk("audit.id", nullable=True)
-    type: Mapped[str] = mapped_column(String(24), nullable=False)  # engagement|nda|rapport
+    type: Mapped[str] = mapped_column(String(24), nullable=False)  # engagement|nda|rapport|exercice
     titre: Mapped[str | None] = mapped_column(Text)
     langue: Mapped[str] = mapped_column(String(4), default="fr", server_default=text("'fr'"))
     tlp: Mapped[str] = mapped_column(String(16), default="AMBER", server_default=text("'AMBER'"))

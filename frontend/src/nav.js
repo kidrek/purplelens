@@ -2,6 +2,8 @@
 // Reproduit les groupes de la maquette : Pilotage / Connaissance / Livrables / Système.
 // `count` = nom d'entité pour le badge de dénombrement (via /{entity}?limit=1 → total).
 // `adminOnly` masque l'entrée hors rôle admin.
+// `entity` = entité dont la lecture est requise pour voir le lien (masquage piloté
+//            serveur via les `readable_entities` de /whoami — la matrice reste l'autorité).
 export const NAV_GROUPS = [
   {
     id: 'pilotage',
@@ -27,7 +29,7 @@ export const NAV_GROUPS = [
     id: 'livrables',
     items: [
       { id: 'deliverables', icon: 'doc', to: '/deliverables', count: 'deliverables' },
-      { id: 'journal', icon: 'shield', to: '/journal' },
+      { id: 'journal', icon: 'shield', to: '/journal', entity: 'journal' },
       { id: 'evidence', icon: 'folder', to: '/evidence' },
     ],
   },

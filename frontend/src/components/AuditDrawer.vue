@@ -27,7 +27,9 @@ const PTES_ORDER = [
   'pre-engagement', 'reconnaissance', 'threat-modeling', 'vulnerability-analysis',
   'exploitation', 'post-exploitation', 'reporting',
 ]
-const DELIVERABLE_LABELS = { engagement: "Lettre d'engagement", nda: 'NDA', rapport: 'Rapport PTES' }
+const DELIVERABLE_LABELS = {
+  engagement: "Lettre d'engagement", nda: 'NDA', rapport: 'Rapport PTES', exercice: "Rapport d'exercice",
+}
 
 const audit = ref(props.record)
 const actions = ref([])
@@ -86,7 +88,10 @@ const jalonsByPhase = computed(() => {
   return PTES_ORDER.map((phase) => ({ phase, jalon: map[phase] || null }))
 })
 const doneMilestones = computed(() => milestones.value.filter((m) => m.statut === 'termine' || m.statut === 'atteint').length)
-const ptesPct = computed(() => (milestones.value.length ? Math.round((doneMilestones.value / milestones.value.length) * 100) : 0))
+// Avancement sur la méthodologie PTES complète : dénominateur = les 7 phases fixes
+// (PTES_ORDER), pas le nombre de jalons créés. Une phase non planifiée / non atteinte
+// compte comme non faite, cohérent avec la bande « Phases PTES » qui affiche les 7.
+const ptesPct = computed(() => Math.round((doneMilestones.value / PTES_ORDER.length) * 100))
 const vulnsFound = computed(() => new Set(actions.value.map((a) => a.vulnerabilite_id).filter(Boolean)).size)
 
 const eng = computed(() => audit.value?.engagement || null)
@@ -125,7 +130,7 @@ const engagementDefaults = computed(() => {
 
   // Contexte lisible dérivé de l'audit, réutilisé dans les textes rédigés.
   const cat = a.categorie || 'pentest'
-  const box = ({ blackbox: 'boîte noire', graybox: 'boîte grise', whitebox: 'boîte blanche' }[a.type_test]
+  const box = ({ 'black-box': 'boîte noire', 'grey-box': 'boîte grise', 'white-box': 'boîte blanche' }[a.type_test]
     || (a.type_test ? a.type_test : 'boîte grise'))
   const env = a.environnement || "l'environnement convenu"
   const refs = (a.referentiels_methodo || [])
@@ -244,6 +249,12 @@ async function onVulnSaved() {
   vulnOpen.value = false
   vulns.value = await safeList('vulnerabilities', `?audit_id=${props.record.id}`)
 }
+// Création d'un exercice Purple rattaché à l'audit (audit_id/client_id préremplis, masqués).
+const exerciceOpen = ref(false)
+async function onExerciceSaved() {
+  exerciceOpen.value = false
+  exercices.value = await safeList('exercices', `?audit_id=${props.record.id}`)
+}
 const SEV_TONE = { critique: 'red', haute: 'amber', moyenne: 'cyan', basse: 'green' }
 const sevPill = (s) => SEV_TONE[s] || 'gray'
 
@@ -347,7 +358,7 @@ const fmtDate = (iso) => (iso ? String(iso).slice(0, 10) : '—')
       <!-- KPI -->
       <div class="kpis">
         <div class="kpi"><div class="k-label">Avancement PTES</div><div class="k-value">{{ ptesPct }}%</div>
-          <div class="k-foot">{{ doneMilestones }}/{{ milestones.length }} jalons</div></div>
+          <div class="k-foot">{{ doneMilestones }}/{{ PTES_ORDER.length }} phases</div></div>
         <div class="kpi"><div class="k-label">Actions de test</div><div class="k-value">{{ actions.length }}</div>
           <div class="k-foot">{{ exercices.length }} exercice(s) Purple</div></div>
         <div class="kpi"><div class="k-label">Vulnérabilités liées</div><div class="k-value">{{ vulnsFound }}</div>
@@ -447,7 +458,8 @@ const fmtDate = (iso) => (iso ? String(iso).slice(0, 10) : '—')
                   :title="j.jalon ? 'Faire avancer le jalon' : 'Planifier la phase (en cours)'"
                   @click="cycleJalon(j)">
             <span class="ph">{{ enumLabel(j.phase) }}</span>
-            <span class="pm">{{ j.jalon ? enumLabel(j.jalon.statut) + (j.jalon.date_reelle ? ' · ' + j.jalon.date_reelle : '') : 'non planifié' }}</span>
+            <span class="pm">{{ j.jalon ? enumLabel(j.jalon.statut) : 'non planifié' }}</span>
+            <span class="pd"><template v-if="j.jalon && j.jalon.date_reelle"><span class="dl">date ·</span> {{ j.jalon.date_reelle }}</template></span>
           </button>
         </div>
       </section>
@@ -500,7 +512,10 @@ const fmtDate = (iso) => (iso ? String(iso).slice(0, 10) : '—')
 
       <!-- Exercices Purple -->
       <section class="panel">
-        <div class="p-head">Exercices Purple <span class="count">{{ exercices.length }}</span></div>
+        <div class="p-head">Exercices Purple <span class="count">{{ exercices.length }}</span>
+          <span class="spacer" />
+          <button class="btn slim" @click="exerciceOpen = true">+ Ajouter un exercice</button>
+        </div>
         <table v-if="exercices.length" class="dense">
           <tbody>
             <tr v-for="ex in exercices" :key="ex.id">
@@ -579,6 +594,17 @@ const fmtDate = (iso) => (iso ? String(iso).slice(0, 10) : '—')
       @saved="onVulnSaved"
       @close="vulnOpen = false"
     />
+
+    <EntityForm
+      v-if="exerciceOpen"
+      entity="exercices"
+      :fields="ENTITY_FIELDS.exercices"
+      :prefill="{ audit_id: audit.id, client_id: audit.client_id }"
+      :hidden="['audit_id', 'client_id']"
+      title="Nouvel exercice Purple"
+      @saved="onExerciceSaved"
+      @close="exerciceOpen = false"
+    />
   </DetailDrawer>
 </template>
 
@@ -616,15 +642,22 @@ const fmtDate = (iso) => (iso ? String(iso).slice(0, 10) : '—')
 .prose{white-space:pre-wrap;line-height:1.5}
 .ptes{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:6px}
 .ptes-step{border:1px solid var(--border);border-radius:var(--r-mini);padding:7px 8px;background:var(--surface-2);
-  text-align:left;cursor:pointer;font:inherit;color:inherit;transition:border-color .12s ease, transform .12s ease}
+  text-align:left;cursor:pointer;font:inherit;color:inherit;display:flex;flex-direction:column;
+  transition:border-color .12s ease, transform .12s ease}
 .ptes-step:hover:not(:disabled){border-color:var(--violet, var(--border-2));transform:translateY(-1px)}
 .ptes-step:disabled{cursor:default}
 .ptes-step.busy{opacity:.6}
 .err{color:var(--c-red-tx);font-size:12.5px;margin:0 0 8px}
-.ptes-step .ph{display:block;font-size:11px;color:var(--heading)}
-.ptes-step .pm{display:block;font-size:10.5px;color:var(--faint);margin-top:2px}
+.ptes-step .ph{display:block;font-size:11px;color:var(--heading);line-height:1.25}
+/* Statut épinglé en bas (margin-top:auto) : aligné d'une phase à l'autre quel que soit le
+   nombre de lignes du libellé ; en majuscules. La date occupe la ligne juste en dessous. */
+.ptes-step .pm{display:block;font-size:9.5px;color:var(--faint);margin-top:auto;padding-top:6px;
+  line-height:1.2;text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+.ptes-step .pd{display:block;font-size:10px;color:var(--faint);line-height:1.2;min-height:1.2em;
+  margin-top:2px;font-variant-numeric:tabular-nums}
+.ptes-step .pd .dl{opacity:.7}
 .ptes-step.done{border-color:var(--c-green-bd);background:var(--c-green-bg)}
-.ptes-step.run{border-color:var(--c-cyan-bd);background:var(--c-cyan-bg)}
+.ptes-step.run{border-color:var(--c-violet-bd);background:var(--c-violet-bg)}
 .ptes-step.skip{opacity:.55}
 .ttps{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
 table.dense{width:100%;border-collapse:collapse;font-size:12.5px}

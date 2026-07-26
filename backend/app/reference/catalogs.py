@@ -5,9 +5,11 @@ Ils peuplent les tables `ref_*` utilisées par les formulaires et l'analytique. 
 est idempotent (clé naturelle `ext_id`, ON CONFLICT DO UPDATE) — d'où la migration 0002
 qui garantit l'unicité d'`ext_id`.
 
-Portée honnête : OWASP Top 10 (2021) et CWE Top 25 (2023) sont complets ; ATT&CK,
-D3FEND et CAPEC sont des sous-ensembles courants (un socle), pas les catalogues MITRE
-intégraux. Une synchronisation en ligne depuis les sources amont reste une évolution.
+Portée honnête : OWASP regroupe les familles Top 10 officielles (Web 2021, API 2023,
+LLM 2025, Mobile 2024) — il n'existe pas de dictionnaire amont unique à synchroniser, ce
+catalogue reste donc embarqué. ATT&CK, D3FEND, CAPEC et CWE embarquent un sous-ensemble
+courant (un socle) ; leur catalogue MITRE intégral s'obtient via la synchronisation en
+ligne (`app.reference.sync`, catalogues `SYNCABLE`), avec repli sur ce socle si hors-ligne.
 """
 from __future__ import annotations
 
@@ -40,7 +42,11 @@ CATALOGS: list[dict[str, Any]] = [
 _BY_ID = {c["id"]: c for c in CATALOGS}
 
 # ── Données embarquées ──────────────────────────────────────────────────────
+# OWASP — agrégat des familles officielles « Top 10 » (pas de dictionnaire amont unique à
+# synchroniser comme CWE/CAPEC). Les ext_id encodent déjà la famille et l'édition (pas de
+# collision entre A0x:2021 / APIx:2023 / LLM0x:2025 / Mx:2024).
 _OWASP = [
+    # OWASP Top 10 (Web) — 2021
     ("A01:2021", "Broken Access Control"),
     ("A02:2021", "Cryptographic Failures"),
     ("A03:2021", "Injection"),
@@ -51,6 +57,39 @@ _OWASP = [
     ("A08:2021", "Software and Data Integrity Failures"),
     ("A09:2021", "Security Logging and Monitoring Failures"),
     ("A10:2021", "Server-Side Request Forgery (SSRF)"),
+    # OWASP API Security Top 10 — 2023
+    ("API1:2023", "Broken Object Level Authorization"),
+    ("API2:2023", "Broken Authentication"),
+    ("API3:2023", "Broken Object Property Level Authorization"),
+    ("API4:2023", "Unrestricted Resource Consumption"),
+    ("API5:2023", "Broken Function Level Authorization"),
+    ("API6:2023", "Unrestricted Access to Sensitive Business Flows"),
+    ("API7:2023", "Server Side Request Forgery"),
+    ("API8:2023", "Security Misconfiguration"),
+    ("API9:2023", "Improper Inventory Management"),
+    ("API10:2023", "Unsafe Consumption of APIs"),
+    # OWASP Top 10 for LLM Applications — 2025
+    ("LLM01:2025", "Prompt Injection"),
+    ("LLM02:2025", "Sensitive Information Disclosure"),
+    ("LLM03:2025", "Supply Chain"),
+    ("LLM04:2025", "Data and Model Poisoning"),
+    ("LLM05:2025", "Improper Output Handling"),
+    ("LLM06:2025", "Excessive Agency"),
+    ("LLM07:2025", "System Prompt Leakage"),
+    ("LLM08:2025", "Vector and Embedding Weaknesses"),
+    ("LLM09:2025", "Misinformation"),
+    ("LLM10:2025", "Unbounded Consumption"),
+    # OWASP Mobile Top 10 — 2024
+    ("M1:2024", "Improper Credential Usage"),
+    ("M2:2024", "Inadequate Supply Chain Security"),
+    ("M3:2024", "Insecure Authentication/Authorization"),
+    ("M4:2024", "Insufficient Input/Output Validation"),
+    ("M5:2024", "Insecure Communication"),
+    ("M6:2024", "Inadequate Privacy Controls"),
+    ("M7:2024", "Insufficient Binary Protections"),
+    ("M8:2024", "Security Misconfiguration"),
+    ("M9:2024", "Insecure Data Storage"),
+    ("M10:2024", "Insufficient Cryptography"),
 ]
 
 _CWE = [

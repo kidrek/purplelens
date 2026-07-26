@@ -11,21 +11,37 @@ Choix d'implémentation (cf. plan) :
 - **UUID déterministes** (`uuid5`) + `ON CONFLICT (id) DO NOTHING` → idempotent, liens stables.
 - Champs auto-dérivés côté serveur (nom/reference/period/seq/sla) **reproduits ici** en
   Python selon les formats de `app/api/service.py` (le seed n'appelle pas la couche service).
+  Exceptions réutilisées telles quelles : `build_engagement_defaults` (bloc engagement),
+  `suggest_d3fend` (contre-mesures) et `_derive_audit_actions_from_scenario` (actions PTES
+  dérivées du scénario lié) — fonctions pures ou idempotentes, parité serveur garantie.
 - Dates fixes (pas d'horloge) pour des références/period stables entre runs.
+- Écart connu vs serveur : les `seq` sont figés pour la stabilité des captures et ne suivent
+  pas toujours `_next_seq` (compteur par client+période) — cosmétique, assumé.
+- Preuves (`evidence`/`audit_dek`/`evidence_access`) volontairement NON seedées : la chaîne
+  nécessite Vault (KEK), ClamAV et MinIO Object Lock vivants ; se démontre en direct.
 
-Usage : python -m app.seed_demo
+Usage :
+    python -m app.seed_demo            # upsert du jeu de démo (idempotent)
+    python -m app.seed_demo --purge    # purge préalable de TOUTES les données métier
+                                       # (pollution de tests comprise), puis re-seed.
+                                       # Préservés : référentiels ref_*, corpus, comptes,
+                                       # organisations ACME/GLOBEX/PRESTA, journal
+                                       # (append-only + ancres WORM : non purgeable).
 """
 
 from __future__ import annotations
 
 import asyncio
 import json
+import sys
 import uuid
 from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import text
 
+from app.api.engagement_defaults import build_engagement_defaults
 from app.db.session import service_session
+from app.reference.attack_d3fend import suggest_d3fend
 
 # Espace de noms fixe pour dériver des UUID stables et reproductibles.
 NS_DEMO = uuid.UUID("d3305eed-de70-4000-8000-a1b2c3d4e5f6")
@@ -175,10 +191,19 @@ DATES_G = [date(2026, 5, 10), date(2026, 6, 10)]
 _CAUGHT = {"prevented", "alerted", "logged"}
 
 
-async def _org_id(session, code: str) -> str | None:
+async def _org_info(session, code: str) -> tuple[str | None, str | None]:
+    """(id, nom) de l'organisation — le nom alimente le bloc engagement/lettre."""
     row = (
-        await session.execute(text("SELECT id FROM organisation WHERE code = :c AND deleted_at IS NULL"), {"c": code})
+        await session.execute(
+            text("SELECT id, nom FROM organisation WHERE code = :c AND deleted_at IS NULL"), {"c": code}
+        )
     ).first()
+    return (str(row.id), row.nom) if row else (None, None)
+
+
+async def _user_id(session, email: str) -> str | None:
+    """id d'un compte seedé (résolu à l'exécution : les comptes n'ont pas d'UUID stable)."""
+    row = (await session.execute(text("SELECT id FROM app_user WHERE email = :e"), {"e": email})).first()
     return str(row.id) if row else None
 
 
@@ -195,9 +220,13 @@ async def _ins(session, table: str, cols: dict, casts: dict | None = None) -> No
 
 
 async def _seed_exercise(
-    session, *, key, client_id, audit_id, app_code, client_code, techs, verdicts_per_run, dates, base_seq
+    session, *, key, client_id, audit_id, app_code, client_code, techs, verdicts_per_run, dates, base_seq, equipe=None
 ):
-    """Crée N runs (purple_exercise) + attack_steps ; renvoie les steps du dernier run."""
+    """Crée N runs (purple_exercise) + attack_steps ; renvoie les steps du dernier run.
+
+    Les steps `alerted` reçoivent un `horodatage_detection` déterministe qui s'améliore de
+    run en run (MTTD qui baisse), et — sur le dernier run — un `horodatage_reponse`
+    (MTTR) : ce sont les entrées des tuiles KPI du drawer/de la vue exercice."""
     last_run_steps: list[dict] = []
     for run_idx, (verdicts, d) in enumerate(zip(verdicts_per_run, dates, strict=True), start=1):
         ex_id = did(key, "exo", run_idx)
@@ -217,11 +246,21 @@ async def _seed_exercise(
                 "run_number": run_idx,
                 "statut": "termine" if run_idx < len(dates) else "en_cours",
                 "tlp": "AMBER",
+                "equipe": json.dumps(equipe or []),
                 "notes": f"Run {run_idx} — émulation adverse, boucle Red→Blue.",
             },
+            casts={"equipe": "jsonb"},
         )
         for i, ((tech, tname), verdict) in enumerate(zip(techs, verdicts, strict=True)):
             step_id = did(key, "step", run_idx, tech)
+            start = datetime(d.year, d.month, d.day, 9, i, tzinfo=UTC)
+            detection = response = None
+            if verdict == "alerted":
+                # Détection : ~37-48 min au run 1 → ~13-24 min au run 4 (progression visible).
+                detection = start + timedelta(minutes=max(5, 45 - run_idx * 8) + (i * 7) % 12)
+                if run_idx == len(dates):
+                    # Réaction mesurée sur le run courant uniquement (MTTR).
+                    response = detection + timedelta(minutes=25 + (i * 13) % 65)
             await _ins(
                 session,
                 "attack_step",
@@ -233,7 +272,9 @@ async def _seed_exercise(
                     "technique": tech,
                     "titre": tname,
                     "verdict": verdict,
-                    "horodatage": datetime(d.year, d.month, d.day, 9, i, tzinfo=UTC),
+                    "horodatage": start,
+                    "horodatage_detection": detection,
+                    "horodatage_reponse": response,
                 },
             )
             if run_idx == len(dates):
@@ -241,13 +282,108 @@ async def _seed_exercise(
     return last_run_steps
 
 
+# Ordre de suppression validé contre le graphe de FK réel (toutes en NO ACTION) :
+# feuilles → racines. Inconditionnel : c'est ce qui élimine aussi la pollution laissée
+# par les tests (qui partagent la base de démo), y compris dans les tables non
+# cloisonnées (scenario…) qu'une purge par client manquerait.
+_PURGE_ORDER = [
+    "audit_action",
+    "audit_milestone",
+    "defense_observation",
+    "detection_ticket",
+    "deliverable",
+    "remediation_ticket",
+    "vulnerability_enrichment",
+    "attack_step",
+    "purple_exercise",
+    "vulnerability",
+    "audit",
+    "application",
+    "ressource",
+    "sla_rule",
+    "scenario_step",
+    "scenario",
+]
+
+
+async def purge_demo() -> None:
+    """Remet la base métier à zéro avant re-seed (make seed-demo-fresh).
+
+    Supprime TOUTES les données métier — jeu de démo et pollution de tests — mais
+    préserve : les référentiels `ref_*`, le corpus, les comptes (`app_user`,
+    `refresh_token`), les trois organisations du socle (ACME/GLOBEX/PRESTA — les
+    `client_scope` des comptes pointent sur leurs ids, et `seed.py` ne les rafraîchit
+    pas en re-run), et le `journal` (append-only par trigger pour tous les rôles ; sa
+    tête de chaîne est ancrée dans un bucket WORM COMPLIANCE — le purger casserait
+    définitivement `journal_anchor_verify`).
+
+    Exécutée sous `admin_service` (scope global) : aucune connexion superuser requise.
+    """
+    async with service_session("admin_service") as session:
+        # Garde-fou WORM : evidence / evidence_access / audit_dek portent des triggers
+        # qui interdisent le DELETE physique. Vides aujourd'hui ; si des preuves réelles
+        # existent, la purge s'arrête — leur cycle de vie passe par le crypto-shredding.
+        worm = {}
+        for t in ("evidence", "evidence_access", "audit_dek"):
+            worm[t] = (await session.execute(text(f"SELECT count(*) FROM {t}"))).scalar()
+        if any(worm.values()):
+            print(
+                "[seed-demo] ✋ purge refusée : des preuves existent "
+                f"({worm}) — tables WORM non supprimables (DELETE interdit par trigger). "
+                "Passer par la rétention/crypto-shredding avant de purger."
+            )
+            raise SystemExit(2)
+
+        deleted = {}
+        for t in _PURGE_ORDER:
+            res = await session.execute(text(f"DELETE FROM {t}"))
+            deleted[t] = res.rowcount
+        res = await session.execute(
+            text("DELETE FROM organisation WHERE code IS NULL OR code NOT IN ('ACME','GLOBEX','PRESTA')")
+        )
+        deleted["organisation"] = res.rowcount
+
+    total = sum(deleted.values())
+    detail = ", ".join(f"{t}:{n}" for t, n in deleted.items() if n)
+    print(f"[seed-demo] purge : {total} ligne(s) supprimée(s) ({detail or 'rien à purger'}).")
+    print(
+        "[seed-demo] préservés : référentiels, corpus, comptes, organisations "
+        "ACME/GLOBEX/PRESTA, journal (append-only + ancres WORM — non purgeable)."
+    )
+
+
 async def seed_demo() -> None:
     async with service_session("admin_service") as session:
-        acme = await _org_id(session, "ACME")
-        globex = await _org_id(session, "GLOBEX")
+        acme, acme_nom = await _org_info(session, "ACME")
+        globex, globex_nom = await _org_info(session, "GLOBEX")
         if not acme or not globex:
             print("[seed-demo] Organisations ACME/GLOBEX absentes — lancez d'abord `make seed`.")
             return
+        org_nom = {acme: acme_nom or "ACME", globex: globex_nom or "GLOBEX"}
+
+        # ── Coordonnées des organisations (en-tête des lettres/NDA : siren, référent) ──
+        presta, _ = await _org_info(session, "PRESTA")
+        if presta:
+            await session.execute(
+                text(
+                    "UPDATE organisation SET siren = :s, referent_interne = :r, "
+                    "contacts = CAST(:c AS jsonb) WHERE id = :id"
+                ),
+                {
+                    "id": presta,
+                    "s": "912 345 678",
+                    "r": "M. Vidal — Directeur des opérations offensives",
+                    "c": json.dumps(["ops@presta-demo.example", "+33 1 99 00 12 34"]),
+                },
+            )
+        for oid, contacts in (
+            (acme, ["RSSI — j.durand@acme-demo.example", "Astreinte SOC — soc@acme-demo.example"]),
+            (globex, ["RSSI — k.lopez@globex-demo.example"]),
+        ):
+            await session.execute(
+                text("UPDATE organisation SET contacts = CAST(:c AS jsonb) WHERE id = :id"),
+                {"id": oid, "c": json.dumps(contacts)},
+            )
 
         # ── Applications (enrichies : stack, URL, version, contact, valeur métier) ──
         apps = {
@@ -419,12 +555,14 @@ async def seed_demo() -> None:
                 1,
                 ["camille"],
             ),
+            # NB : `purple_team` est une catégorie héritée (plus proposée à la saisie) ;
+            # les audits porteurs d'exercices Purple sont catégorisés red_team, comme dans l'UI.
             (
                 "aud-pur1",
                 acme,
                 "ACME",
-                "purple_team",
-                "PURPLE",
+                "red_team",
+                "REDTEAM",
                 "grey-box",
                 "PORTAIL",
                 "en_cours",
@@ -437,8 +575,8 @@ async def seed_demo() -> None:
                 "aud-pur2",
                 acme,
                 "ACME",
-                "purple_team",
-                "PURPLE",
+                "red_team",
+                "REDTEAM",
                 "grey-box",
                 "PAIE",
                 "en_cours",
@@ -479,8 +617,8 @@ async def seed_demo() -> None:
                 "aud-glx-pur",
                 globex,
                 "GLOBEX",
-                "purple_team",
-                "PURPLE",
+                "red_team",
+                "REDTEAM",
                 "grey-box",
                 "GLXWEB",
                 "en_cours",
@@ -490,11 +628,32 @@ async def seed_demo() -> None:
                 ["alex"],
             ),
         ]
+        # Acteur émulé par audit (aligné sur le scénario CTI rattaché plus bas) —
+        # enrichit les objectifs red_team du bloc engagement.
+        acteur_for = {
+            "aud-pur1": "FIN7",
+            "aud-pur2": "APT28",
+            "aud-pen1": "APT29",
+            "aud-glx-pur": "Lazarus Group",
+        }
         aud_id = {}
         for key, cid, ccode, cat, code_ref, ttest, ac, statut, debut, prio, seq, auds in audits:
             aid = did(key)
             aud_id[key] = aid
             nom = f"{code_ref}_{period(debut)}-{seq:02d}_{ccode}_{ac}"
+            # Bloc engagement pré-rempli — même dérivation que la création via l'API
+            # (`_seed_audit_engagement` → `build_engagement_defaults`, fonction pure).
+            engagement = build_engagement_defaults(
+                {
+                    "categorie": cat,
+                    "type_test": ttest,
+                    "environnement": "production",
+                    "date_debut": str(debut),
+                },
+                client_nom=org_nom[cid],
+                app_names=[apps[ac][1]],
+                acteur_emule=acteur_for.get(key),
+            )
             await _ins(
                 session,
                 "audit",
@@ -513,8 +672,9 @@ async def seed_demo() -> None:
                     "tlp": "AMBER",
                     "applications": _uuid_arr([app_id[ac]]),
                     "auditeurs": _uuid_arr([res_id[a] for a in auds]),
+                    "engagement": json.dumps(engagement),
                 },
-                casts={"applications": "uuid[]", "auditeurs": "uuid[]"},
+                casts={"applications": "uuid[]", "auditeurs": "uuid[]", "engagement": "jsonb"},
             )
 
         # ── Actions PTES sur l'audit pentest ACME (alimente TTP + « actions de test ») ──
@@ -588,6 +748,7 @@ async def seed_demo() -> None:
             verdicts_per_run=VERDICTS_A,
             dates=DATES_A,
             base_seq=0,
+            equipe=["Camille Roy (Red)", "SOC N2 (Blue)"],
         )
         steps_b = await _seed_exercise(
             session,
@@ -600,8 +761,9 @@ async def seed_demo() -> None:
             verdicts_per_run=VERDICTS_B,
             dates=DATES_B,
             base_seq=10,
+            equipe=["Sami Belkacem (Red)", "SOC N2 (Blue)"],
         )
-        await _seed_exercise(
+        steps_g = await _seed_exercise(
             session,
             key="exG",
             client_id=globex,
@@ -612,6 +774,7 @@ async def seed_demo() -> None:
             verdicts_per_run=VERDICTS_G,
             dates=DATES_G,
             base_seq=0,
+            equipe=["Alex Nguyen (Red)", "SOC Globex (Blue)"],
         )
 
         # ── Observations défensives (narratif de la timeline, sur steps détectés) ──
@@ -640,8 +803,14 @@ async def seed_demo() -> None:
         blind_a = [s for s in steps_a if s["verdict"] == "no_telemetry"]
         blind_b = [s for s in steps_b if s["verdict"] == "no_telemetry"]
         ticket_src = blind_a[:3] + blind_b[:1]
+        # Cycle de vie complet : ouvert → en_cours → traite → clos. Le ticket clos est
+        # validé (valide_par/valide_le) : il alimente le KPI « délai de remédiation » et
+        # fait passer son step source à l'état « couvert » dans le drawer d'exercice.
+        ticket_statut = {1: "ouvert", 2: "en_cours", 3: "traite", 4: "clos"}
+        validateur = await _user_id(session, "ciso@purple.local")
         for i, st in enumerate(ticket_src, start=1):
             tech = st["tech"]
+            statut = ticket_statut[i]
             ref = f"TICK_202606-{i:02d}_ACME_{'PORTAIL' if st in blind_a else 'PAIE'}_{tech}"
             await _ins(
                 session,
@@ -658,9 +827,40 @@ async def seed_demo() -> None:
                     "description": f"Angle mort : aucune télémétrie sur « {st['name']} » ({tech}). "
                     f"Déployer la mesure D3FEND associée sur le segment concerné.",
                     "priorite": "P1" if i == 1 else "P2",
-                    "statut": "ouvert" if i < 3 else "en_cours",
+                    "statut": statut,
                     "regle_sigma": sigma_nta if tech in ("T1041", "T1567") else None,
                     "gap_decouvert_le": datetime(2026, 6, 15, 10, tzinfo=UTC),
+                    "valide_par": validateur if statut == "clos" else None,
+                    "valide_le": datetime(2026, 6, 24, 10, tzinfo=UTC) if statut == "clos" else None,
+                },
+                casts={"mesure_d3fend": "jsonb"},
+            )
+
+        # Ticket GLOBEX (angle mort du dernier run de l'exercice Boutique en ligne) —
+        # chaque client a ses tickets ; seq par client+période, convention serveur.
+        blind_g = [s for s in steps_g if s["verdict"] == "no_telemetry"]
+        if blind_g:
+            st = next((s for s in blind_g if s["tech"] == "T1005"), blind_g[0])
+            await _ins(
+                session,
+                "detection_ticket",
+                {
+                    "id": did("ticket", st["id"]),
+                    "client_id": globex,
+                    "reference": f"TICK_202606-01_GLOBEX_GLXWEB_{st['tech']}",
+                    "period": "202606",
+                    "seq": 1,
+                    "source_attack_step_id": st["id"],
+                    "technique_attack": st["tech"],
+                    "mesure_d3fend": json.dumps(d3fend_for.get(st["tech"], ["D3-NTA"])),
+                    "description": f"Angle mort : aucune télémétrie sur « {st['name']} » ({st['tech']}). "
+                    f"Déployer la mesure D3FEND associée sur le segment concerné.",
+                    "priorite": "P2",
+                    "statut": "ouvert",
+                    "regle_sigma": None,
+                    "gap_decouvert_le": datetime(2026, 6, 10, 11, tzinfo=UTC),
+                    "valide_par": None,
+                    "valide_le": None,
                 },
                 casts={"mesure_d3fend": "jsonb"},
             )
@@ -848,6 +1048,22 @@ async def seed_demo() -> None:
                 [],
                 "theorique",
             ),
+            # Ajoutée en fin de liste (les seq des entrées précédentes restent stables).
+            (
+                "v-acme-9",
+                acme,
+                "ACME",
+                "INTRA",
+                "basse",
+                3.5,
+                "faux_positif",
+                "A09:2021",
+                "CWE-209",
+                None,
+                date(2026, 6, 18),
+                [],
+                "theorique",
+            ),
         ]
         aud_for_app = {
             "PORTAIL": "aud-pen1",
@@ -885,12 +1101,15 @@ async def seed_demo() -> None:
                     "recommandation": "Corriger selon la recommandation OWASP correspondante et re-tester.",
                     "applications": _uuid_arr([app_id[ac]]),
                     "techniques": json.dumps(techs),
+                    # Contre-mesures dérivées des techniques — même calcul que le serveur
+                    # (`_apply_d3fend_auto` → `suggest_d3fend`).
+                    "d3fend": json.dumps(suggest_d3fend(techs)),
                     "sla_niveau": sla_n,
                     "sla_echeance": sla_e,
                     "decouvreur_id": res_id["camille"] if cid == acme else res_id["alex"],
                     "tlp": "RED",
                 },
-                casts={"applications": "uuid[]", "techniques": "jsonb"},
+                casts={"applications": "uuid[]", "techniques": "jsonb", "d3fend": "jsonb"},
             )
 
         # Enrichissement VOC (CIRCL) sur la critique ACME.
@@ -903,14 +1122,30 @@ async def seed_demo() -> None:
                 "client_id": acme,
                 "epss_score": 0.94210,
                 "epss_percentile": 0.99120,
+                "epss_date": date(2026, 6, 25),
                 "kev": True,
                 "kev_ransomware": True,
+                "kev_date_added": date(2026, 6, 23),
                 "kev_due_date": date(2026, 7, 4),
                 "ssvc_decision": "Act",
                 "vex_status": "affected",
                 "enrichment_status": "enrichi",
                 "enrichment_source": "CIRCL",
+                "enriched_at": datetime(2026, 6, 25, 8, 30, tzinfo=UTC),
+                # Cache brut CIRCL (même forme que routes/vulnerabilities.py) — alimente le
+                # bloc CAPEC/références/CPE du drawer VOC.
+                "raw": json.dumps(
+                    {
+                        "cvss_version": "3.1",
+                        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+                        "capec": ["CAPEC-66"],
+                        "references": ["https://vulnerability.circl.lu/vuln/CVE-2026-1001"],
+                        "products": ["acme:portail-client"],
+                        "cpes": ["cpe:2.3:a:acme:portail_client:4.2.1:*:*:*:*:*:*:*"],
+                    }
+                ),
             },
+            casts={"raw": "jsonb"},
         )
 
         # ── Scénarios CTI (globaux) + étapes ──────────────────────────────────
@@ -1018,8 +1253,9 @@ async def seed_demo() -> None:
                     "pap": "AMBER",
                     "objectif": f"Reproduire le mode opératoire de {acteur} pour éprouver la détection.",
                     "techniques": json.dumps([t for t, _ in steps]),
+                    "d3fend": json.dumps(suggest_d3fend([t for t, _ in steps])),
                 },
-                casts={"techniques": "jsonb"},
+                casts={"techniques": "jsonb", "d3fend": "jsonb"},
             )
             for j, (tech, tactique) in enumerate(steps):
                 await _ins(
@@ -1035,7 +1271,13 @@ async def seed_demo() -> None:
                     },
                 )
 
-        # Rattacher les audits Purple/pentest à un scénario CTI émulé (drawer d'audit enrichi).
+        # Rattacher les audits Purple/pentest à un scénario CTI émulé (drawer d'audit enrichi),
+        # puis dériver les actions PTES comme le ferait la création via l'API : une action par
+        # étape du scénario, dédoublonnée par technique (les 15 actions manuscrites de aud-pen1
+        # sont conservées ; idempotent entre re-runs). NB : les chaînes d'attaque des exercices
+        # divergent volontairement du scénario lié — elles racontent la progression multi-run.
+        from app.api.service import _derive_audit_actions_from_scenario
+
         for aud_key, sc_key in [
             ("aud-pur1", "sc-fin7"),
             ("aud-pur2", "sc-apt28"),
@@ -1046,13 +1288,23 @@ async def seed_demo() -> None:
                 text("UPDATE audit SET scenario_id = :sid WHERE id = :aid"),
                 {"sid": did(sc_key), "aid": aud_id[aud_key]},
             )
+            await _derive_audit_actions_from_scenario(
+                session,
+                audit_id=aud_id[aud_key],
+                client_id=globex if aud_key.startswith("aud-glx") else acme,
+                scenario_id=did(sc_key),
+            )
 
         # ── Livrables ─────────────────────────────────────────────────────────
+        # Statut « brouillon » (état honnête : aucun PDF n'est généré par le seed —
+        # `GET /{id}/download` exige statut=genere + storage_key). En démo, cliquer
+        # « Générer » produit un vrai PDF via le pipeline complet (pdf-renderer + WORM).
         deliverables = [
             ("dl-eng", acme, "aud-pen1", "engagement", "Lettre d'engagement — Pentest Portail Client", "fr"),
             ("dl-nda", acme, "aud-pen1", "nda", "Accord de confidentialité — ACME", "fr"),
             ("dl-rap", acme, "aud-pen1", "rapport", "Rapport PTES — Pentest Portail Client", "fr"),
             ("dl-glx", globex, "aud-glx-pen", "rapport", "Rapport PTES — Boutique en ligne", "fr"),
+            ("dl-exo", acme, "aud-pur1", "exercice", "Rapport d'exercice Purple — Portail Client", "fr"),
         ]
         for key, cid, aud_key, typ, titre, langue in deliverables:
             await _ins(
@@ -1066,17 +1318,41 @@ async def seed_demo() -> None:
                     "titre": titre,
                     "langue": langue,
                     "tlp": "AMBER",
-                    "statut": "genere",
+                    "statut": "brouillon",
                 },
             )
 
+        # ── « Ma fiche » : lier les fiches ressources aux comptes de démonstration ──
+        # (ressource.app_user_id, migration 0017). Garde-fou : l'index unique
+        # uq_ressource_user_org interdit deux fiches liées au même (compte, organisation) —
+        # on ne lie pas si une autre fiche occupe déjà la paire (fiche créée via /profile).
+        for res_key, email in (
+            ("camille", "auditeur@purple.local"),
+            ("ciso", "ciso@purple.local"),
+            ("alex", "operateur@purple.local"),
+        ):
+            uid = await _user_id(session, email)
+            if not uid:
+                continue
+            await session.execute(
+                text(
+                    "UPDATE ressource r SET app_user_id = :u WHERE r.id = :rid "
+                    "AND NOT EXISTS (SELECT 1 FROM ressource o WHERE o.app_user_id = :u "
+                    "AND o.organisation_id = r.organisation_id AND o.id <> r.id)"
+                ),
+                {"u": uid, "rid": res_id[res_key]},
+            )
+
     print(
-        "[seed-demo] terminé : 2 clients enrichis, 8 audits, 3 exercices Purple (9 runs), "
-        "12 vulnérabilités, 4 tickets, 5 scénarios CTI, 4 livrables. Idempotent."
+        "[seed-demo] terminé : 2 clients enrichis, 8 audits (engagement pré-rempli, actions "
+        "PTES dérivées des scénarios), 3 exercices Purple (9 runs, MTTD/MTTR), 13 vulnérabilités, "
+        "5 tickets (cycle complet), 5 scénarios CTI, 5 livrables (brouillons). Idempotent."
     )
 
 
 async def main() -> None:
+    if "--purge" in sys.argv[1:]:
+        await purge_demo()
     await seed_demo()
 
 

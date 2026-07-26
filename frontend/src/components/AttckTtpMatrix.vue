@@ -18,9 +18,10 @@ const attackEntries = ref([])
 
 const TACTIC_ORDER = [
   'reconnaissance', 'resource-development', 'initial-access', 'execution',
-  'persistence', 'privilege-escalation', 'defense-evasion', 'credential-access',
-  'discovery', 'lateral-movement', 'collection', 'command-and-control',
-  'exfiltration', 'impact',
+  'persistence', 'privilege-escalation', 'defense-evasion', 'evasion',
+  'defense-impairment', 'stealth', 'credential-access', 'discovery',
+  'lateral-movement', 'collection', 'command-and-control', 'exfiltration',
+  'inhibit-response-function', 'impair-process-control', 'impact',
 ]
 const TACTIC_LABEL = {
   'reconnaissance': 'Reconnaissance', 'resource-development': 'Développement de ressources',
@@ -29,6 +30,11 @@ const TACTIC_LABEL = {
   'credential-access': 'Accès aux identifiants', 'discovery': 'Découverte',
   'lateral-movement': 'Mouvement latéral', 'collection': 'Collecte',
   'command-and-control': 'Commande & contrôle', 'exfiltration': 'Exfiltration', 'impact': 'Impact',
+  // Tactiques Mobile
+  'stealth': 'Furtivité', 'defense-impairment': 'Affaiblissement des défenses',
+  // Tactiques ICS
+  'evasion': 'Évasion', 'inhibit-response-function': 'Inhibition de la réponse',
+  'impair-process-control': 'Altération du contrôle de procédé',
 }
 
 onMounted(async () => {

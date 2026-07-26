@@ -9,6 +9,7 @@ import EntityDrawer from './EntityDrawer.vue'
 import { useUiStore } from '../stores/ui'
 import { useAuthStore } from '../stores/auth'
 import { useOrgNames } from '../composables/useOrgNames'
+import { useAppNames } from '../composables/useAppNames'
 
 // Table générique éditable : liste /{entity} et permet créer / éditer / supprimer
 // via un formulaire piloté par le schéma (fields.js). Le serveur a déjà filtré les
@@ -42,17 +43,59 @@ const props = defineProps({
 // tableau. Émis uniquement sur mutation, jamais au montage, pour éviter un double-fetch.
 const emit = defineEmits(['changed'])
 
-const { t } = useI18n()
+const { t, te, locale } = useI18n()
 const { fieldLabel, enumLabel } = useLabels()
 const ui = useUiStore()
 const auth = useAuthStore()
 // Résolution organisation_id -> nom pour les colonnes marquées { org: true }.
 const { preload: preloadOrgs, orgName } = useOrgNames()
+// Résolution application_id -> nom pour les colonnes marquées { apps: true } (uuid[]).
+const { preload: preloadApps, appName } = useAppNames()
+// Une colonne peut forcer l'en-tête via une clé i18n `th` (ex. « Organisation » pour
+// client_id, dont fields.client_id vaut « Client »). Repli sur fieldLabel sinon.
+function colHeader(c) {
+  if (c.th && te(c.th)) return t(c.th)
+  return fieldLabel({ key: c.key, label: c.label })
+}
+// Formatage d'une valeur de date en JJ/MM/AAAA (colonnes { date: true }). Repli sur la
+// chaîne brute si non parsable, pour ne jamais masquer une donnée.
+function fmtDateCell(v) {
+  if (!v) return '—'
+  const s = String(v).slice(0, 10)
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : s
+}
+// Formatage horodatage (colonnes { datetime: true }) : date + heure + fuseau local
+// (ex. « 24/07/2026 14:32 (UTC+2) »), pour tracer précisément une création.
+function fmtDateTimeCell(v) {
+  if (!v) return '—'
+  const d = new Date(v)
+  if (Number.isNaN(d.getTime())) return String(v)
+  const loc = locale.value === 'en' ? 'en-GB' : 'fr-FR'
+  const date = d.toLocaleDateString(loc, { day: '2-digit', month: '2-digit', year: 'numeric' })
+  const time = d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' })
+  const off = -d.getTimezoneOffset() / 60
+  const tz = `UTC${off >= 0 ? '+' : ''}${off}`
+  return `${date} ${time} (${tz})`
+}
+// Valeur brute (r[key]) vs valeur d'affichage : une colonne peut fournir un accesseur
+// `get(row)` (colonne dérivée d'une autre entité) et/ou un `format(rawValue)`.
+function cellRaw(c, r) { return r[c.key] }
+function cellText(c, r) {
+  const raw = r[c.key]
+  if (c.format) return c.format(raw)
+  if (c.get) { const g = c.get(r); return g == null || g === '' ? '—' : g }
+  return raw != null ? enumLabel(raw) : '—'
+}
+const hasAppsCol = computed(() => props.columns.some((c) => c.apps))
 const rows = ref([])
 const loading = ref(true)
 // Filtre de périmètre client (multi-clients) : n'affiche que les lignes du client actif,
 // uniquement pour les entités qui portent un client_id. Données déjà cloisonnées RLS.
 const detailRow = ref(null) // enregistrement affiché dans le tiroir de détail
+// Édition lancée DEPUIS un drawer : porte l'id à rouvrir dans le drawer après sauvegarde
+// (sinon null → retour à la liste, comme pour l'édition via les boutons de ligne).
+const reopenAfterSave = ref(null)
 
 // Sous-titre du drawer : le titre de l'entité (ex. « audit »).
 const drawerSubtitle = computed(() => props.title || props.entity)
@@ -91,8 +134,13 @@ async function load() {
   }
 }
 
-function openCreate() { editing.value = null; formOpen.value = true }
-function openEdit(row) { editing.value = row; formOpen.value = true }
+// Par défaut, aucune réouverture de drawer : seul le handler @edit d'un drawer réarme le
+// drapeau APRÈS avoir appelé openEdit (les boutons de ligne passent aussi par openEdit).
+function openCreate() { editing.value = null; formOpen.value = true; reopenAfterSave.value = null }
+function openEdit(row) { editing.value = row; formOpen.value = true; reopenAfterSave.value = null }
+// Ouvre le tiroir de lecture sur une ligne (identique au clic sur la ligne) : permet à
+// un parent d'exposer une action « Voir » dédiée qui ouvre le même tiroir interne.
+function openDetail(row) { detailRow.value = row }
 
 async function onSaved() {
   const wasCreate = editing.value === null
@@ -114,6 +162,14 @@ async function onSaved() {
   }
   await load()
   emit('changed')
+  // Édition lancée depuis un drawer : rouvrir ce drawer sur l'enregistrement rechargé
+  // (détruit puis remonté → son onMounted refait api.get et affiche les données à jour).
+  // Repli gracieux sur la liste si l'id n'est plus présent (ex. sorti du périmètre).
+  if (reopenAfterSave.value) {
+    const id = reopenAfterSave.value
+    reopenAfterSave.value = null
+    detailRow.value = rows.value.find((r) => r.id === id) || null
+  }
 }
 
 async function remove(row) {
@@ -128,8 +184,10 @@ async function remove(row) {
   }
 }
 
-onMounted(() => { load(); preloadOrgs() })
-defineExpose({ load, openCreate })
+onMounted(() => { load(); preloadOrgs(); if (hasAppsCol.value) preloadApps() })
+// `rows` exposé : permet au parent de dériver options de filtres et KPI des lignes
+// déjà chargées (calcul client-side), sans second appel API.
+defineExpose({ load, openCreate, openDetail, rows })
 </script>
 
 <template>
@@ -148,20 +206,36 @@ defineExpose({ load, openCreate })
     <table v-else>
       <thead>
         <tr>
-          <th v-for="c in columns" :key="c.key">{{ fieldLabel({ key: c.key, label: c.label }) }}</th>
+          <th v-for="c in columns" :key="c.key" :class="{ 'col-center': c.center }">{{ colHeader(c) }}</th>
           <th class="actions-col"></th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="(r, i) in visibleRows" :key="r.id || i" class="row-clickable" @click="detailRow = r">
-          <td v-for="(c, ci) in columns" :key="c.key" :class="{ 'cell-link': ci === 0, 'col-upper': c.upper }">
-            <span v-if="c.pill && r[c.key]" :class="['pill', 'pill-' + (c.pill(r[c.key]) || 'gray')]">{{ enumLabel(r[c.key]) }}</span>
+          <td v-for="(c, ci) in columns" :key="c.key" :class="{ 'cell-link': ci === 0, 'col-upper': c.upper, 'col-center': c.center }">
+            <span v-if="c.pill && cellRaw(c, r) != null" :class="['pill', 'pill-' + (c.pill(cellRaw(c, r)) || 'gray')]">{{ cellText(c, r) }}</span>
             <span v-else-if="c.tlp && r[c.key]" :class="['tlp', 'tlp-' + r[c.key]]">{{ r[c.key] }}</span>
             <template v-else-if="c.org">{{ r[c.key] ? orgName(r[c.key]) : '—' }}</template>
-            <template v-else>{{ r[c.key] != null ? enumLabel(r[c.key]) : '—' }}</template>
+            <template v-else-if="c.apps">
+              <template v-if="Array.isArray(r[c.key]) && r[c.key].length">
+                {{ appName(r[c.key][0]) }}<span v-if="r[c.key].length > 1" class="plusn">+{{ r[c.key].length - 1 }}</span>
+              </template>
+              <template v-else>—</template>
+            </template>
+            <template v-else-if="c.datetime">{{ fmtDateTimeCell(r[c.key]) }}</template>
+            <template v-else-if="c.date">{{ fmtDateCell(r[c.key]) }}</template>
+            <template v-else>{{ cellText(c, r) }}</template>
+            <span v-if="c.badge && c.badge(r)" class="plusn">{{ c.badge(r) }}</span>
           </td>
-          <!-- Variant boutons-icône : édition + suppression uniquement (le clic sur la ligne ouvre le tiroir). -->
+          <!-- Variant boutons-icône : actions extra (icône `export` ou libellé), édition, suppression
+               (le clic sur la ligne ouvre le tiroir). -->
           <td v-if="actionVariant === 'icon'" class="actions" @click.stop>
+            <button v-for="a in extraActions" :key="a.label" class="icon-btn-sm" :title="a.label" :aria-label="a.label" @click="a.fn(r)">
+              <svg v-if="a.icon === 'export'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M12 3v12"/><path d="m8 7 4-4 4 4"/></svg>
+              <svg v-else-if="a.icon === 'download'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M12 3v12"/><path d="m8 11 4 4 4-4"/></svg>
+              <svg v-else-if="a.icon === 'view'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <span v-else class="xa-label">{{ a.label }}</span>
+            </button>
             <button v-if="canEdit" class="icon-btn-sm" :title="t('common.edit')" @click="openEdit(r)">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
             </button>
@@ -187,13 +261,13 @@ defineExpose({ load, openCreate })
       :record="editing"
       :title="(editing ? 'Modifier ' : 'Nouveau ') + (title || entity)"
       @saved="onSaved"
-      @close="formOpen = false"
+      @close="() => { formOpen = false; reopenAfterSave = null }"
     />
     <component
       v-if="detailRow && drawer"
       :is="drawer"
       :record="detailRow"
-      @edit="(r) => { const row = r || detailRow; detailRow = null; openEdit(row) }"
+      @edit="(r) => { const row = r || detailRow; detailRow = null; openEdit(row); reopenAfterSave = row?.id }"
       @saved="() => { detailRow = null; load() }"
       @close="detailRow = null"
     />
@@ -204,7 +278,7 @@ defineExpose({ load, openCreate })
       :title="drawerTitle(detailRow)"
       :subtitle="drawerSubtitle"
       :can-edit="canEdit"
-      @edit="(r) => { detailRow = null; openEdit(r) }"
+      @edit="(r) => { detailRow = null; openEdit(r); reopenAfterSave = r?.id }"
       @close="detailRow = null"
     />
   </div>
@@ -221,9 +295,13 @@ defineExpose({ load, openCreate })
 .icon-btn-sm:hover{border-color:var(--violet-accent);color:var(--violet-accent)}
 .icon-btn-sm.danger:hover{border-color:var(--red);color:var(--red)}
 .icon-btn-sm:disabled{opacity:.5;cursor:not-allowed}
+.icon-btn-sm .xa-label{font-size:10px;font-weight:600;letter-spacing:.02em}
 .cell-link{cursor:pointer}
 .cell-link:hover{color:var(--violet-accent)}
 .col-upper{text-transform:uppercase}
+.col-center{text-align:center}
+.plusn{display:inline-block;margin-left:6px;background:var(--surface-3);border:1px solid var(--border);
+  color:var(--muted);border-radius:99px;font-size:10px;font-family:var(--font-data);padding:1px 6px;vertical-align:1px}
 .row-clickable{cursor:pointer}
 .row-clickable:hover td{background:var(--surface-2)}
 .row-clickable .cell-link{font-weight:500}

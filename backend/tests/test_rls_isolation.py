@@ -185,16 +185,29 @@ def test_operateur_can_insert_organisation():
 
 
 def test_journal_is_append_only():
-    """Le trigger d'immuabilité rejette UPDATE/DELETE sur le journal."""
-    with _conn() as c, c.cursor() as cur:
-        _set_ctx(cur, "admin", "")
-        jid = str(uuid.uuid4())
-        cur.execute(
-            "INSERT INTO journal (id,event_type,prev_hash,curr_hash,detail,created_at)"
-            " VALUES (%s,'test',%s,%s,'{}',now())",
-            (jid, "0" * 64, "a" * 64),
-        )
-        with pytest.raises(psycopg.errors.RaiseException):
-            cur.execute("UPDATE journal SET event_type='hack' WHERE id=%s", (jid,))
-        with pytest.raises(psycopg.errors.RaiseException):
-            cur.execute("DELETE FROM journal WHERE id=%s", (jid,))
+    """Le trigger d'immuabilité rejette UPDATE/DELETE sur le journal.
+
+    Connexion NON-autocommit dédiée : la ligne de test synthétique (prev=GENESIS,
+    curr='a'×64) ne doit JAMAIS être committée. Le trigger empêchant tout DELETE,
+    une insertion committée resterait à demeure et casserait la vérification de chaîne
+    de la base ciblée (TEST_DATABASE_URL = base applicative). Chaque tentative interdite
+    est isolée dans un savepoint (`c.transaction()`) : après le RAISE, le savepoint est
+    annulé pour poursuivre, puis un rollback final jette l'INSERT — aucune trace ne reste.
+    """
+    c = psycopg.connect(_URL)  # autocommit=False
+    try:
+        with c.cursor() as cur:
+            _set_ctx(cur, "admin", "")
+            jid = str(uuid.uuid4())
+            cur.execute(
+                "INSERT INTO journal (id,event_type,prev_hash,curr_hash,detail,created_at)"
+                " VALUES (%s,'test',%s,%s,'{}',now())",
+                (jid, "0" * 64, "a" * 64),
+            )
+            with pytest.raises(psycopg.errors.RaiseException), c.transaction():
+                cur.execute("UPDATE journal SET event_type='hack' WHERE id=%s", (jid,))
+            with pytest.raises(psycopg.errors.RaiseException), c.transaction():
+                cur.execute("DELETE FROM journal WHERE id=%s", (jid,))
+    finally:
+        c.rollback()  # jette l'INSERT : aucune ligne 'test' ne persiste
+        c.close()

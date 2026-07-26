@@ -8,6 +8,7 @@ import AttckTtpMatrix from './AttckTtpMatrix.vue'
 import { api } from '../api/client'
 import { useRefNames } from '../composables/useRefNames'
 import { attackUrl, d3fendUrl } from '../utils/mitreLinks'
+import { ENGAGEMENT_LABEL, ENGAGEMENT_TONE, TLP_TONE } from '../tones'
 import { icons } from '../icons'
 const { t } = useI18n()
 
@@ -39,10 +40,11 @@ const TACTIC_LABEL = {
   'credential-access': 'Accès aux identifiants', 'discovery': 'Découverte',
   'lateral-movement': 'Mouvement latéral', 'collection': 'Collecte',
   'command-and-control': 'Commande & contrôle', 'exfiltration': 'Exfiltration', 'impact': 'Impact',
+  // Tactiques Mobile / ICS
+  'stealth': 'Furtivité', 'defense-impairment': 'Affaiblissement des défenses',
+  'evasion': 'Évasion', 'inhibit-response-function': 'Inhibition de la réponse',
+  'impair-process-control': 'Altération du contrôle de procédé',
 }
-const ENGAGEMENT_LABEL = { 'red-team': 'Red', 'purple-team': 'Purple', 'tabletop': 'Tabletop', 'assumed-breach': 'Assumed Breach' }
-const ENGAGEMENT_TONE = { 'red-team': 'red', 'purple-team': 'violet', 'tabletop': 'cyan', 'assumed-breach': 'amber' }
-const TLP_TONE = { RED: 'red', AMBER: 'amber', GREEN: 'green', WHITE: 'gray', CLEAR: 'gray' }
 const CATEGORY_TONE = { Harden: 'green', Detect: 'blue', Isolate: 'amber', Deceive: 'violet', Evict: 'red', Restore: 'cyan' }
 
 const s = computed(() => props.record)

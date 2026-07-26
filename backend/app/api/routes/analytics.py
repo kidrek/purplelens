@@ -15,17 +15,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import rls_session
 from app.security.context import SecurityContext
-from app.security.matrix import Action
+from app.security.matrix import Action, allowed
 from app.security.rbac import require
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
-# Ordre canonique des tactiques (ATT&CK Enterprise) pour l'affichage en colonnes.
+# Ordre canonique des tactiques pour l'affichage en colonnes. Enterprise en tête, puis les
+# tactiques propres aux matrices Mobile (network-effects, remote-service-effects) et ICS
+# (evasion, inhibit-response-function, impair-process-control) intercalées à une place
+# cohérente. Une tactique hors liste retombe en fin (bucket « non-mappée »).
 _TACTIC_ORDER = [
     "reconnaissance", "resource-development", "initial-access", "execution",
-    "persistence", "privilege-escalation", "defense-evasion", "credential-access",
-    "discovery", "lateral-movement", "collection", "command-and-control",
-    "exfiltration", "impact",
+    "persistence", "privilege-escalation", "defense-evasion", "evasion",
+    "defense-impairment", "stealth", "credential-access", "discovery",
+    "lateral-movement", "collection", "command-and-control", "exfiltration",
+    "inhibit-response-function", "impair-process-control", "impact",
 ]
 
 # Meilleur verdict défensif observé (du plus favorable au moins favorable).
@@ -199,8 +203,17 @@ async def attack_matrix(
 # Verdicts « caught » : une réponse défensive a eu lieu (prévenu / alerté / journalisé).
 _CAUGHT = ("prevented", "alerted", "logged")
 
+# Statuts de vulnérabilité considérés « fermés » (corrigée / résolue / fermée / acceptée).
+# Les jeux de données mélangent les orthographes masculin/féminin (`corrige` vs `corrigee`) :
+# on couvre les deux, sinon une vuln corrigée serait comptée comme encore active.
+_CLOSED_VULN = (
+    "corrige", "corrigee", "resolu", "resolue",
+    "ferme", "fermee", "accepte", "acceptee",
+)
+_CLOSED_VULN_SQL = "(" + ", ".join(f"'{v}'" for v in _CLOSED_VULN) + ")"
 
-async def compute_cockpit(s, client_id: str | None = None) -> dict:
+
+async def compute_cockpit(s, client_id: str | None = None, *, can_read_journal: bool = True) -> dict:
     """Indicateurs du tableau de bord, agrégés sur la session fournie (cloisonnée RLS).
 
     Regroupe : posture des verdicts, taux de détection, angles morts, vulnérabilités
@@ -255,7 +268,7 @@ async def compute_cockpit(s, client_id: str | None = None) -> dict:
     p1_breached = (await s.execute(text(
         f"SELECT count(*) FROM vulnerability WHERE deleted_at IS NULL{cf} "
         "AND sla_niveau = 'P1' AND sla_echeance < now()::date "
-        "AND statut NOT IN ('corrige','resolu','ferme','accepte')"
+        f"AND statut NOT IN {_CLOSED_VULN_SQL}"
     ), p)).scalar_one()
 
     # Audits : total et répartition par type.
@@ -271,11 +284,18 @@ async def compute_cockpit(s, client_id: str | None = None) -> dict:
         f"SELECT count(*) FROM purple_exercise WHERE deleted_at IS NULL{cf}"
     ), p)).scalar_one()
 
-    # Aperçu du journal (dernières entrées).
-    jrows = (await s.execute(text(
-        "SELECT seq, event_type, actor_label, client_id, created_at FROM journal "
-        f"WHERE true{cf} ORDER BY seq DESC LIMIT 8"
-    ), p)).all()
+    # Aperçu du journal (dernières entrées) — réservé aux rôles ayant journal:L.
+    # Acteur résolu via app_user (comme /journal) ; colonnes qualifiées `j.` car
+    # `created_at` existe aussi dans app_user.
+    jrows = []
+    if can_read_journal:
+        jrows = (await s.execute(text(
+            "SELECT j.seq, j.event_type, "
+            "COALESCE(j.actor_label, u.display_name, u.email) AS actor_label, "
+            "j.client_id, j.created_at "
+            "FROM journal j LEFT JOIN app_user u ON u.id = j.actor_id "
+            f"WHERE true{cf} ORDER BY j.seq DESC LIMIT 8"
+        ), p)).all()
 
     # ── Couverture par tactique MITRE (ordre kill-chain) ──────────────────────
     # Pour chaque tactique : techniques TESTÉES (distinct) et détectées, sur le pool
@@ -407,10 +427,10 @@ async def cockpit(
     async with rls_session(
         user_id=ctx.user_id, role=ctx.role, client_scope=ctx.client_scope
     ) as s:
-        return await compute_cockpit(s, client_id=client_id)
-
-
-_CLOSED_VULN = ("corrige", "resolu", "ferme", "accepte")
+        return await compute_cockpit(
+            s, client_id=client_id,
+            can_read_journal=allowed(ctx.role, "journal", Action.L),
+        )
 
 
 async def compute_applications_coverage(s, client_id: str | None = None) -> list[dict]:
@@ -429,13 +449,14 @@ async def compute_applications_coverage(s, client_id: str | None = None) -> list
              AND lower(v.severite) IN ('critique','haute')) AS vuln_high,
           (SELECT count(*) FROM vulnerability v WHERE v.deleted_at IS NULL
              AND a.id = ANY(v.applications)
-             AND v.statut NOT IN ('corrige','resolu','ferme','accepte')) AS vuln_open,
+             AND v.statut NOT IN {closed}) AS vuln_open,
           EXISTS(SELECT 1 FROM audit au WHERE au.deleted_at IS NULL
              AND a.id = ANY(au.applications)) AS audited
         FROM application a
         WHERE a.deleted_at IS NULL{cf}
         ORDER BY a.nom
         """.replace("{cf}", " AND a.client_id::text = :cid" if client_id else "")
+           .replace("{closed}", _CLOSED_VULN_SQL)
     ), ({"cid": client_id} if client_id else {}))).mappings().all()
     out = []
     for r in rows:
@@ -455,6 +476,234 @@ async def applications_coverage(
         user_id=ctx.user_id, role=ctx.role, client_scope=ctx.client_scope
     ) as s:
         return {"items": await compute_applications_coverage(s, client_id=client_id)}
+
+
+async def compute_application_posture(s, application_id: str) -> dict:
+    """Posture Purple Team agrégée pour UNE application (mini-cockpit du drawer).
+
+    Le lien app↔audit / app↔vuln est un tableau natif d'identifiants (uuid[]) → on
+    rapproche par `<app> = ANY(audit.applications)`. Les étapes d'attaque n'ont pas de
+    colonne application : on ponte `app → audits de l'app → exercices → étapes`.
+
+    Comme le cockpit global, taux de détection / angles morts / couverture par tactique
+    sont mesurés sur le POOL du dernier run de chaque audit de l'application ; la tendance
+    porte, elle, sur les 5 derniers exercices Purple (un point par exercice). Le
+    cloisonnement RLS est déjà porté par la session.
+    """
+    p = {"aid": application_id}
+    # Audits de l'application (sous-requête réutilisée partout).
+    app_audits = (
+        "SELECT id FROM audit WHERE deleted_at IS NULL "
+        "AND CAST(:aid AS uuid) = ANY(applications)"
+    )
+    # Pool « dernier run par audit » de l'application (même critère que le cockpit).
+    last_run_pool = (
+        "SELECT DISTINCT ON (audit_id) id FROM purple_exercise "
+        f"WHERE deleted_at IS NULL AND audit_id IN ({app_audits}) "
+        "ORDER BY audit_id, coalesce(date, created_at::date) DESC, created_at DESC"
+    )
+
+    # ── Posture (verdicts) sur le dernier run de chaque audit ──────────────────
+    verdict_rows = (await s.execute(text(
+        "SELECT verdict, count(*) c FROM attack_step "
+        f"WHERE exercise_id IN ({last_run_pool}) GROUP BY verdict"
+    ), p)).all()
+    verdicts = {r.verdict: r.c for r in verdict_rows}
+    tested = sum(v for k, v in verdicts.items() if k != "not_tested")
+    caught = sum(verdicts.get(k, 0) for k in _CAUGHT)
+    blind = verdicts.get("no_telemetry", 0)
+    detection_rate = round(caught / tested * 100) if tested else None
+
+    # ── Couverture par tactique MITRE (même pool) ──────────────────────────────
+    tac_rows = (await s.execute(text(
+        "SELECT r.tactic, a.technique, "
+        " bool_or(a.verdict IN ('prevented','alerted','logged')) AS detected "
+        "FROM attack_step a JOIN ref_attack_technique r ON r.ext_id = a.technique "
+        "WHERE a.technique IS NOT NULL AND a.verdict != 'not_tested' "
+        f"AND a.exercise_id IN ({last_run_pool}) "
+        "GROUP BY r.tactic, a.technique"
+    ), p)).all()
+    by_tac: dict[str, dict] = {}
+    for r in tac_rows:
+        e = by_tac.setdefault(r.tactic or "non-mappée", {"tot": 0, "det": 0})
+        e["tot"] += 1
+        if r.detected:
+            e["det"] += 1
+
+    def _tac_rank(t: str) -> int:
+        return _TACTIC_ORDER.index(t) if t in _TACTIC_ORDER else len(_TACTIC_ORDER)
+
+    tactic_coverage = [
+        {
+            "tactic": t, "total": v["tot"], "detected": v["det"],
+            "state": ("detected" if v["det"] == v["tot"] else
+                      "gap" if v["det"] == 0 else "partial"),
+        }
+        for t, v in sorted(by_tac.items(), key=lambda kv: _tac_rank(kv[0]))
+    ]
+
+    # ── Techniques ATT&CK jouées sur l'application (tous exercices) ─────────────
+    # Alimente la matrice ATT&CK complète du drawer (couverture, pas seulement dernier run).
+    tech_rows = (await s.execute(text(
+        "SELECT DISTINCT technique FROM attack_step WHERE technique IS NOT NULL "
+        f"AND exercise_id IN (SELECT id FROM purple_exercise "
+        f"WHERE deleted_at IS NULL AND audit_id IN ({app_audits}))"
+    ), p)).all()
+    techniques = sorted(r.technique for r in tech_rows)
+
+    # ── Compteurs ──────────────────────────────────────────────────────────────
+    audit_total = (await s.execute(text(
+        f"SELECT count(*) FROM ({app_audits}) x"
+    ), p)).scalar_one()
+    exercise_total = (await s.execute(text(
+        f"SELECT count(*) FROM purple_exercise WHERE deleted_at IS NULL AND audit_id IN ({app_audits})"
+    ), p)).scalar_one()
+    vuln_critical_active = (await s.execute(text(
+        "SELECT count(*) FROM vulnerability WHERE deleted_at IS NULL "
+        "AND CAST(:aid AS uuid) = ANY(applications) AND lower(severite) = 'critique' "
+        f"AND statut NOT IN {_CLOSED_VULN_SQL}"
+    ), p)).scalar_one()
+
+    # ── Tendance : les 5 derniers exercices Purple (un point par exercice) ──────
+    ex5 = (await s.execute(text(
+        "SELECT id, run_number, coalesce(date, created_at::date) AS d, nom "
+        f"FROM purple_exercise WHERE deleted_at IS NULL AND audit_id IN ({app_audits}) "
+        "ORDER BY coalesce(date, created_at::date) DESC, created_at DESC LIMIT 5"
+    ), p)).all()
+    trend: list[dict] = []
+    # Posture segmentée du SEUL exercice le plus récent (ex5 trié date DESC → ex5[0]).
+    posture_last_exercise = None
+    if ex5:
+        exids = [str(r.id) for r in ex5]
+        vr = (await s.execute(text(
+            "SELECT exercise_id, verdict, count(*) c FROM attack_step "
+            "WHERE exercise_id = ANY(CAST(:exids AS uuid[])) GROUP BY exercise_id, verdict"
+        ), {"exids": exids})).all()
+        vd_by_ex: dict[str, dict] = {}
+        for r in vr:
+            vd_by_ex.setdefault(str(r.exercise_id), {})[r.verdict] = r.c
+        for r in reversed(ex5):  # ordre chronologique (ancien → récent) pour l'axe
+            vd = vd_by_ex.get(str(r.id), {})
+            t_n = sum(v for k, v in vd.items() if k != "not_tested")
+            c_n = sum(vd.get(k, 0) for k in _CAUGHT)
+            trend.append({
+                "exercise_id": str(r.id), "run_number": r.run_number,
+                "date": r.d.isoformat() if r.d else None, "nom": r.nom,
+                "tested": t_n, "caught": c_n,
+                "pct": round(c_n / t_n * 100) if t_n else 0,
+            })
+        last = ex5[0]
+        vd = vd_by_ex.get(str(last.id), {})
+        t_n = sum(v for k, v in vd.items() if k != "not_tested")
+        c_n = sum(vd.get(k, 0) for k in _CAUGHT)
+        posture_last_exercise = {
+            "verdicts": vd, "tested": t_n, "caught": c_n,
+            "blind": vd.get("no_telemetry", 0),
+            "pct": round(c_n / t_n * 100) if t_n else None,
+            "exercise": {
+                "nom": last.nom,
+                "date": last.d.isoformat() if last.d else None,
+                "run_number": last.run_number,
+            },
+        }
+
+    # ── Top 5 audits réalisés (avec auditeur + taux de détection du dernier run) ─
+    aud_rows = (await s.execute(text(
+        "SELECT id, nom, categorie, auditeurs, "
+        "coalesce(date_fin, date_debut, created_at::date) AS d "
+        "FROM audit WHERE deleted_at IS NULL AND CAST(:aid AS uuid) = ANY(applications) "
+        "ORDER BY coalesce(date_fin, date_debut, created_at::date) DESC LIMIT 5"
+    ), p)).all()
+    # Détection par audit = caught/tested sur son dernier run.
+    lr_rows = (await s.execute(text(
+        "SELECT DISTINCT ON (audit_id) audit_id, id FROM purple_exercise "
+        f"WHERE deleted_at IS NULL AND audit_id IN ({app_audits}) "
+        "ORDER BY audit_id, coalesce(date, created_at::date) DESC, created_at DESC"
+    ), p)).all()
+    lr_by_audit = {str(r.audit_id): str(r.id) for r in lr_rows}
+    lr_verdicts: dict[str, dict] = {}
+    if lr_rows:
+        lr_exids = [str(r.id) for r in lr_rows]
+        vr = (await s.execute(text(
+            "SELECT exercise_id, verdict, count(*) c FROM attack_step "
+            "WHERE exercise_id = ANY(CAST(:exids AS uuid[])) GROUP BY exercise_id, verdict"
+        ), {"exids": lr_exids})).all()
+        for r in vr:
+            lr_verdicts.setdefault(str(r.exercise_id), {})[r.verdict] = r.c
+
+    def _audit_detection(audit_id) -> int | None:
+        exid = lr_by_audit.get(str(audit_id))
+        vd = lr_verdicts.get(exid or "", {})
+        t_n = sum(v for k, v in vd.items() if k != "not_tested")
+        c_n = sum(vd.get(k, 0) for k in _CAUGHT)
+        return round(c_n / t_n * 100) if t_n else None
+
+    # Résolution des noms d'auditeurs (uuid[] → ressource.nom).
+    res_ids = sorted({str(u) for r in aud_rows for u in (r.auditeurs or [])})
+    res_map: dict[str, str] = {}
+    if res_ids:
+        rr = (await s.execute(text(
+            "SELECT id, nom FROM ressource WHERE id = ANY(CAST(:ids AS uuid[]))"
+        ), {"ids": res_ids})).all()
+        res_map = {str(r.id): r.nom for r in rr}
+    top_audits = [
+        {
+            "id": str(r.id), "nom": r.nom, "categorie": r.categorie,
+            "date": r.d.isoformat() if r.d else None,
+            "detection_rate": _audit_detection(r.id),
+            "auditeurs": [res_map[str(u)] for u in (r.auditeurs or []) if str(u) in res_map],
+        }
+        for r in aud_rows
+    ]
+
+    # ── Vulnérabilités actives (les plus récentes en tête) ─────────────────────
+    vuln_rows = (await s.execute(text(
+        "SELECT id, titre, severite, statut, sla_niveau, sla_echeance, created_at "
+        "FROM vulnerability WHERE deleted_at IS NULL AND CAST(:aid AS uuid) = ANY(applications) "
+        f"AND statut NOT IN {_CLOSED_VULN_SQL} "
+        "ORDER BY created_at DESC"
+    ), p)).all()
+    active_vulns = [
+        {
+            "id": str(r.id), "titre": r.titre, "severite": r.severite, "statut": r.statut,
+            "sla_niveau": r.sla_niveau,
+            "sla_echeance": r.sla_echeance.isoformat() if r.sla_echeance else None,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in vuln_rows
+    ]
+
+    return {
+        "kpis": {
+            "detection_rate": detection_rate,
+            "blind_spots": blind,
+            "vuln_critical_active": vuln_critical_active,
+            "audits": audit_total,
+            "exercises": exercise_total,
+        },
+        "posture": {"verdicts": verdicts, "tested": tested, "caught": caught},
+        "posture_last_exercise": posture_last_exercise,
+        "tactic_coverage": tactic_coverage,
+        "techniques": techniques,
+        "trend": trend,
+        "top_audits": top_audits,
+        "active_vulns": active_vulns,
+    }
+
+
+@router.get("/application/{application_id}")
+async def application_posture(
+    application_id: str,
+    ctx: SecurityContext = Depends(require("applications", Action.L)),
+):
+    """Posture agrégée d'une application (KPI, couverture MITRE, tendance, top audits,
+    vulnérabilités actives). Le cloisonnement RLS garantit qu'une application hors
+    périmètre ne renvoie aucune donnée.
+    """
+    async with rls_session(
+        user_id=ctx.user_id, role=ctx.role, client_scope=ctx.client_scope
+    ) as s:
+        return await compute_application_posture(s, application_id)
 
 
 @router.get("/scenario-usage/{scenario_id}")
@@ -699,3 +948,100 @@ async def organisations_stats(
         user_id=ctx.user_id, role=ctx.role, client_scope=ctx.client_scope
     ) as s:
         return await compute_organisations(s, roles, statuts, secteurs, tlps)
+
+
+async def compute_audits(
+    s: AsyncSession,
+    org_ids: list[str] | None = None,
+    app_ids: list[str] | None = None,
+    categories: list[str] | None = None,
+    statuts: list[str] | None = None,
+    types: list[str] | None = None,
+    priorites: list[str] | None = None,
+    tlps: list[str] | None = None,
+) -> dict:
+    """Agrégats de la page Audits : total des engagements, répartition par statut /
+    catégorie / priorité, et couverture des organisations (clients ayant au moins un
+    audit dans le périmètre filtré). Les filtres (organisation / application / catégorie /
+    statut / type / priorité / TLP) narrowent à l'intérieur du périmètre RLS et reflètent
+    les filtres du tableau côté UI. Les valeurs sont toujours paramétrées ; seuls des
+    fragments de clause figés sont interpolés. Le lien audit↔application est un tableau
+    natif d'identifiants (uuid[]) → recouvrement `applications && :apps`.
+    """
+    clauses = ["deleted_at IS NULL"]
+    params: dict = {}
+    if org_ids:
+        clauses.append("client_id = ANY(CAST(:orgs AS uuid[]))")
+        params["orgs"] = list(org_ids)
+    if app_ids:
+        clauses.append("applications && CAST(:apps AS uuid[])")
+        params["apps"] = list(app_ids)
+    if categories:
+        clauses.append("categorie = ANY(:cats)")
+        params["cats"] = list(categories)
+    if statuts:
+        clauses.append("statut = ANY(:statuts)")
+        params["statuts"] = list(statuts)
+    if types:
+        clauses.append("type_test = ANY(:types)")
+        params["types"] = list(types)
+    if priorites:
+        clauses.append("priorite = ANY(:prios)")
+        params["prios"] = list(priorites)
+    if tlps:
+        clauses.append("tlp = ANY(:tlps)")
+        params["tlps"] = list(tlps)
+    where = " AND ".join(clauses)
+
+    total = (await s.execute(text(
+        f"SELECT count(*) FROM audit WHERE {where}"
+    ), params)).scalar_one()
+
+    by_statut = {r.statut: r.c for r in (await s.execute(text(
+        f"SELECT statut, count(*) c FROM audit WHERE {where} AND statut IS NOT NULL GROUP BY statut"
+    ), params)).all()}
+
+    by_categorie = {r.categorie: r.c for r in (await s.execute(text(
+        f"SELECT categorie, count(*) c FROM audit WHERE {where} AND categorie IS NOT NULL GROUP BY categorie"
+    ), params)).all()}
+
+    by_priorite = {r.priorite: r.c for r in (await s.execute(text(
+        f"SELECT priorite, count(*) c FROM audit WHERE {where} AND priorite IS NOT NULL GROUP BY priorite"
+    ), params)).all()}
+
+    covered = (await s.execute(text(
+        f"SELECT count(DISTINCT client_id) FROM audit WHERE {where}"
+    ), params)).scalar_one()
+
+    # Dénominateur du parc : toutes les organisations du périmètre RLS, indépendant des
+    # filtres audit (couverture = clients audités / organisations du périmètre).
+    orgs_total = (await s.execute(text(
+        "SELECT count(*) FROM organisation WHERE deleted_at IS NULL"
+    ))).scalar_one()
+
+    return {
+        "total": total,
+        "by_statut": by_statut,
+        "by_categorie": by_categorie,
+        "by_priorite": by_priorite,
+        "organisations": {"total": orgs_total, "covered": covered},
+    }
+
+
+@router.get("/audits")
+async def audits_stats(
+    organisation_id: list[str] = Query(default=[]),
+    application_id: list[str] = Query(default=[], alias="application"),
+    categories: list[str] = Query(default=[], alias="categorie"),
+    statuts: list[str] = Query(default=[], alias="statut"),
+    types: list[str] = Query(default=[], alias="type"),
+    priorites: list[str] = Query(default=[], alias="priorite"),
+    tlps: list[str] = Query(default=[], alias="tlp"),
+    ctx: SecurityContext = Depends(require("audits", Action.L)),
+):
+    async with rls_session(
+        user_id=ctx.user_id, role=ctx.role, client_scope=ctx.client_scope
+    ) as s:
+        return await compute_audits(
+            s, organisation_id, application_id, categories, statuts, types, priorites, tlps,
+        )

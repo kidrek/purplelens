@@ -8,15 +8,17 @@ threat scenarios, audits, Purple exercises, attack chains, defensive observation
 vulnerabilities, detection tickets, deliverables — and an **end-to-end encrypted
 evidence subsystem**.
 
-This repository implements the project's normative documents: requirements
-specification v5.0, technical architecture (DAT) v1.1, Auth & RBAC specification v2.0
-and artistic direction v2.7.
+This repository implements the project's normative documents (at the repo root):
+requirements specification v2 (`cahier_des_charges_v2.md`), technical architecture DAT
+v1.0 (`dat_v1.1.md`), Auth & RBAC specification v2.1
+(`Backend_specification_auth_rbac_v2.md`) and artistic direction v2.7.
 
 ## Guided tour
 
 A complete, screen-by-screen tour of the platform, in navigation order. Screenshots use
 the dark SOC theme (theme B) and were taken on the demo dataset. Detailed role-based
-journeys are covered in the [user guide](docs/guide-utilisateur.md) (French).
+journeys are covered in the [user guide](docs/en/user-guide.md)
+([version française](docs/guide-utilisateur.md)).
 
 ### Sign-in & account
 
@@ -45,6 +47,18 @@ aggregated posture and the latest journal events — restricted to your tenant s
 (coverage, steps played, detections, blind spots), posture breakdown, attack-step
 timeline with defensive verdicts (prevented / alerted / logged / no telemetry) and
 on-the-fly creation of remediation tickets.*
+
+![Purple exercise card — all runs](docs/img/exercice-drawer.png)
+
+*A Purple exercise card: the aggregated posture dashboard across **all runs** of the
+audit — detection progressing run over run, per-technique verdicts, MTTD/MTTR
+indicators and steps turned "covered" by a closed detection ticket.*
+
+![Purple exercise detail page](docs/img/exercice-detail.png)
+
+*The full-page exercise view (`/exercices/:id`): the attack chain replayed step by
+step against the defensive response — verdict, detection and response timestamps, and
+the Blue Team's observations for each technique.*
 
 ![Audit card — pentest engagement](docs/img/audit-drawer.png)
 
@@ -79,7 +93,9 @@ Detection / Gap / imported ATT&CK Navigator layer.*
 ![Threat scenarios](docs/img/scenarios.png)
 
 *Threat scenarios: cross-tenant CTI library (emulated actors, sophistication, Admiralty
-credibility), **STIX 2.1** import / export.*
+credibility), **STIX 2.1** import / export. The "emulated actor" field searches the
+**threat-actor catalogs** (ATT&CK Groups + MISP Galaxy, aliases included) and can
+**import the actor's TTPs** straight into the scenario's attack steps.*
 
 ![FIN7 scenario card](docs/img/scenario-drawer.png)
 
@@ -106,9 +122,11 @@ engagements.*
 
 ![Deliverable generator](docs/img/deliverables.png)
 
-*Deliverables: engagement letters, NDAs and PTES reports generated as PDF (headless
-Chromium) with a **TLP classification banner**, sealed in locked storage and traced in
-the journal.*
+*Deliverables: four types — engagement letters, NDAs, PTES reports and **Purple exercise
+reports** (all runs of an audit: step timeline, verdicts, per-tactic coverage) —
+generated as PDF (headless Chromium) from bilingual FR/EN templates with a **TLP
+classification banner**, an evidence register with inline previews (secrets masked),
+sealed in locked storage and traced in the journal.*
 
 ![Deliverable card](docs/img/deliverable-drawer.png)
 
@@ -117,14 +135,20 @@ every access is traced in the journal.*
 
 ![Evidence vault](docs/img/evidence.png)
 
-*Evidence vault: upload via presigned URL (binaries never transit through the API),
-ingestion sandbox (antivirus, true file type, AES-256-GCM envelope encryption), **WORM**
-storage and TLP marking. Requires `make init-vault` before the first deposits.*
+*Evidence vault: upload via presigned URL (the API never sees the plaintext), ingestion
+sandbox (antivirus, true file type, AES-256-GCM envelope encryption), **WORM** storage
+and TLP marking. Decrypted download is the one documented exception: only the API can
+unwrap the data key, so it streams the cleartext under inline access control (fresh
+step-up for TLP:RED) with every access traced. Requires `make init-vault` before the
+first deposits.*
 
 ![Tamper-evident journal](docs/img/journal.png)
 
-*Journal: hash-chained, readable by everyone, modifiable by no one — the "Verify chain
-integrity" button recomputes the chain server-side.*
+*Journal: hash-chained, modifiable by no one (read is reserved to cross-cutting roles,
+tenant-scoped for the rest) — server-side filters (text, event domain, result, actor,
+date range), statistics, step-up-gated JSON export, and the "Verify chain integrity"
+button recomputing the chain server-side. In the background the chain head is **anchored
+every 6 h into WORM storage** to detect out-of-band tampering.*
 
 ### System
 
@@ -152,11 +176,26 @@ the embedded baseline when offline).*
 (fail-closed security: an empty scope means no access for non-manager roles), account
 creation and deactivation.*
 
+### Not pictured
+
+- **⌘K command palette** — free-text navigation across views and methodology articles.
+- **Full-page audit detail route** (`/audits/:id`): PTES actions grouped by phase,
+  milestones, deliverable generator anchored on the audit.
+- **Per-view KPI bands** — every list view (audits, exercises, vulnerabilities,
+  organizations, resources, scenarios, journal) carries server-computed analytics that
+  honor the same filters as the table.
+- **Server-driven navigation** — menu entries only appear when the server grants read
+  access to the underlying entity (`readable_entities` from `/whoami`).
+- **Scenario cascades** — linking a CTI scenario to an audit auto-derives its PTES test
+  actions; creating an exercise on such an audit seeds its attack chain.
+
 ## Security doctrine — defense in depth (4 layers)
 
 No authorization is ever decided client-side: **the server decides, always**.
-Binaries never transit through the API. Four independent layers stack up, so that the
-failure of any single one does not compromise the whole:
+Binaries never transit through the API — with one documented exception: decrypted
+evidence download, served by the API (sole holder of the data key) under inline access
+control and full tracing. Four independent layers stack up, so that the failure of any
+single one does not compromise the whole:
 
 1. **Application `can()` engine** — a 5-gate evaluator (authentication, MFA/step-up,
    RBAC matrix, client tenancy, TLP/PAP) checked on every call, deny by default.
@@ -171,7 +210,13 @@ failure of any single one does not compromise the whole:
 4. **WORM storage + tamper-evident journal** — encrypted objects are stored in MinIO
    with *Object Lock* (write-once-read-many); the audit journal is hash-chained
    (tamper-evident) and **immutable at the application level**: no role, not even
-   `admin`, can modify or delete it.
+   `admin`, can modify or delete it. Its chain head is additionally **anchored into a
+   WORM bucket every 6 hours** and re-verified daily, catching even a privileged
+   database-level rewrite.
+
+Authentication hardening on top: Redis rate limiting on `/login`, `/refresh` and
+`/step-up`; TOTP anti-replay with secrets encrypted at rest (AES-256-GCM); single-use
+OIDC/PKCE state; Swagger/OpenAPI disabled in production (`ENVIRONMENT=production`).
 
 Deployment follows the **single entry point rule** (DAT §4.1bis): only the `frontend`
 reverse proxy publishes ports; every other service communicates solely on internal
@@ -197,7 +242,9 @@ exposes a port.
 Prerequisites: Docker, Docker Compose, Make.
 
 ```bash
-cp .env.example .env          # adjust the secrets (SEED_DEFAULT_PASSWORD, APP_*_PASSWORD…)
+cp .env.example .env          # `make up` then replaces every "change-me-*" value via
+                              # `make secrets` (VAULT_TOKEN / OIDC_CLIENT_SECRET stay manual;
+                              # set ENVIRONMENT=production for a production instance)
 make bootstrap                # full first start: stack + schema + demo accounts
 make init-vault               # (before storing evidence) unseal + transit + KEK
 ```
@@ -217,7 +264,10 @@ make seed-demo                # (optional) rich demo dataset — audits, Purple 
 ```
 
 `make seed-demo` is idempotent (deterministic UUIDs) and kept separate from `seed`, so a
-production instance stays free of fictitious data.
+production instance stays free of fictitious data. To start from a clean slate, `make
+seed-demo-fresh` first purges every business row (including leftovers from test runs,
+which share the demo database) while preserving reference catalogs, corpus, accounts,
+the seed organizations and the journal, then re-seeds.
 
 Access: `https://localhost/` (self-signed certificate in dev — accept the warning).
 Demo accounts: `admin@purple.local`, `auditeur@purple.local`, `ciso@purple.local`,
@@ -253,15 +303,19 @@ backend/            FastAPI API, Celery workers, migrations, tests
     journal/        hash-chained journal (tamper-evident)
     storage/        envelope encryption, Vault, MinIO (WORM)
     models/         ORM (business + security + evidence)
-    api/routes/     auth, entities (generic CRUD), evidence, deliverables, admin
-    workers/        ingestion sandbox (antivirus, true type, encryption, WORM), jobs
-    deliverables/   HTML→PDF deliverable generation (TLP banners)
+    api/routes/     11 routers: auth, entities (generic CRUD), evidence, deliverables,
+                    admin (users + journal), analytics, stix, reference, vulnerabilities,
+                    exercises, profile ("my card")
+    workers/        ingestion sandbox (antivirus, true type, encryption, WORM), jobs,
+                    journal WORM anchoring
+    deliverables/   HTML→PDF deliverable generation (4 types, FR/EN, TLP banners)
   sql/              roles.sql (PG roles) + schema_evidence.sql (evidence DDL + RLS)
   migrations/       Alembic (complete initial schema)
+  scripts/          verify_journal.py, sync_reference.py (ops CLIs)
 frontend/           Vue 3 + Vite (design tokens reused verbatim)
 deploy/             nginx (single reverse proxy), keycloak (realm), vault
-scripts/            check_ports.py, backup.sh, restore.sh
-docs/               user guide, deployment, operations, Vault runbook, screenshots (img/)
+scripts/            check_ports.py, gen_secrets.sh, backup.sh, restore.sh
+docs/               FR docs + docs/en/ mirrors (user guide, deployment, operations, Vault runbook), screenshots (img/)
 ```
 
 ## Architecture decisions (DAT)
@@ -274,16 +328,16 @@ Keycloak (OIDC + PKCE) · D8 client-side over-encryption deferred.
 
 ## Documentation
 
-All operational documents are written in French.
+Every document exists in English and French (cross-linked at the top of each file).
 
-| Document | Purpose |
-|---|---|
-| `docs/deploiement.md` | Production deployment (secrets, install order, integrations, TLS, upgrades) |
-| `docs/exploitation.md` | Day-2 operations (catalog sync, backup, journal verification, incident response, crypto-shredding) |
-| `docs/runbook-vault.md` | Vault in detail (unsealing, KEK rotation, crypto-shredding) |
-| `docs/guide-utilisateur.md` | Role-based onboarding and business journeys |
-| `docs/validation.md` | Execution proof — test coverage |
-| `docs/RECETTE.md` | Acceptance testing and hardening |
+| Document (EN) | Version française | Purpose |
+|---|---|---|
+| [deployment.md](docs/en/deployment.md) | [deploiement.md](docs/deploiement.md) | Production deployment (secrets, install order, integrations, TLS, upgrades) |
+| [operations.md](docs/en/operations.md) | [exploitation.md](docs/exploitation.md) | Day-2 operations (catalog sync, backup, journal verification, incident response, crypto-shredding) |
+| [runbook-vault.md](docs/en/runbook-vault.md) | [runbook-vault.md](docs/runbook-vault.md) | Vault in detail (unsealing, KEK rotation, crypto-shredding) |
+| [user-guide.md](docs/en/user-guide.md) | [guide-utilisateur.md](docs/guide-utilisateur.md) | Role-based onboarding and business journeys |
+| [validation.md](docs/en/validation.md) | [validation.md](docs/validation.md) | Execution proof — test coverage |
+| [ACCEPTANCE.md](docs/en/ACCEPTANCE.md) | [RECETTE.md](docs/RECETTE.md) | Acceptance testing and hardening |
 
 ## License
 

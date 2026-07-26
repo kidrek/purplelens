@@ -116,8 +116,10 @@ export const api = {
   update: (entity, id, payload) => request('PUT', `/${entity}/${id}`, payload),
   remove: (entity, id) => request('DELETE', `/${entity}/${id}`),
 
-  journal: () => request('GET', '/journal'),
+  journal: (params = '') => request('GET', '/journal' + params),
+  journalStats: () => request('GET', '/journal/stats'),
   journalVerify: () => request('GET', '/journal/verify'),
+  journalExport: (qs = '') => request('GET', '/journal/export' + qs),
 
   // Profil self-service « Ma fiche » : fiche ressource (type humaine) liée au compte,
   // qui rend l'utilisateur sélectionnable comme auditeur d'un audit de son périmètre.
