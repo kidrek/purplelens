@@ -11,7 +11,7 @@ Images référencées par le [README](../../README.md) (section « Visite guidé
 | `cockpit.png` | Cockpit `/` — KPIs, couverture par tactique, posture | Pilotage |
 | `exercices.png` | Exercices Purple `/exercices` — boucle Red→Blue→Détection | Pilotage |
 | `exercice-drawer.png` | Fiche exercice (drawer) — tous les runs, progression détection, MTTD/MTTR | Pilotage |
-| `exercice-detail.png` | Détail exercice `/exercices/:id` — chaîne d'attaque vs défense | Pilotage |
+| `exercice-steps.png` | Éditeur d'étapes (drawer empilé) — chaîne d'attaque vs défense | Pilotage |
 | `audit-drawer.png` | Fiche d'audit (drawer sur `/audits`) — PTES, scénario CTI, TTPs | Pilotage |
 | `vulnerabilities.png` | Vulnérabilités `/vulnerabilities` — sévérité, CVSS, SLA | Pilotage |
 | `vuln-drawer.png` | Fiche vulnérabilité (drawer) — OWASP/CWE, enrichissement CIRCL | Pilotage |
@@ -24,7 +24,7 @@ Images référencées par le [README](../../README.md) (section « Visite guidé
 | `organisation-drawer.png` | Fiche organisation (drawer) — référent, TLP, rattachements | Connaissance |
 | `applications.png` | Applications `/applications` — inventaire testé | Connaissance |
 | `application-drawer.png` | Fiche application (drawer) — criticité, liens audits/vulns | Connaissance |
-| `ressources.png` | Ressources `/ressources` — auditeurs et moyens | Connaissance |
+| `ressources.png` | Personnes `/ressources` — intervenants et contacts | Connaissance |
 | `deliverables.png` | Livrables `/deliverables` — générateur PDF + bandeau TLP | Livrables & traçabilité |
 | `deliverable-drawer.png` | Fiche livrable (drawer) — type, TLP, téléchargement tracé | Livrables & traçabilité |
 | `evidence.png` | Coffre de preuves `/evidence` — sas, WORM, TLP | Livrables & traçabilité |

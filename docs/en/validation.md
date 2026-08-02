@@ -34,8 +34,8 @@ The full suite (`make test`) covers **35 test files (~200 tests)**. Main familie
 | WORM bucket                 | `test_worm_bucket.py`            | Object Lock (COMPLIANCE) required on evidence and anchor buckets. |
 | Derived audit actions       | `test_audit_actions.py`          | Scenario → PTES action derivation (tactic → phase mapping, deduplication, idempotence). |
 | Engagement block            | `test_engagement_defaults.py`    | Server-side pre-fill of the 18 keys (parity with the drawer). |
-| "My card" (profile)         | `test_profile_resource.py`       | Upsert of the account-linked resource card; scope enforcement. |
-| Per-view analytics          | `test_organisations_analytics.py` · `test_ressources_analytics.py` | Server aggregates for the KPI bands (organizations, resources), filters included. |
+| "My card" (profile)         | `test_profile_resource.py`       | Upsert of the account-linked person card; scope enforcement. |
+| Per-view analytics          | `test_organisations_analytics.py` · `test_ressources_analytics.py` | Server aggregates for the KPI bands (organizations, people), filters included. |
 
 ## Complementary manual proofs
 

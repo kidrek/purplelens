@@ -11,9 +11,12 @@ const routes = [
   { path: '/applications', name: 'applications', component: () => import('../views/ApplicationsView.vue') },
   { path: '/ressources', name: 'ressources', component: () => import('../views/RessourcesView.vue') },
   { path: '/audits', name: 'audits', component: () => import('../views/AuditsView.vue') },
-  { path: '/audits/:id', name: 'audit-detail', component: () => import('../views/AuditDetailView.vue') },
   { path: '/exercices', name: 'exercices', component: () => import('../views/ExercicesView.vue') },
-  { path: '/exercices/:id', name: 'exercice-detail', component: () => import('../views/ExerciceDetailView.vue') },
+  // Anciennes pages de détail plein écran : le contenu d'un audit / d'un exercice ne
+  // s'affiche plus que dans son tiroir (surface unique de consultation). Les liens
+  // profonds existants restent valides — ils ouvrent la liste avec le tiroir déplié.
+  { path: '/audits/:id', redirect: (to) => ({ path: '/audits', query: { open: to.params.id } }) },
+  { path: '/exercices/:id', redirect: (to) => ({ path: '/exercices', query: { open: to.params.id } }) },
   { path: '/vulnerabilities', name: 'vulnerabilities', component: () => import('../views/VulnerabilitiesView.vue') },
   { path: '/tickets', name: 'tickets', component: () => import('../views/TicketsView.vue') },
   { path: '/parametres', name: 'parametres', component: () => import('../views/ParametresView.vue') },

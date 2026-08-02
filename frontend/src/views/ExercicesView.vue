@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import EntityTable from '../components/EntityTable.vue'
 import ExercicesStats from '../components/ExercicesStats.vue'
@@ -21,6 +22,13 @@ const { preload: preloadOrgs, orgName } = useOrgNames()
 
 const STATUTS = ['planifie', 'en_cours', 'termine', 'suspendu', 'annule']
 const TLPS = ['RED', 'AMBER', 'GREEN', 'CLEAR']
+
+// Ancrage contextuel `?open=<id>` : ouvre directement le tiroir de l'exercice visé (lien
+// depuis un scénario, ou ancienne URL /exercices/:id). L'id est mémorisé puis l'URL
+// nettoyée, comme sur la bibliothèque.
+const route = useRoute()
+const router = useRouter()
+const openId = ref(route.query.open || null)
 
 // Références : le tableau détient les lignes ; KPI et options de filtre en dérivent.
 const tableRef = ref(null)
@@ -167,7 +175,11 @@ const extraActions = computed(() => [
   { label: t('views.exercices.download'), icon: 'download', fn: downloadReport },
 ])
 
-onMounted(() => { preloadOrgs(); loadLookups() })
+onMounted(() => {
+  preloadOrgs()
+  loadLookups()
+  if (route.query.open) router.replace({ path: '/exercices' })
+})
 </script>
 
 <template>
@@ -233,7 +245,7 @@ onMounted(() => { preloadOrgs(); loadLookups() })
     <ExercicesStats :rows="filteredRows" :runs-total="grouped ? runsTotal : null" />
     <EntityTable ref="tableRef" entity="exercices" :columns="cols" title="exercice"
                  action-variant="icon" :show-toolbar="false" :filter-fn="filterFn"
-                 :extra-actions="extraActions" :drawer="ExerciceDrawer" />
+                 :extra-actions="extraActions" :drawer="ExerciceDrawer" :open-id="openId" />
   </div>
 </template>
 

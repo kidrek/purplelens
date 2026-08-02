@@ -7,5 +7,10 @@ dist/
 .env
 *.zip
 .git*
+docker-compose.override.yml
 CLAUDE.md
 .claude
+deploy/nginx/tls
+docs/security-*
+presentation-cockpit-purple-team.*.html
+maquette.html

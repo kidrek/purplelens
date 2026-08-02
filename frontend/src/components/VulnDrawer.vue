@@ -18,8 +18,14 @@ const { t } = useI18n()
 // découverte, description, impact métier, exploitabilité, OWASP, CVE + enrichissement
 // CIRCL (CPE/EPSS/KEV/SSVC), CVSS, techniques ATT&CK, recommandations (+ D3FEND auto,
 // calculé serveur), et un rappel des référentiels utilisés.
-const props = defineProps({ vuln: { type: Object, required: true } })
-const emit = defineEmits(['close', 'edit', 'saved', 'manual-enrich'])
+// `readonly` : rendu en panneau compagnon (cf. composables/useDrawerPair.js) — surface de
+// consultation seule. Les commandes de mutation disparaissent et les liens sortants
+// remplacent le compagnon en place via `open-entity` au lieu de naviguer.
+const props = defineProps({
+  vuln: { type: Object, required: true },
+  readonly: { type: Boolean, default: false },
+})
+const emit = defineEmits(['close', 'edit', 'saved', 'manual-enrich', 'open-entity'])
 const { preload, refLabel, refName } = useRefNames()
 const { preload: preloadOrgs, orgName } = useOrgNames()
 const { enumLabel } = useLabels()
@@ -28,7 +34,8 @@ const full = ref(null)
 const audit = ref(null)         // audit lié (nom, pour affichage + navigation)
 const decouvreur = ref(null)    // ressource découvreur résolue (nom, rôle)
 const applications = ref([])    // applications de l'audit lié, résolues (nom)
-const enrichment = ref(null)    // détail brut CIRCL (CPE/CAPEC/références/produits)
+const enrichment = ref(null)    // enrichissement VOC complet (EPSS/KEV/SSVC/VEX + brut CIRCL)
+const slaOverdue = ref(false)   // état SLA dérivé côté serveur (même règle que la liste)
 const circlBusy = ref(false)
 const circlMsg = ref(null)
 const corpusOpen = ref(false) // "Corpus" (DA §4.6) : ouvre corp-voc-cycle en overlay
@@ -51,12 +58,18 @@ onMounted(async () => {
   try {
     const r = await api.get(`/vulnerabilities/${props.vuln.id}/enrichment`)
     enrichment.value = r.enrichment
+    slaOverdue.value = !!r.sla_overdue
   } catch { enrichment.value = null }
   await loadLinks()
   await loadEvidence()
 })
 
 const v = computed(() => ({ ...(full.value || {}), ...props.vuln }))
+// Vue « enrichissement » : le tiroir peut être ouvert avec seulement { id } (tiroir
+// Personne), auquel cas `v` ne porte AUCUN champ VOC — ceux-ci ne figurent que sur les
+// lignes de /vulnerabilities-enriched, jamais sur la table vulnerability. La réponse
+// /enrichment fait donc autorité ; elle rafraîchit aussi la carte après « Enrichir via CIRCL ».
+const voc = computed(() => ({ ...v.value, ...(enrichment.value || {}) }))
 const techniques = computed(() => v.value.techniques || [])
 const d3fend = computed(() => v.value.d3fend || [])
 const cpes = computed(() => enrichment.value?.raw?.cpes || [])
@@ -158,7 +171,7 @@ async function enrichCircl() {
 
 <template>
   <DetailDrawer :title="v.titre || v.cve || 'Vulnérabilité'" subtitle="Vulnérabilité" wide @close="emit('close')">
-    <template #actions>
+    <template v-if="!readonly" #actions>
       <button class="btn slim" @click="corpusOpen = true" :title="t('corpus.more')">
         <span v-html="icons.book" style="width:14px;height:14px;display:inline-flex"></span> {{ t('corpus.more') }}
       </button>
@@ -171,9 +184,9 @@ async function enrichCircl() {
       <span v-if="v.severite" :class="['pill', 'pill-' + (SEV_TONE[String(v.severite).toLowerCase()] || 'gray')]">{{ enumLabel(v.severite) }}</span>
       <span v-if="v.statut" class="pill pill-gray">{{ enumLabel(v.statut) }}</span>
       <span v-if="v.cvss_score != null" class="pill pill-gray">CVSS {{ Number(v.cvss_score).toFixed(1) }}</span>
-      <span v-if="v.kev" class="pill pill-red">KEV<span v-if="v.kev_ransomware"> ⚠</span></span>
-      <span v-if="v.ssvc_decision" :class="['pill', 'pill-' + (SSVC_TONE[v.ssvc_decision] || 'gray')]">SSVC {{ v.ssvc_decision }}</span>
-      <span v-if="v.vex_status" class="pill pill-cyan">VEX {{ VEX_LABEL[v.vex_status] || v.vex_status }}</span>
+      <span v-if="voc.kev" class="pill pill-red">KEV<span v-if="voc.kev_ransomware"> ⚠</span></span>
+      <span v-if="voc.ssvc_decision" :class="['pill', 'pill-' + (SSVC_TONE[voc.ssvc_decision] || 'gray')]">SSVC {{ voc.ssvc_decision }}</span>
+      <span v-if="voc.vex_status" class="pill pill-cyan">VEX {{ VEX_LABEL[voc.vex_status] || voc.vex_status }}</span>
       <span v-if="v.tlp" class="pill pill-gray">TLP:{{ v.tlp }}</span>
     </div>
 
@@ -184,7 +197,11 @@ async function enrichCircl() {
         <dt>Client</dt><dd>{{ v.client_id ? orgName(v.client_id) : '—' }}</dd>
         <dt>Audit lié</dt>
         <dd>
-          <RouterLink v-if="audit" :to="`/audits/${audit.id}`" class="link">{{ audit.nom }}</RouterLink>
+          <!-- En compagnon, le lien remplace le panneau en place plutôt que de naviguer. -->
+          <a v-if="audit && readonly" class="link" role="button" tabindex="0"
+             @click="emit('open-entity', { kind: 'audit', record: { id: audit.id } })"
+             @keydown.enter.prevent="emit('open-entity', { kind: 'audit', record: { id: audit.id } })">{{ audit.nom }}</a>
+          <RouterLink v-else-if="audit" :to="`/audits?open=${audit.id}`" class="link">{{ audit.nom }}</RouterLink>
           <span v-else class="faint">Aucun audit lié.</span>
         </dd>
         <dt>Application(s)</dt>
@@ -201,7 +218,7 @@ async function enrichCircl() {
         </dd>
         <dt>Phase de découverte</dt><dd>{{ v.phase_decouverte ? enumLabel(v.phase_decouverte) : '—' }}</dd>
         <dt>SLA</dt><dd>{{ v.sla_niveau || '—' }}<span v-if="v.sla_echeance"> · échéance {{ v.sla_echeance }}</span>
-          <span v-if="v.sla_overdue" class="over"> (dépassée)</span></dd>
+          <span v-if="slaOverdue" class="over"> (dépassée)</span></dd>
       </dl>
     </section>
 
@@ -241,10 +258,10 @@ async function enrichCircl() {
         <div class="voc-head">
           <div class="voc-title">Enrichissement VOC</div>
           <div class="voc-actions">
-            <span :class="['pill', 'pill-' + (ENR_TONE[v.enrichment_status] || 'gray')]">
-              <span class="dot"></span>{{ ENR_LABEL[v.enrichment_status] || 'Non enrichie' }}
+            <span :class="['pill', 'pill-' + (ENR_TONE[voc.enrichment_status] || 'gray')]">
+              <span class="dot"></span>{{ ENR_LABEL[voc.enrichment_status] || 'Non enrichie' }}
             </span>
-            <button class="btn slim" :disabled="!v.cve || circlBusy"
+            <button v-if="!readonly" class="btn slim" :disabled="!v.cve || circlBusy"
                     :title="v.cve ? 'Enrichir via CIRCL' : 'Aucun CVE'" @click="enrichCircl">
               <span v-if="circlBusy" class="spin"></span>{{ circlBusy ? '…' : 'Enrichir via CIRCL' }}
             </button>
@@ -256,24 +273,24 @@ async function enrichCircl() {
         <div class="voc-grid">
           <div class="voc-metric">
             <div class="vm-label">EPSS</div>
-            <div class="vm-value">{{ fmtEpss(v.epss_score) }}</div>
-            <div v-if="v.epss_percentile != null" class="vm-sub">percentile {{ (v.epss_percentile * 100).toFixed(0) }}%</div>
+            <div class="vm-value">{{ fmtEpss(voc.epss_score) }}</div>
+            <div v-if="voc.epss_percentile != null" class="vm-sub">percentile {{ (voc.epss_percentile * 100).toFixed(0) }}%</div>
           </div>
           <div class="voc-metric">
             <div class="vm-label">CISA KEV</div>
-            <span v-if="v.kev" class="pill pill-red"><span class="dot"></span>Exploitée (KEV)<span v-if="v.kev_ransomware"> ⚠</span></span>
+            <span v-if="voc.kev" class="pill pill-red"><span class="dot"></span>Exploitée (KEV)<span v-if="voc.kev_ransomware"> ⚠</span></span>
             <span v-else class="pill pill-gray">Non exploitée</span>
-            <div v-if="enrichment?.kev_date_added" class="vm-sub">ajoutée le {{ enrichment.kev_date_added }}</div>
-            <div v-else-if="v.kev_due_date" class="vm-sub">échéance {{ v.kev_due_date }}</div>
+            <div v-if="voc.kev_date_added" class="vm-sub">ajoutée le {{ voc.kev_date_added }}</div>
+            <div v-else-if="voc.kev_due_date" class="vm-sub">échéance {{ voc.kev_due_date }}</div>
           </div>
           <div class="voc-metric">
             <div class="vm-label">SSVC <span class="info-dot" title="Stakeholder-Specific Vulnerability Categorization — décision de remédiation calculée (CVSS + KEV + EPSS).">ⓘ</span></div>
-            <span v-if="v.ssvc_decision" :class="['pill', 'pill-' + (SSVC_TONE[v.ssvc_decision] || 'gray')]">{{ v.ssvc_decision }}</span>
+            <span v-if="voc.ssvc_decision" :class="['pill', 'pill-' + (SSVC_TONE[voc.ssvc_decision] || 'gray')]">{{ voc.ssvc_decision }}</span>
             <span v-else class="faint">—</span>
           </div>
           <div class="voc-metric">
             <div class="vm-label">VEX</div>
-            <span v-if="v.vex_status" :class="['pill', 'pill-' + (VEX_TONE[v.vex_status] || 'gray')]">{{ VEX_LABEL[v.vex_status] || v.vex_status }}</span>
+            <span v-if="voc.vex_status" :class="['pill', 'pill-' + (VEX_TONE[voc.vex_status] || 'gray')]">{{ VEX_LABEL[voc.vex_status] || voc.vex_status }}</span>
             <span v-else class="faint">—</span>
           </div>
         </div>
@@ -281,7 +298,7 @@ async function enrichCircl() {
           <span class="sub-lbl">CPE :</span>
           <span v-for="c in cpes" :key="c" class="chip mono">{{ c }}</span>
         </div>
-        <div v-if="v.enrichment_source" class="voc-source">Source : {{ v.enrichment_source }}</div>
+        <div v-if="voc.enrichment_source" class="voc-source">Source : {{ voc.enrichment_source }}</div>
       </div>
     </section>
 
@@ -310,7 +327,7 @@ async function enrichCircl() {
     <section class="sec">
       <div class="evi-head">
         <div class="sec-t sec-t-inline">{{ t('sec.evidence') }}</div>
-        <button v-if="full?.audit_id" class="btn slim" @click="showUploader = !showUploader">
+        <button v-if="full?.audit_id && !readonly" class="btn slim" @click="showUploader = !showUploader">
           {{ showUploader ? t('common.close') : t('upload.attach') }}
         </button>
       </div>
@@ -392,8 +409,11 @@ async function enrichCircl() {
 .mono{font-family:var(--font-data);font-size:12.5px} .over{color:var(--red)}
 .link{color:var(--violet-accent);text-decoration:none;cursor:pointer}
 .link:hover{text-decoration:underline}
-.chip{display:inline-block;background:var(--c-violet-bg);border:1px solid var(--c-violet-bd);color:var(--c-violet-tx);
-  border-radius:var(--r-pill);padding:1px 8px;font-size:11.5px;font-family:var(--font-data);margin:0 4px 4px 0}
+/* Géométrie du .chip normatif (base.css §0.3) : la hauteur explicite neutralise le
+   align-items:stretch hérité des conteneurs flex, qui calait le texte en haut de la puce. */
+.chip{display:inline-flex;align-items:center;height:22px;padding:0 9px;line-height:1;white-space:nowrap;
+  background:var(--c-violet-bg);border:1px solid var(--c-violet-bd);color:var(--c-violet-tx);
+  border-radius:var(--r-pill);font-size:11.5px;font-family:var(--font-data);margin:0 4px 4px 0}
 .chip.gray{background:var(--surface-3);border-color:var(--border-2);color:var(--muted)}
 .chip.green{background:var(--c-green-bg);border-color:var(--c-green-bd,var(--border-2));color:var(--green)}
 .chip.mono{font-family:var(--font-data)}

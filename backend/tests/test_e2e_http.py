@@ -128,6 +128,36 @@ async def test_login_contract_and_full_lifecycle():
             assert vul.get("titre", "").startswith("VULN_") or vul.get("nom", "").startswith("VULN_")
             assert vul.get("sla_niveau"), vul
 
+            # Enrichissement : le DÉTAIL doit se suffire à lui-même. Le tiroir peut être
+            # ouvert hors de la liste enrichie (tiroir Personne → { id } seul) ; sans
+            # enrichment_status ni sla_overdue ici, la carte VOC resterait vide.
+            put = await c.put(f"/api/vulnerabilities/{vul['id']}/enrichment",
+                              json={"kev": True, "epss_score": 0.9})
+            assert put.status_code == 200, put.text
+            enr = (await c.get(f"/api/vulnerabilities/{vul['id']}/enrichment")).json()
+            assert isinstance(enr.get("sla_overdue"), bool), enr
+            e = enr["enrichment"]
+            assert e["enrichment_status"] == "manual", e
+            assert e["kev"] is True and e["ssvc_decision"] == "Act", e
+
+            # Contrat de parité liste ↔ détail : le tiroir de vulnérabilité s'ouvre soit
+            # depuis /vulnerabilities (ligne enrichie passée en prop), soit depuis un autre
+            # tiroir avec le seul id (tiroir Personne), auquel cas il ne dispose QUE de
+            # GET /vulnerabilities/{id} + GET /vulnerabilities/{id}/enrichment. Ces deux
+            # appels doivent donc couvrir tout ce que la liste expose : une colonne ajoutée
+            # à vulnerability_enrichment et publiée seulement par /vulnerabilities-enriched
+            # viderait silencieusement le tiroir ouvert depuis une fiche Personne.
+            listed = [r for r in _items(await c.get("/api/vulnerabilities-enriched"))
+                      if r["id"] == vul["id"]]
+            assert len(listed) == 1, "vulnérabilité absente de la liste enrichie"
+            detail = (await c.get(f"/api/vulnerabilities/{vul['id']}")).json()
+            available = set(detail) | set(enr) | set(e or {})
+            missing = set(listed[0]) - available
+            assert not missing, (
+                f"clés exposées par /vulnerabilities-enriched mais introuvables via le "
+                f"détail + /enrichment : {sorted(missing)}"
+            )
+
             # Actions d'audit + filtrage par audit_id.
             await c.post("/api/audit_actions", json={
                 "client_id": cid, "audit_id": aud["id"], "ptes_phase": "exploitation",

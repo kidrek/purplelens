@@ -31,7 +31,7 @@ rotation).
 | Role       | Main purpose |
 |------------|--------------|
 | `admin`    | Administration, account management, broad CRUD (journal is **read-only**, never the encryption keys) |
-| `manager`  | Steering and validation; read-only on Resources/Applications/Actions (D6) |
+| `manager`  | Steering and validation; read-only on People/Applications/Actions (D6) |
 | `ciso`     | Validation of vulnerabilities and tickets, visibility over their scope |
 | `auditeur` | Running audits, depositing evidence |
 | `voc`      | Vulnerability management (Vulnerability Operations) |
@@ -62,7 +62,7 @@ computed server-side with the same filters as the table.
 - **Applications**: application inventory (criticality, exposure, business value) with
   consolidated posture — linked vulnerabilities, audit coverage; an application's side
   panel is a dedicated mini-cockpit.
-- **Resources**: human contributors (auditor/SOC/CISO… role, skills) — selectable as
+- **People**: team members and contacts (auditor/SOC/CISO… role, skills) — selectable as
   auditors on audits.
 - **Audits**: engagements (auto reference `TYPE_YYYYMM-NN_CLIENT_APP`, e.g.
   `PEN_202602-01_ACME_PORTAIL`), category, test type, PTES milestones, status,
@@ -74,8 +74,8 @@ computed server-side with the same filters as the table.
   *runs*, per-attack-step verdicts (prevented / alerted / logged / no telemetry / not
   tested), detection (MTTD) and response (MTTR) delays computed from the recorded
   timestamps. The list groups runs by audit; the exercise panel shows detection
-  progressing run over run, and the full-page detail view (`/exercices/:id`) puts the
-  attack chain and the defensive observations side by side.
+  progressing run over run, and its step editor puts the attack chain and the defensive
+  observations side by side.
 - **Vulnerabilities**: CVE/CWE, CVSS score, SLA level and deadline computed
   automatically, **D3FEND countermeasures derived from the ATT&CK techniques**,
   validation by the CISO/Manager; on-demand CIRCL enrichment (EPSS, KEV, SSVC).
@@ -164,7 +164,7 @@ frozen in the server-side matrix, never configurable at runtime.
 ## My account — "My card"
 
 The **My account** page lets you enroll MFA (TOTP) and maintain your **auditor card**
-("Ma fiche"): a resource card linked to your account, per organization of your scope.
+("Ma fiche"): a person card linked to your account, per organization of your scope.
 Once created, you become selectable as an auditor on an audit — without waiting for a
 manager to create the card for you.
 

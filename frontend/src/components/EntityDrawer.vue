@@ -102,8 +102,10 @@ function catalogFor(f) {
 .slim{padding:3px 9px;font-size:11.5px}
 .dl{display:grid;grid-template-columns:150px 1fr;gap:9px 14px;margin:0;font-size:13px}
 .dl dt{color:var(--muted)} .dl dd{margin:0;color:var(--text);word-break:break-word}
-.chip{display:inline-block;background:var(--surface-3);border:1px solid var(--border-2);border-radius:var(--r-pill);
-  padding:1px 8px;font-size:11.5px;margin:0 4px 4px 0}
+/* Géométrie du .chip normatif (base.css §0.3) : centre le texte quels que soient les jambages. */
+.chip{display:inline-flex;align-items:center;height:22px;padding:0 9px;line-height:1;white-space:nowrap;
+  background:var(--surface-3);border:1px solid var(--border-2);border-radius:var(--r-pill);
+  font-size:11.5px;margin:0 4px 4px 0}
 .prose{white-space:pre-wrap;line-height:1.5}
 .empty{color:var(--faint);font-size:13px}
 </style>

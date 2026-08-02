@@ -72,7 +72,7 @@ async def list_enriched(ctx: SecurityContext = Depends(require("vulnerabilities"
         rows = (await s.execute(text(
             """
             SELECT v.id, v.client_id, v.audit_id, v.titre, v.cve, v.cwe, v.severite, v.cvss_score,
-                   v.statut, v.sla_niveau, v.sla_echeance, v.tlp, v.created_at,
+                   v.statut, v.decouvreur_id, v.sla_niveau, v.sla_echeance, v.tlp, v.created_at,
                    COALESCE(a.applications, v.applications) AS applications,
                    e.kev, e.kev_ransomware, e.kev_due_date,
                    e.epss_score, e.epss_percentile, e.ssvc_decision, e.vex_status,
@@ -91,13 +91,11 @@ async def list_enriched(ctx: SecurityContext = Depends(require("vulnerabilities"
         d["id"] = str(r["id"])
         d["client_id"] = str(r["client_id"])
         d["audit_id"] = str(r["audit_id"]) if r["audit_id"] else None
+        # Exposé pour le rapprochement « vulnérabilités découvertes par une personne »
+        # (tiroir Personne) : sans cette clé, le filtre côté client ne matche jamais.
+        d["decouvreur_id"] = str(r["decouvreur_id"]) if r["decouvreur_id"] else None
         d["applications"] = [str(a) for a in (r["applications"] or [])]
-        # État SLA : en dépassement si échéance passée et vuln non close.
-        overdue = bool(
-            r["sla_echeance"] and str(r["statut"]) not in _CLOSED
-            and r["sla_echeance"].isoformat() < _today()
-        )
-        d["sla_overdue"] = overdue
+        d["sla_overdue"] = _sla_overdue(r["sla_echeance"], r["statut"])
         d["created_at"] = r["created_at"].isoformat() if r["created_at"] else None
         for k in ("sla_echeance", "kev_due_date"):
             d[k] = r[k].isoformat() if r[k] else None
@@ -111,6 +109,17 @@ async def list_enriched(ctx: SecurityContext = Depends(require("vulnerabilities"
 def _today() -> str:
     from datetime import UTC, datetime
     return datetime.now(UTC).date().isoformat()
+
+
+def _sla_overdue(echeance, statut) -> bool:
+    """État SLA : en dépassement si échéance passée et vulnérabilité non close.
+
+    Partagé par la liste enrichie et le détail : le tiroir peut être ouvert sans passer
+    par la liste (tiroir Personne), il doit donc obtenir le même verdict du serveur.
+    """
+    return bool(
+        echeance and str(statut) not in _CLOSED and echeance.isoformat() < _today()
+    )
 
 
 class EnrichmentIn(BaseModel):
@@ -132,18 +141,25 @@ async def get_enrichment(
     async with rls_session(
         user_id=ctx.user_id, role=ctx.role, client_scope=ctx.client_scope
     ) as s:
-        # La vuln doit être visible (RLS) ; sinon 404 net.
+        # La vuln doit être visible (RLS) ; sinon 404 net. On récupère aussi de quoi
+        # dériver l'état SLA : ce détail est la seule source du tiroir quand il est
+        # ouvert hors de la liste enrichie (tiroir Personne → { id } seul).
         v = (await s.execute(text(
-            "SELECT cvss_score FROM vulnerability WHERE id = :i AND deleted_at IS NULL"
+            "SELECT cvss_score, sla_echeance, statut FROM vulnerability "
+            "WHERE id = :i AND deleted_at IS NULL"
         ), {"i": str(vuln_id)})).first()
         if v is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, detail="not_found")
         row = (await s.execute(text(
             "SELECT kev, kev_ransomware, kev_date_added, kev_due_date, epss_score, "
             "epss_percentile, epss_date, ssvc_decision, vex_status, enriched_at, "
-            "enrichment_source, raw FROM vulnerability_enrichment WHERE vulnerability_id = :i"
+            "enrichment_status, enrichment_source, raw "
+            "FROM vulnerability_enrichment WHERE vulnerability_id = :i"
         ), {"i": str(vuln_id)})).mappings().first()
-    return {"enrichment": dict(row) if row else None}
+    return {
+        "enrichment": dict(row) if row else None,
+        "sla_overdue": _sla_overdue(v.sla_echeance, v.statut),
+    }
 
 
 @router.put("/vulnerabilities/{vuln_id}/enrichment")

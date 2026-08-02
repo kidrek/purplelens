@@ -13,7 +13,7 @@
     "journal": "Journal",
     "admin": "Administration",
     "applications": "Applications",
-    "ressources": "Ressources",
+    "ressources": "Personnes",
     "tickets": "Tickets détection",
     "attack-matrix": "Matrice ATT&CK",
     "deliverables": "Livrables",
@@ -56,7 +56,9 @@
     "all_clients": "Tous les clients",
     "yes": "Oui",
     "no": "Non",
-    "none": "Aucune donnée renseignée."
+    "none": "Aucune donnée renseignée.",
+    "sort_hint": "Trier sur cette colonne (3e clic : ordre par défaut)",
+    "truncated": "{shown} lignes affichées sur {total} — le tri et les filtres ne portent que sur ces lignes."
   },
   "evidence": {
     "title": "Coffre de preuves",
@@ -536,7 +538,7 @@
       "subtitle": "Cartographie des entités du périmètre — clients audités, prestataires et entités internes.",
       "search_ph": "Rechercher nom, secteur…",
       "note": {
-        "lead": "Chaque organisation constitue une frontière de cloisonnement : applications, ressources, audits et vulnérabilités lui sont rattachés.",
+        "lead": "Chaque organisation constitue une frontière de cloisonnement : applications, personnes, audits et vulnérabilités lui sont rattachés.",
         "clients_label": "Clients",
         "clients_text": "— entités pour le compte desquelles les audits sont réalisés.",
         "autres_label": "Prestataires & internes",
@@ -613,8 +615,8 @@
     },
     "ressources": {
       "eyebrow": "Périmètre",
-      "title": "Ressources",
-      "subtitle": "Cartographie des effectifs et actifs par organisation.",
+      "title": "Personnes",
+      "subtitle": "Intervenants et contacts des organisations du périmètre.",
       "search_ph": "Rechercher nom, contact…",
       "note": {
         "lead": "Cette page réunit les personnes impliquées dans les audits, de part et d'autre :",
@@ -630,7 +632,7 @@
       "filter_org_ph": "Rechercher une organisation…",
       "filter_role_ph": "Rechercher un rôle…",
       "kpi": {
-        "ressources": "Ressources",
+        "ressources": "Personnes",
         "ressources_foot": "toutes catégories",
         "orgs": "Organisations couvertes",
         "orgs_foot": "{pct} % du périmètre",
@@ -638,12 +640,24 @@
         "renforcer_foot": "{roles} (≤ {seuil})",
         "renforcer_ok": "équipe équilibrée"
       },
-      "repartition": {
-        "title": "Répartition des ressources",
-        "desc": "Effectif par catégorie de ressource et couverture des rôles de l'équipe Purple. Les rôles sous-dotés sont signalés en ambre.",
-        "resume": "{humaines} humaines · {n} à renforcer",
-        "par_type": "Par type · part du parc",
-        "par_role": "Par rôle · effectif (part)"
+      "drawer": {
+        "subtitle": "Personne",
+        "linked_account": "Compte lié",
+        "unset": "Non renseigné",
+        "tile_audits": "Audits",
+        "tile_vulns": "Vulnérabilités",
+        "tile_exercices": "Exercices",
+        "sec_contact": "Contact",
+        "sec_competences": "Compétences",
+        "no_competences": "Aucune compétence renseignée pour cette personne.",
+        "suggested": "Suggérées pour le rôle {role} :",
+        "sec_audits": "Audits — auditeur assigné ({n})",
+        "no_audits": "Cette personne n'est auditrice d'aucun audit pour l'instant.",
+        "more_audits": "et {n} autre(s) — affinez depuis la page Audits",
+        "sec_vulns": "Vulnérabilités découvertes ({n})",
+        "no_vulns": "Aucune vulnérabilité découverte par cette personne pour l'instant.",
+        "more_vulns": "et {n} autre(s) — affinez depuis la page Vulnérabilités",
+        "sec_exercices": "Exercices Purple rattachés ({n})"
       }
     },
     "scenarios": {

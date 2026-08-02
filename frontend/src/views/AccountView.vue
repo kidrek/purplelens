@@ -145,7 +145,7 @@ function onFicheSaved() {
     <div class="panel">
       <h3>Ma fiche auditeur</h3>
       <p class="muted">
-        Déclarez-vous comme ressource d'une organisation de votre périmètre pour pouvoir
+        Déclarez-vous parmi les personnes d'une organisation de votre périmètre pour pouvoir
         vous sélectionner comme auditeur de ses audits. Vos compétences alimentent la
         lettre d'engagement.
       </p>

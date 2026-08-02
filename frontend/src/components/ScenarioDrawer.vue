@@ -236,14 +236,14 @@ async function copyStix() {
         <div class="ctx-block">
           <div class="ctx-label">Audits utilisant ce scénario</div>
           <div v-if="usage?.audits?.length" class="ctx-boxes">
-            <RouterLink v-for="a in usage.audits" :key="a.id" :to="`/audits/${a.id}`" class="ctx-box link">{{ a.nom }}</RouterLink>
+            <RouterLink v-for="a in usage.audits" :key="a.id" :to="`/audits?open=${a.id}`" class="ctx-box link">{{ a.nom }}</RouterLink>
           </div>
           <div v-else class="usage-empty">Ce scénario n'est référencé par aucun audit pour l'instant. Rattachez-le lors du cadrage d'un audit.</div>
         </div>
         <div v-if="usage?.exercices?.length" class="ctx-block">
           <div class="ctx-label">Exercices Purple</div>
           <div class="ctx-boxes">
-            <RouterLink v-for="ex in usage.exercices" :key="ex.id" :to="`/exercices/${ex.id}`" class="ctx-box link">{{ ex.nom }}</RouterLink>
+            <RouterLink v-for="ex in usage.exercices" :key="ex.id" :to="`/exercices?open=${ex.id}`" class="ctx-box link">{{ ex.nom }}</RouterLink>
           </div>
         </div>
       </div>

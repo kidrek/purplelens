@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import EntityTable from '../components/EntityTable.vue'
 import RefacSelect from '../components/RefacSelect.vue'
 import RessourcesStats from '../components/RessourcesStats.vue'
+import RessourceDrawer from '../components/RessourceDrawer.vue'
 import { useI18n } from 'vue-i18n'
 import { useLabels } from '../composables/useLabels'
 import { fieldsFor } from '../fields'
@@ -123,7 +124,7 @@ onMounted(async () => {
       </div>
     </div>
     <RessourcesStats ref="statsRef" :f-orgs="fOrgs" :f-types="fTypes" :f-roles="fRoles" />
-    <EntityTable ref="tableRef" entity="ressources" :columns="cols" title="ressource" action-variant="icon" :show-toolbar="false" :filter-fn="filterFn" @changed="statsRef?.reload()" />
+    <EntityTable ref="tableRef" entity="ressources" :columns="cols" title="personne" create-title="Nouvelle personne" edit-title="Modifier la personne" action-variant="icon" :show-toolbar="false" :filter-fn="filterFn" :drawer="RessourceDrawer" @changed="statsRef?.reload()" />
   </div>
 </template>
 

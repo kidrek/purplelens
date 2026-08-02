@@ -3,7 +3,7 @@
 🇫🇷 [Version française](README.fr.md)
 
 Multi-tenant platform for running a Purple Team (coordinated offensive and defensive
-cybersecurity). It manages the full lifecycle: organizations, applications, resources,
+cybersecurity). It manages the full lifecycle: organizations, applications, people,
 threat scenarios, audits, Purple exercises, attack chains, defensive observations,
 vulnerabilities, detection tickets, deliverables — and an **end-to-end encrypted
 evidence subsystem**.
@@ -54,9 +54,9 @@ on-the-fly creation of remediation tickets.*
 audit — detection progressing run over run, per-technique verdicts, MTTD/MTTR
 indicators and steps turned "covered" by a closed detection ticket.*
 
-![Purple exercise detail page](docs/img/exercice-detail.png)
+![Purple exercise step editor](docs/img/exercice-steps.png)
 
-*The full-page exercise view (`/exercices/:id`): the attack chain replayed step by
+*The step editor, stacked on the exercise card: the attack chain replayed step by
 step against the defensive response — verdict, detection and response timestamps, and
 the Blue Team's observations for each technique.*
 
@@ -111,11 +111,11 @@ intelligence and exercise.*
 | | |
 |---|---|
 | ![Organization card](docs/img/organisation-drawer.png) | ![Application card](docs/img/application-drawer.png) |
-| Organization card: contact, default TLP and attachments (applications, audits, resources). | Application card: criticality, environment and links to the perimeter's audits and vulnerabilities. |
+| Organization card: contact, default TLP and attachments (applications, audits, people). | Application card: criticality, environment and links to the perimeter's audits and vulnerabilities. |
 
-![Resources](docs/img/ressources.png)
+![People](docs/img/ressources.png)
 
-*Resources: auditors and assets, attached to organizations and selectable in
+*People: team members and contacts, attached to organizations and selectable in
 engagements.*
 
 ### Deliverables & traceability
@@ -179,10 +179,11 @@ creation and deactivation.*
 ### Not pictured
 
 - **⌘K command palette** — free-text navigation across views and methodology articles.
-- **Full-page audit detail route** (`/audits/:id`): PTES actions grouped by phase,
-  milestones, deliverable generator anchored on the audit.
+- **Deep links into a card** (`/audits?open=<id>`, `/exercices?open=<id>`) — a link from
+  a vulnerability, an organization or a scenario opens the target card directly; the
+  drawer is the only surface where an audit's or an exercise's content is displayed.
 - **Per-view KPI bands** — every list view (audits, exercises, vulnerabilities,
-  organizations, resources, scenarios, journal) carries server-computed analytics that
+  organizations, people, scenarios, journal) carries server-computed analytics that
   honor the same filters as the table.
 - **Server-driven navigation** — menu entries only appear when the server grants read
   access to the underlying entity (`readable_entities` from `/whoami`).
@@ -323,7 +324,7 @@ docs/               FR docs + docs/en/ mirrors (user guide, deployment, operatio
 D1 Python/FastAPI/SQLAlchemy async · D2 Vue 3 + reuse of design tokens ·
 D3 Docker Compose (Kubernetes out of scope) · D4 role managed in the product (the IdP
 only authenticates) · D5 global MFA for operational roles + step-up on high-risk
-actions · D6 read-only Manager rights on Resources/Applications/Actions · D7 embedded
+actions · D6 read-only Manager rights on People/Applications/Actions · D7 embedded
 Keycloak (OIDC + PKCE) · D8 client-side over-encryption deferred.
 
 ## Documentation

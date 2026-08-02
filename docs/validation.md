@@ -35,8 +35,8 @@ principales (liste non exhaustive — le comptage exact évolue avec le code) :
 | Bucket WORM                  | `test_worm_bucket.py`            | Object Lock (COMPLIANCE) exigé sur les buckets de preuves et d'ancres. |
 | Actions d'audit dérivées     | `test_audit_actions.py`          | Dérivation scénario → actions PTES (mapping tactique → phase, dédoublonnage, idempotence). |
 | Bloc engagement              | `test_engagement_defaults.py`    | Pré-remplissage serveur des 18 clés (parité avec le drawer). |
-| « Ma fiche » (profil)        | `test_profile_resource.py`       | Upsert de la fiche ressource liée au compte ; bornage au périmètre. |
-| Analytics par vue            | `test_organisations_analytics.py` · `test_ressources_analytics.py` | Agrégats serveur des bandeaux KPI (organisations, ressources), filtres compris. |
+| « Ma fiche » (profil)        | `test_profile_resource.py`       | Upsert de la fiche personne liée au compte ; bornage au périmètre. |
+| Analytics par vue            | `test_organisations_analytics.py` · `test_ressources_analytics.py` | Agrégats serveur des bandeaux KPI (organisations, personnes), filtres compris. |
 
 ## Preuves manuelles complémentaires
 

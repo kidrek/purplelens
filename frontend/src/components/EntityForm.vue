@@ -32,8 +32,12 @@ const props = defineProps({
   // du CRUD générique api.create/update (ex. « Ma fiche » → PUT /profile/resource).
   // Le schéma de champs et le rendu restent réutilisés tels quels.
   submitOverride: { type: Function, default: null },
+  // Ajoute un bouton « Supprimer » au pied du formulaire en édition : le parent reçoit
+  // l'évènement `delete` et décide (confirmation + api.remove), le serveur revérifie.
+  // Opt-in : sans cette prop, le pied de page reste Annuler / Enregistrer.
+  deletable: { type: Boolean, default: false },
 })
-const emit = defineEmits(['saved', 'close'])
+const emit = defineEmits(['saved', 'close', 'delete'])
 const { t } = useI18n()
 const { fieldLabel, enumLabel } = useLabels()
 
@@ -387,6 +391,9 @@ function onDrawerClose() {
         <button class="btn btn-primary" @click="emit('saved')">{{ t('common.close') }}</button>
       </template>
       <template v-else>
+        <button v-if="isEdit && deletable" class="btn danger" :disabled="busy" @click="emit('delete')">
+          {{ t('common.delete') }}
+        </button>
         <button class="btn" @click="emit('close')">{{ t('common.cancel') }}</button>
         <button class="btn btn-primary" :disabled="busy" @click="submit">
           {{ busy ? '…' : (isEdit ? t('common.save') : t('common.create')) }}
@@ -418,6 +425,8 @@ function onDrawerClose() {
 .icon-btn .spin{width:11px;height:11px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;display:inline-block;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media (max-width:560px){ .grid{grid-template-columns:1fr} }
+/* Suppression (opt-in) : poussée à gauche du pied de page, loin d'« Enregistrer ». */
+.danger{color:var(--red);border-color:var(--c-red-bd);margin-right:auto}
 .evi-phase{display:flex;flex-direction:column;gap:12px}
 .evi-ok{color:var(--c-green-tx);font-size:13px;margin:0}
 .evi-count{color:var(--muted);font-size:12.5px;margin:0}

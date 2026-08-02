@@ -13,6 +13,11 @@ export const credTone = (v) => (v <= 2 ? 'green' : v === 3 ? 'cyan' : v === 4 ? 
 // annulé (neutre). Source unique partagée liste + tiroir.
 export const STATUT_EXO_TONE = { planifie: 'blue', en_cours: 'violet', termine: 'green', suspendu: 'amber', annule: 'gray' }
 
+// Sévérité d'une vulnérabilité -> ton de pill. `elevee` est un synonyme historique de
+// `haute` présent dans d'anciens imports. Source unique partagée par les tiroirs qui
+// listent des vulnérabilités (Organisation, Personne).
+export const SEVERITE_TONE = { critique: 'red', haute: 'amber', elevee: 'amber', moyenne: 'cyan', basse: 'green' }
+
 // Verdict défensif d'une étape (spec §2) -> ton de pill. Source unique partagée entre le
 // tiroir d'exercice et la page de détail /exercices/:id. « prévenu » et « alerté » comptent
 // tous deux comme une détection réussie (vert) — cohérent avec l'agrégation `detected` et la

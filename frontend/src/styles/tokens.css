@@ -8,6 +8,9 @@
   --r-panel:14px; --r-card:9px; --r-pill:7px; --r-mini:6px;
   --gap:12px; --gap-lg:16px; --pad-panel:18px;
   --topbar-h:56px; --sidebar-w:188px;
+  /* Largeur d'un panneau quand deux tiroirs sont appairés côte à côte (cf.
+     composables/useDrawerPair.js). Deux fois 46vw laissent le voile visible à gauche. */
+  --drawer-pair-w:min(46vw,780px);
   --t-fast:120ms; --t:200ms; --ease:cubic-bezier(.4,0,.2,1);
 }
 

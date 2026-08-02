@@ -6,7 +6,7 @@ Chaque entrée décrit :
   - client_field     : la colonne portant le cloisonnement (None si entité globale/CTI)
   - writable         : champs acceptés en création/édition (liste blanche stricte)
   - auto             : champs calculés serveur (jamais fournis par le client)
-  - order_by         : tri par défaut
+  - order_by         : tri par défaut (tuple de colonnes, préfixe « - » = décroissant)
 
 Le cahier §2 impose que certains champs soient *dérivés serveur* (noms auto-générés,
 SLA, séquences). On ne les expose donc pas en écriture : la liste blanche `writable`
@@ -42,7 +42,8 @@ class EntitySpec:
     client_field: str | None          # colonne de cloisonnement (RLS + porte 4)
     writable: tuple[str, ...]         # champs acceptés en écriture
     auto: tuple[str, ...] = field(default_factory=tuple)  # champs dérivés serveur
-    order_by: str = "created_at"
+    # Tri par défaut : colonnes appliquées dans l'ordre, préfixe « - » = décroissant.
+    order_by: tuple[str, ...] = ("created_at",)
     # Colonnes (clés étrangères) sur lesquelles la liste peut être filtrée via query.
     # Liste blanche stricte : on ne filtre jamais sur une colonne arbitraire.
     filterable: tuple[str, ...] = field(default_factory=tuple)
@@ -61,7 +62,7 @@ REGISTRY: dict[str, EntitySpec] = {
         "organisations", Organisation, client_field="id",
         writable=("nom", "code", "role", "secteur", "contacts", "tlp_defaut",
                   "referent_interne", "siren", "statut", "tags", "commentaires"),
-        order_by="nom",
+        order_by=("nom",),
         code_fallback=True,
     ),
     "applications": EntitySpec(
@@ -70,7 +71,7 @@ REGISTRY: dict[str, EntitySpec] = {
         writable=("client_id", "nom", "code", "version", "type", "criticite", "stack",
                   "url", "contact_metier", "statut", "exposition", "valeur_metier",
                   "tags", "tlp"),
-        order_by="nom",
+        order_by=("nom",),
         code_fallback=True,
     ),
     "ressources": EntitySpec(
@@ -78,7 +79,7 @@ REGISTRY: dict[str, EntitySpec] = {
         filterable=("organisation_id",),
         writable=("organisation_id", "nom", "type", "role", "competences",
                   "contact", "description", "tags"),
-        order_by="nom",
+        order_by=("nom",),
     ),
     "audits": EntitySpec(
         "audits", Audit, client_field="client_id",
@@ -102,14 +103,14 @@ REGISTRY: dict[str, EntitySpec] = {
         writable=("audit_id", "client_id", "ptes_phase", "statut", "date_prevue",
                   "date_reelle", "livrable", "notes"),
         filterable=("audit_id", "client_id", "ptes_phase"),
-        order_by="date_prevue",
+        order_by=("date_prevue",),
     ),
     "attack_steps": EntitySpec(
         "attack_steps", AttackStep, client_field="client_id",
         filterable=("exercise_id", "client_id"),
         writable=("exercise_id", "client_id", "ordre", "technique", "titre",
                   "horodatage", "horodatage_detection", "horodatage_reponse", "verdict"),
-        order_by="ordre",
+        order_by=("ordre",),
     ),
     "exercices": EntitySpec(
         "exercices", PurpleExercise, client_field="client_id",
@@ -148,13 +149,15 @@ REGISTRY: dict[str, EntitySpec] = {
                   "tlp", "pap", "notes"),
         # nom descriptif saisi ; reference = SCEN_{AAAAMM}-{NN} (dérivé serveur, figé)
         auto=("reference", "period", "seq"),
-        order_by="nom",
+        # Plus récent en tête : les deux composants de la référence (period + seq) et non
+        # la chaîne — un tri lexicographique placerait SCEN_202607-100 avant -99.
+        order_by=("-period", "-seq", "-created_at"),
     ),
     "scenario_steps": EntitySpec(
         "scenario_steps", ScenarioStep, client_field=None,  # rattaché au scénario (global, hors RLS)
         filterable=("scenario_id",),
         writable=("scenario_id", "ordre", "technique", "tactique", "commande", "description"),
-        order_by="ordre",
+        order_by=("ordre",),
     ),
     "deliverables": EntitySpec(
         "deliverables", Deliverable, client_field="client_id",
@@ -165,7 +168,7 @@ REGISTRY: dict[str, EntitySpec] = {
         "corpus", CorpusArticle, client_field=None,
         writable=("slug", "nature", "profils", "titre_fr", "titre_en", "contenu",
                   "controles_iso", "gabarit"),
-        order_by="slug",
+        order_by=("slug",),
     ),
 }
 

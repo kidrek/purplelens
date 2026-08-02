@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { api, ApiError } from '../api/client'
 import { useI18n } from 'vue-i18n'
 import { useLabels } from '../composables/useLabels'
@@ -10,6 +10,7 @@ import { useUiStore } from '../stores/ui'
 import { useAuthStore } from '../stores/auth'
 import { useOrgNames } from '../composables/useOrgNames'
 import { useAppNames } from '../composables/useAppNames'
+import { useTableSort } from '../composables/useTableSort'
 
 // Table générique éditable : liste /{entity} et permet créer / éditer / supprimer
 // via un formulaire piloté par le schéma (fields.js). Le serveur a déjà filtré les
@@ -20,7 +21,14 @@ const props = defineProps({
   editable: { type: Boolean, default: true },   // false => lecture seule (ex. hors droits)
   allowCreate: { type: Boolean, default: true }, // false => pas de bouton « + Nouveau » (édition/suppr. conservées)
   title: { type: String, default: '' },
-  detailRoute: { type: Function, default: null }, // (row) => '/audits/<id>' pour ouvrir un détail
+  // Titres complets du formulaire quand la concaténation « Nouveau/Modifier + title »
+  // ne s'accorde pas (ex. « Nouvelle personne »). À défaut, comportement historique.
+  createTitle: { type: String, default: '' },
+  editTitle: { type: String, default: '' },
+  // Ancrage contextuel : id de la ligne dont le tiroir de lecture doit s'ouvrir dès que
+  // la liste est chargée (lien profond `?open=<id>` venant d'une autre vue ou d'une
+  // ancienne URL de page de détail). null => aucun tiroir ouvert au montage.
+  openId: { type: String, default: null },
   // Actions personnalisées par ligne : [{ label, fn }] où fn(row) est appelé au clic.
   extraActions: { type: Array, default: () => [] },
   // Drawer sur mesure : composant recevant :record et émettant @close. À défaut,
@@ -87,9 +95,36 @@ function cellText(c, r) {
   if (c.get) { const g = c.get(r); return g == null || g === '' ? '—' : g }
   return raw != null ? enumLabel(raw) : '—'
 }
+// Taille de page demandée à l'API (maximum accepté : le tri et les filtres sont
+// client-side, ils doivent voir toutes les lignes).
+const PAGE = 500
+
 const hasAppsCol = computed(() => props.columns.some((c) => c.apps))
 const rows = ref([])
+const total = ref(0)      // total serveur : sert à signaler une liste tronquée
+const truncated = computed(() => total.value > rows.value.length)
 const loading = ref(true)
+
+// --- Tri par en-têtes cliquables (préférence mémorisée par entité). ---
+const { sortKey, sortDir, toggleSort, ariaSort, applySort } = useTableSort(
+  computed(() => props.entity),
+  () => props.columns.map((c) => c.key),
+  locale,
+)
+// Une colonne peut se retirer du tri via { sortable: false }.
+const isSortable = (c) => c.sortable !== false
+// Valeur de tri d'une colonne : les dates se comparent sur l'horodatage brut (le texte
+// affiché JJ/MM/AAAA trierait par jour), les identifiants résolus (organisation,
+// application) et les colonnes dérivées sur le libellé effectivement affiché.
+function sortValue(c, r) {
+  if (c.date || c.datetime) { const t = new Date(r[c.key]).getTime(); return Number.isNaN(t) ? null : t }
+  if (c.org) return r[c.key] ? orgName(r[c.key]) : null
+  if (c.apps) return Array.isArray(r[c.key]) && r[c.key].length ? appName(r[c.key][0]) : null
+  if (c.tlp) return r[c.key]
+  const raw = r[c.key]
+  if (typeof raw === 'number' || typeof raw === 'boolean') return raw
+  return cellText(c, r)
+}
 // Filtre de périmètre client (multi-clients) : n'affiche que les lignes du client actif,
 // uniquement pour les entités qui portent un client_id. Données déjà cloisonnées RLS.
 const detailRow = ref(null) // enregistrement affiché dans le tiroir de détail
@@ -110,7 +145,10 @@ const visibleRows = computed(() => {
     out = out.filter((r) => r.client_id === ui.activeClient)
   }
   if (props.filterFn) out = out.filter((r) => props.filterFn(r))
-  return out
+  // Tri appliqué en dernier, sur une copie : sans colonne active, l'ordre serveur
+  // (tri par défaut du registre) est conservé tel quel.
+  const col = props.columns.find((c) => c.key === sortKey.value)
+  return col ? applySort(out, (r) => sortValue(col, r)) : out
 })
 const error = ref(null)
 const formOpen = ref(false)
@@ -123,16 +161,34 @@ async function load() {
   loading.value = true
   error.value = null
   try {
-    const data = await api.list(props.entity)
+    // Liste chargée en entier (500 = maximum accepté par l'API) : le tri par en-tête,
+    // les filtres des vues et leurs KPI portent alors sur l'ensemble des lignes et non
+    // sur une première page arbitraire. Au-delà, la troncature est signalée.
+    const data = await api.list(props.entity, `?limit=${PAGE}`)
     rows.value = Array.isArray(data) ? data : (data?.items ?? [])
+    total.value = Array.isArray(data) ? data.length : (data?.total ?? rows.value.length)
   } catch (e) {
     error.value = e instanceof ApiError && e.status === 403
       ? t('common.forbidden') : (e.message || 'Erreur')
     rows.value = []
+    total.value = 0
   } finally {
     loading.value = false
   }
+  openPending()
 }
+
+// Ouverture différée du tiroir ancré par `openId` : la ligne visée n'existe qu'une fois
+// la liste chargée. Silencieux si l'id est inconnu ou hors périmètre (le serveur a déjà
+// filtré) : la liste reste affichée, sans erreur. Consommée UNE seule fois — sinon chaque
+// rechargement (création, édition, suppression) rouvrirait le tiroir du lien d'origine.
+let openConsumed = false
+function openPending() {
+  if (!props.openId || openConsumed) return
+  const row = rows.value.find((r) => r.id === props.openId)
+  if (row) { detailRow.value = row; openConsumed = true }
+}
+watch(() => props.openId, () => { openConsumed = false; if (!loading.value) openPending() })
 
 // Par défaut, aucune réouverture de drawer : seul le handler @edit d'un drawer réarme le
 // drapeau APRÈS avoir appelé openEdit (les boutons de ligne passent aussi par openEdit).
@@ -206,7 +262,13 @@ defineExpose({ load, openCreate, openDetail, rows })
     <table v-else>
       <thead>
         <tr>
-          <th v-for="c in columns" :key="c.key" :class="{ 'col-center': c.center }">{{ colHeader(c) }}</th>
+          <th v-for="c in columns" :key="c.key"
+              :class="{ 'col-center': c.center, 'th-sort': isSortable(c) }"
+              :aria-sort="isSortable(c) ? ariaSort(c.key) : undefined"
+              :title="isSortable(c) ? t('common.sort_hint') : undefined"
+              @click="isSortable(c) && toggleSort(c.key)">
+            {{ colHeader(c) }}<span v-if="sortKey === c.key" class="sort-ind">{{ sortDir === 'asc' ? '▲' : '▼' }}</span>
+          </th>
           <th class="actions-col"></th>
         </tr>
       </thead>
@@ -245,7 +307,6 @@ defineExpose({ load, openCreate, openDetail, rows })
           </td>
           <td v-else class="actions" @click.stop>
             <button v-if="!drawer" class="btn slim" @click="detailRow = r">{{ t('common.detail') }}</button>
-            <RouterLink v-if="detailRoute && !drawer" class="btn slim" :to="detailRoute(r)">{{ t('common.open') }}</RouterLink>
             <button v-for="a in extraActions" :key="a.label" class="btn slim" @click="a.fn(r)">{{ a.label }}</button>
             <button v-if="canEdit && !drawer" class="btn slim" @click="openEdit(r)">{{ t('common.edit') }}</button>
             <button v-if="canEdit" class="btn slim danger" @click="remove(r)">{{ t('common.delete') }}</button>
@@ -254,12 +315,14 @@ defineExpose({ load, openCreate, openDetail, rows })
       </tbody>
     </table>
 
+    <p v-if="truncated" class="truncated">{{ t('common.truncated', { shown: rows.length, total }) }}</p>
+
     <EntityForm
       v-if="formOpen"
       :entity="entity"
       :fields="fields"
       :record="editing"
-      :title="(editing ? 'Modifier ' : 'Nouveau ') + (title || entity)"
+      :title="editing ? (editTitle || 'Modifier ' + (title || entity)) : (createTitle || 'Nouveau ' + (title || entity))"
       @saved="onSaved"
       @close="() => { formOpen = false; reopenAfterSave = null }"
     />
@@ -287,6 +350,10 @@ defineExpose({ load, openCreate, openDetail, rows })
 <style scoped>
 .toolbar{display:flex;justify-content:flex-end;gap:8px;margin-bottom:10px}
 .actions-col{width:1%}
+.th-sort{cursor:pointer;user-select:none;white-space:nowrap}
+.th-sort:hover{color:var(--heading)}
+.sort-ind{margin-left:5px;font-size:10.5px;color:var(--violet-accent)}
+.truncated{margin:10px 0 0;font-size:12px;color:var(--faint)}
 .actions{white-space:nowrap;display:flex;gap:6px}
 .slim{padding:4px 9px;font-size:12px}
 .danger{color:var(--red);border-color:var(--c-red-bd)}

@@ -15,10 +15,14 @@ import { useLabels } from '../composables/useLabels'
 // écritures se font sur la fiche (« Ouvrir ») ou via les formulaires dédiés.
 // Le serveur reste l'autorité : chaque appel de chargement repasse par can() + RLS,
 // et un 403 sur une sous-ressource masque simplement le panneau correspondant.
+// `readonly` : rendu en panneau compagnon (cf. composables/useDrawerPair.js) — surface de
+// consultation seule. Les commandes de mutation disparaissent et les entités listées
+// remplacent le compagnon en place via `open-entity` au lieu d'être du texte inerte.
 const props = defineProps({
   record: { type: Object, required: true },
+  readonly: { type: Boolean, default: false },
 })
-const emit = defineEmits(['close', 'edit'])
+const emit = defineEmits(['close', 'edit', 'open-entity'])
 
 const { enumLabel } = useLabels()
 const { preload, refLabel } = useRefNames()
@@ -307,7 +311,7 @@ const jalonBusy = ref(null) // phase en cours de mise à jour
 const jalonMsg = ref(null)
 
 async function cycleJalon(entry) {
-  if (jalonBusy.value) return
+  if (props.readonly || jalonBusy.value) return
   jalonMsg.value = null
   jalonBusy.value = entry.phase
   const today = new Date().toISOString().slice(0, 10)
@@ -335,6 +339,30 @@ async function cycleJalon(entry) {
   }
 }
 
+// Édition fine d'un jalon (ce que le cycle au clic ne couvre pas : dates planifiée/réelle
+// et notes) + suppression. Sur une phase non planifiée, le formulaire crée le jalon.
+// `livrable` reste masqué : hors du champ de saisie courant, mais conservé s'il existe
+// (EntityForm construit le modèle depuis le schéma complet, valeur d'origine incluse).
+const jalonForm = ref(null) // { phase, record } ou null
+const JALON_HIDDEN = ['client_id', 'audit_id', 'ptes_phase', 'livrable']
+function editJalon(entry) { jalonForm.value = { phase: entry.phase, record: entry.jalon } }
+async function onJalonSaved() {
+  jalonForm.value = null
+  milestones.value = await safeList('audit_milestones', `?audit_id=${props.record.id}`)
+}
+async function delJalon() {
+  const j = jalonForm.value?.record
+  if (!j) return
+  if (!window.confirm('Supprimer ce jalon ? Action journalisée.')) return
+  try {
+    await api.remove('audit_milestones', j.id)
+    await onJalonSaved()
+  } catch (e) {
+    window.alert(e instanceof ApiError && e.status === 403
+      ? 'Suppression refusée (droits ou cloisonnement).' : (e.message || 'Erreur.'))
+  }
+}
+
 async function downloadDeliverable(d) {
   try {
     const res = await api.get(`/deliverables/${d.id}/download`)
@@ -348,7 +376,7 @@ const fmtDate = (iso) => (iso ? String(iso).slice(0, 10) : '—')
 
 <template>
   <DetailDrawer :title="audit?.nom || 'Audit'" subtitle="audit" wide @close="emit('close')">
-    <template #actions>
+    <template v-if="!readonly" #actions>
       <button class="btn slim" @click="emit('edit', audit)">✎ Modifier</button>
     </template>
 
@@ -416,7 +444,7 @@ const fmtDate = (iso) => (iso ? String(iso).slice(0, 10) : '—')
           <span v-if="eng" :class="['pill', eng.autorisation_signee ? 'pill-green' : 'pill-red']">
             {{ eng.autorisation_signee ? 'Autorisation signée' : 'Non signée' }}</span>
           <span class="spacer" />
-          <button class="btn slim" @click="engOpen = true">{{ eng ? '✎ Modifier' : "+ Renseigner" }}</button>
+          <button v-if="!readonly" class="btn slim" @click="engOpen = true">{{ eng ? '✎ Modifier' : "+ Renseigner" }}</button>
         </div>
         <p v-if="!eng" class="faint">Aucun bloc engagement saisi.</p>
         <dl v-else class="dl">
@@ -424,8 +452,11 @@ const fmtDate = (iso) => (iso ? String(iso).slice(0, 10) : '—')
           <dd v-if="engHas('objectifs')"><ul class="ul"><li v-for="o in eng.objectifs" :key="o">{{ o }}</li></ul></dd>
           <dt v-if="engHas('perimetre_inclus') || engHas('perimetre_exclus')">Périmètre</dt>
           <dd v-if="engHas('perimetre_inclus') || engHas('perimetre_exclus')">
-            <span v-for="p in (eng.perimetre_inclus || [])" :key="'i'+p" class="chip in">{{ p }}</span>
-            <span v-for="p in (eng.perimetre_exclus || [])" :key="'e'+p" class="chip out">{{ p }}</span></dd>
+            <span v-for="p in (eng.perimetre_inclus || [])" :key="'i'+p" class="chip in" :title="p">{{ p }}</span>
+            <template v-if="engHas('perimetre_exclus')">
+              <div class="sub-lbl">Exclus</div>
+              <ul class="ul out"><li v-for="p in eng.perimetre_exclus" :key="'e'+p">{{ p }}</li></ul>
+            </template></dd>
           <dt v-if="eng.regles_engagement">Règles (RoE)</dt>
           <dd v-if="eng.regles_engagement" class="prose">{{ eng.regles_engagement }}</dd>
           <dt v-if="engHas('fenetres_test')">Fenêtres</dt>
@@ -438,7 +469,7 @@ const fmtDate = (iso) => (iso ? String(iso).slice(0, 10) : '—')
           <dd v-if="eng.sow || eng.ref_nda">{{ eng.sow || '—' }} · {{ eng.ref_nda || '—' }}</dd>
           <dt v-if="engHas('livrables_attendus')">Livrables attendus</dt>
           <dd v-if="engHas('livrables_attendus')">
-            <span v-for="l in eng.livrables_attendus" :key="l" class="chip">{{ l }}</span></dd>
+            <ul class="ul"><li v-for="l in eng.livrables_attendus" :key="l">{{ l }}</li></ul></dd>
           <dt v-if="eng.niveau_intensite">Intensité</dt><dd v-if="eng.niveau_intensite">{{ eng.niveau_intensite }}</dd>
           <dt v-if="eng.nda_objet || eng.nda_traitement">NDA</dt>
           <dd v-if="eng.nda_objet || eng.nda_traitement" class="prose">{{ eng.nda_objet || '' }}
@@ -449,18 +480,26 @@ const fmtDate = (iso) => (iso ? String(iso).slice(0, 10) : '—')
 
       <!-- Jalons PTES (bande de phases — clic = faire avancer le jalon) -->
       <section class="panel">
-        <div class="p-head">Phases PTES <span class="count">cliquer pour faire avancer</span></div>
+        <div class="p-head">Phases PTES <span v-if="!readonly" class="count">cliquer pour faire avancer</span></div>
         <p v-if="jalonMsg" class="err">{{ jalonMsg }}</p>
         <div class="ptes">
-          <button v-for="j in jalonsByPhase" :key="j.phase" type="button"
-                  :class="['ptes-step', ptesStepClass(j.jalon), { busy: jalonBusy === j.phase }]"
-                  :disabled="jalonBusy !== null"
-                  :title="j.jalon ? 'Faire avancer le jalon' : 'Planifier la phase (en cours)'"
-                  @click="cycleJalon(j)">
-            <span class="ph">{{ enumLabel(j.phase) }}</span>
-            <span class="pm">{{ j.jalon ? enumLabel(j.jalon.statut) : 'non planifié' }}</span>
-            <span class="pd"><template v-if="j.jalon && j.jalon.date_reelle"><span class="dl">date ·</span> {{ j.jalon.date_reelle }}</template></span>
-          </button>
+          <!-- En lecture seule les jalons restent affichés mais ne sont plus actionnables. -->
+          <div v-for="j in jalonsByPhase" :key="j.phase" class="ptes-cell">
+            <button type="button"
+                    :class="['ptes-step', ptesStepClass(j.jalon), { busy: jalonBusy === j.phase }]"
+                    :disabled="readonly || jalonBusy !== null"
+                    :title="readonly ? '' : (j.jalon ? 'Faire avancer le jalon' : 'Planifier la phase (en cours)')"
+                    @click="cycleJalon(j)">
+              <span class="ph">{{ enumLabel(j.phase) }}</span>
+              <span class="pm">{{ j.jalon ? enumLabel(j.jalon.statut) : 'non planifié' }}</span>
+              <span class="pd"><template v-if="j.jalon && j.jalon.date_reelle"><span class="dl">date ·</span> {{ j.jalon.date_reelle }}</template></span>
+            </button>
+            <!-- Édition fine (dates, notes) : ce que le cycle au clic ne couvre pas. -->
+            <button v-if="!readonly" type="button" class="ptes-edit"
+                    :disabled="jalonBusy !== null"
+                    :title="j.jalon ? 'Modifier le jalon' : 'Planifier le jalon (dates, notes)'"
+                    aria-label="Modifier le jalon" @click.stop="editJalon(j)">✎</button>
+          </div>
         </div>
       </section>
 
@@ -468,10 +507,10 @@ const fmtDate = (iso) => (iso ? String(iso).slice(0, 10) : '—')
       <section class="panel">
         <div class="p-head">Actions de test <span class="count">{{ actions.length }}</span>
           <span class="spacer" />
-          <button class="btn slim" @click="actionOpen = true">+ Ajouter une action</button>
+          <button v-if="!readonly" class="btn slim" @click="actionOpen = true">+ Ajouter une action</button>
         </div>
         <table v-if="actions.length" class="dense">
-          <thead><tr><th>Phase</th><th>Titre</th><th>ATT&amp;CK</th><th>Résultat</th><th class="act-col"></th></tr></thead>
+          <thead><tr><th>Phase</th><th>Titre</th><th>ATT&amp;CK</th><th>Résultat</th><th v-if="!readonly" class="act-col"></th></tr></thead>
           <tbody>
             <tr v-for="a in actions" :key="a.id">
               <td><span class="pill pill-violet">{{ enumLabel(a.ptes_phase) }}</span></td>
@@ -479,7 +518,7 @@ const fmtDate = (iso) => (iso ? String(iso).slice(0, 10) : '—')
               <td class="mono">{{ a.technique_attack ? refLabel('attack', a.technique_attack) : '—' }}</td>
               <td><span v-if="a.resultat" :class="['pill','pill-'+statutPill(a.resultat)]">{{ enumLabel(a.resultat) }}</span>
                 <span v-else class="faint">—</span></td>
-              <td class="row-act">
+              <td v-if="!readonly" class="row-act">
                 <button class="btn slim" title="Modifier" @click="editAction(a)">✎</button>
                 <button class="btn slim danger" title="Supprimer" @click="delAction(a)">Suppr.</button>
               </td>
@@ -493,12 +532,15 @@ const fmtDate = (iso) => (iso ? String(iso).slice(0, 10) : '—')
       <section class="panel">
         <div class="p-head">Vulnérabilités <span class="count">{{ vulns.length }}</span>
           <span class="spacer" />
-          <button class="btn slim" @click="vulnOpen = true">+ Ajouter une vulnérabilité</button>
+          <button v-if="!readonly" class="btn slim" @click="vulnOpen = true">+ Ajouter une vulnérabilité</button>
         </div>
         <table v-if="vulns.length" class="dense">
           <thead><tr><th>Titre</th><th>Sévérité</th><th>Statut</th><th>CVE</th></tr></thead>
           <tbody>
-            <tr v-for="v in vulns" :key="v.id">
+            <!-- En compagnon, la ligne remplace le panneau en place. `VulnDrawer` fusionne
+                 prop-par-dessus-fetch : ne transmettre que l'id, jamais la ligne de liste. -->
+            <tr v-for="v in vulns" :key="v.id" :class="{ 'row-link': readonly }"
+                @click="readonly && emit('open-entity', { kind: 'vuln', record: { id: v.id } })">
               <td>{{ v.titre || '—' }}</td>
               <td><span v-if="v.severite" :class="['pill','pill-'+sevPill(v.severite)]">{{ enumLabel(v.severite) }}</span>
                 <span v-else class="faint">—</span></td>
@@ -514,11 +556,13 @@ const fmtDate = (iso) => (iso ? String(iso).slice(0, 10) : '—')
       <section class="panel">
         <div class="p-head">Exercices Purple <span class="count">{{ exercices.length }}</span>
           <span class="spacer" />
-          <button class="btn slim" @click="exerciceOpen = true">+ Ajouter un exercice</button>
+          <button v-if="!readonly" class="btn slim" @click="exerciceOpen = true">+ Ajouter un exercice</button>
         </div>
         <table v-if="exercices.length" class="dense">
           <tbody>
-            <tr v-for="ex in exercices" :key="ex.id">
+            <!-- `ExerciceDrawer` pivote sur audit_id / client_id : transmettre l'enregistrement complet. -->
+            <tr v-for="ex in exercices" :key="ex.id" :class="{ 'row-link': readonly }"
+                @click="readonly && emit('open-entity', { kind: 'exercice', record: ex })">
               <td>{{ ex.nom }}</td><td>{{ ex.date || '—' }}</td>
               <td><span :class="['pill','pill-'+statutPill(ex.statut)]">{{ enumLabel(ex.statut) }}</span></td>
             </tr>
@@ -531,7 +575,7 @@ const fmtDate = (iso) => (iso ? String(iso).slice(0, 10) : '—')
       <section class="panel">
         <div class="p-head">Livrables <span class="count">{{ deliverables.length }}</span>
           <span class="spacer" />
-          <div class="gen-btns">
+          <div v-if="!readonly" class="gen-btns">
             <select v-model="genLangue" class="lang-sel" :disabled="genBusy !== null" title="Langue du livrable">
               <option value="fr">FR</option>
               <option value="en">EN</option>
@@ -560,6 +604,20 @@ const fmtDate = (iso) => (iso ? String(iso).slice(0, 10) : '—')
 
     <EngagementForm v-if="engOpen" :audit="audit" :defaults="engagementDefaults"
                     @saved="onEngSaved" @close="engOpen = false" />
+
+    <EntityForm
+      v-if="jalonForm"
+      entity="audit_milestones"
+      :fields="ENTITY_FIELDS.audit_milestones"
+      :record="jalonForm.record"
+      :prefill="{ audit_id: audit.id, client_id: audit.client_id, ptes_phase: jalonForm.phase }"
+      :hidden="JALON_HIDDEN"
+      :deletable="!!jalonForm.record"
+      :title="(jalonForm.record ? 'Modifier le jalon · ' : 'Planifier la phase · ') + enumLabel(jalonForm.phase)"
+      @saved="onJalonSaved"
+      @delete="delJalon"
+      @close="jalonForm = null"
+    />
 
     <EntityForm
       v-if="actionOpen"
@@ -632,23 +690,47 @@ const fmtDate = (iso) => (iso ? String(iso).slice(0, 10) : '—')
 .msg{padding:7px 11px;border-radius:var(--r-mini);font-size:12.5px;margin:0 0 10px}
 .msg.ok{background:var(--c-green-bg);color:var(--c-green-tx)}
 .msg.ko{background:var(--c-red-bg);color:var(--c-red-tx)}
-.dl{display:grid;grid-template-columns:130px 1fr;gap:8px 14px;margin:0;font-size:13px}
+/* minmax(0,1fr) et non 1fr : `1fr` vaut `minmax(auto,1fr)`, donc la colonne de valeurs ne
+   pourrait pas descendre sous la largeur min-content de son contenu — un chip `nowrap` un peu
+   long élargissait la grille au-delà du panneau et rognait tout le tiroir. */
+.dl{display:grid;grid-template-columns:130px minmax(0,1fr);gap:8px 14px;margin:0;font-size:13px}
 .dl dt{color:var(--muted)} .dl dd{margin:0;color:var(--text);word-break:break-word}
-.chip{display:inline-block;background:var(--surface-3);border:1px solid var(--border-2);border-radius:var(--r-pill);
-  padding:1px 8px;font-size:11.5px;margin:0 4px 4px 0}
-.chip.in{border-color:var(--c-green-bd);color:var(--c-green-tx);background:var(--c-green-bg)}
-.chip.out{border-color:var(--c-red-bd);color:var(--c-red-tx);background:var(--c-red-bg)}
+/* Géométrie du .chip normatif (base.css §0.3) : centre le texte quels que soient les jambages. */
+.chip{display:inline-flex;align-items:center;height:22px;padding:0 9px;line-height:1;white-space:nowrap;
+  background:var(--surface-3);border:1px solid var(--border-2);border-radius:var(--r-pill);
+  font-size:11.5px;margin:0 4px 4px 0}
+/* Seul chip alimenté par un champ libre « lines » : rogné net s'il est trop long (texte complet
+   au survol via title) plutôt que débordant. Garde limitée à .chip.in — `overflow:hidden` place
+   la ligne de base d'une boîte inline-flex sur son bord inférieur, ce qui décalerait les autres
+   rangées de chips (Applications, Auditeurs, Référentiels). */
+.chip.in{border-color:var(--c-green-bd);color:var(--c-green-tx);background:var(--c-green-bg);
+  max-width:100%;overflow:hidden}
 .ul{margin:0;padding-left:16px}
+/* Les champs « lines » de l'engagement (périmètre exclu, livrables) contiennent des phrases
+   entières : liste à puces, pas des chips — elles doivent pouvoir passer à la ligne. */
+.sub-lbl{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.04em;margin:6px 0 2px}
+.ul.out li{color:var(--c-red-tx)}
+.ul.out li::marker{color:var(--c-red-tx)}
 .prose{white-space:pre-wrap;line-height:1.5}
 .ptes{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:6px}
-.ptes-step{border:1px solid var(--border);border-radius:var(--r-mini);padding:7px 8px;background:var(--surface-2);
+/* Le crayon est un frère de la tuile, pas un enfant : un bouton ne peut pas en contenir
+   un autre. La cellule porte le positionnement, la tuile occupe toute sa surface. */
+.ptes-cell{position:relative;display:flex}
+.ptes-edit{position:absolute;top:3px;right:3px;width:18px;height:18px;padding:0;line-height:1;
+  border:0;background:transparent;color:var(--faint);border-radius:var(--r-mini);cursor:pointer;
+  font-size:11px;opacity:0;transition:opacity .12s ease, color .12s ease}
+.ptes-cell:hover .ptes-edit,.ptes-edit:focus-visible{opacity:1}
+.ptes-edit:hover{color:var(--violet-accent)}
+.ptes-edit:disabled{cursor:default}
+.ptes-step{flex:1;min-width:0;border:1px solid var(--border);border-radius:var(--r-mini);padding:7px 8px;background:var(--surface-2);
   text-align:left;cursor:pointer;font:inherit;color:inherit;display:flex;flex-direction:column;
   transition:border-color .12s ease, transform .12s ease}
 .ptes-step:hover:not(:disabled){border-color:var(--violet, var(--border-2));transform:translateY(-1px)}
 .ptes-step:disabled{cursor:default}
 .ptes-step.busy{opacity:.6}
 .err{color:var(--c-red-tx);font-size:12.5px;margin:0 0 8px}
-.ptes-step .ph{display:block;font-size:11px;color:var(--heading);line-height:1.25}
+/* padding-right : réserve la place du crayon pour que le libellé ne passe pas dessous. */
+.ptes-step .ph{display:block;font-size:11px;color:var(--heading);line-height:1.25;padding-right:14px}
 /* Statut épinglé en bas (margin-top:auto) : aligné d'une phase à l'autre quel que soit le
    nombre de lignes du libellé ; en majuscules. La date occupe la ligne juste en dessous. */
 .ptes-step .pm{display:block;font-size:9.5px;color:var(--faint);margin-top:auto;padding-top:6px;
@@ -664,6 +746,9 @@ table.dense{width:100%;border-collapse:collapse;font-size:12.5px}
 table.dense th{color:var(--faint);text-align:left;font-weight:normal;font-size:11px;text-transform:uppercase;
   letter-spacing:.04em;padding:4px 8px;border-bottom:1px solid var(--border-2)}
 table.dense td{padding:6px 8px;border-bottom:1px solid var(--border-2)}
+/* Ligne cliquable en panneau compagnon : ouvre l'entité à la place du panneau courant. */
+table.dense tr.row-link{cursor:pointer}
+table.dense tr.row-link:hover td{background:var(--surface-2);color:var(--violet-accent)}
 .mono{font-family:var(--font-mono, monospace);font-size:11.5px}
 .ta{text-align:right}
 </style>

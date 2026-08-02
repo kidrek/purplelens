@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { api, ApiError } from '../api/client'
 import { useUiStore } from '../stores/ui'
@@ -199,7 +200,20 @@ function downloadCsv(rows, filename) {
 }
 function exportCsv() { downloadCsv(filtered.value, 'vulnerabilites.csv') }
 
+// Filtre client amorcé depuis l'URL — le tiroir Organisation renvoie ici avec
+// ?client_id=<id> pour la liste exhaustive de cette organisation. On déplie le panneau de
+// filtres : replié (défaut), un filtre actif invisible donnerait une liste tronquée sans
+// explication, alors qu'ouvert la puce du client se voit et se retire d'un clic.
+const route = useRoute()
+function applyQueryFilters() {
+  const q = route.query.client_id
+  if (!q) return
+  fClients.value = Array.isArray(q) ? q.filter(Boolean) : [q]
+  showFilters.value = true
+}
+
 onMounted(async () => {
+  applyQueryFilters()
   await Promise.all([load(), loadFilterOptions(), preloadOrgs()])
 })
 </script>

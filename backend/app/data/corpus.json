@@ -4957,8 +4957,8 @@
       "en": "Scope — assets & engagement"
      },
      "description": {
-      "fr": "Sélectionner la cible, affecter l'équipe et poser les règles d'engagement PTES. Entités : Organisation · Application · Ressources R/B/P. Produit : bloc engagement (RoE, périmètre).",
-      "en": "Pick the target, assign the team and set the PTES rules of engagement. Entities: Organization · Application · R/B/P resources. Artifact: engagement block (RoE, scope)."
+      "fr": "Sélectionner la cible, affecter l'équipe et poser les règles d'engagement PTES. Entités : Organisation · Application · Personnes R/B/P. Produit : bloc engagement (RoE, périmètre).",
+      "en": "Pick the target, assign the team and set the PTES rules of engagement. Entities: Organization · Application · R/B/P people. Artifact: engagement block (RoE, scope)."
      },
      "decision": {
       "fr": "PTES : Pre-engagement",

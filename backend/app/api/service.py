@@ -14,7 +14,7 @@ from datetime import UTC, date, datetime
 from typing import Any
 
 from fastapi import HTTPException, status
-from sqlalchemy import Date, DateTime, delete, func, select, text
+from sqlalchemy import Date, DateTime, delete, func, nullslast, select, text
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -297,9 +297,16 @@ async def list_entities(
             col = getattr(model, key, None)
             if col is not None:
                 stmt = stmt.where(col == value)
-    order_col = getattr(model, spec.order_by, None)
-    if order_col is not None:
-        stmt = stmt.order_by(order_col)
+    # Tri par défaut : colonnes de `spec.order_by` dans l'ordre, préfixe « - » = décroissant.
+    # `nullslast` sur les descendantes car PostgreSQL place les NULL en tête en DESC —
+    # une ligne sans référence (ex. scénario importé) ne doit pas squatter le haut de liste.
+    order_clauses = []
+    for key in spec.order_by:
+        col = getattr(model, key.lstrip("-"), None)
+        if col is not None:
+            order_clauses.append(nullslast(col.desc()) if key.startswith("-") else col.asc())
+    if order_clauses:
+        stmt = stmt.order_by(*order_clauses)
     total = (await session.execute(
         select(func.count()).select_from(stmt.subquery())
     )).scalar_one()

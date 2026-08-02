@@ -331,3 +331,9 @@ export const ENTITY_FIELDS = {
 export function fieldsFor(entity) {
   return ENTITY_FIELDS[entity] || []
 }
+
+// Compétences suggérées pour un rôle RH — même table que l'aide à la saisie du
+// formulaire, réutilisée par le tiroir Personne pour signaler ce qui reste à renseigner.
+export function competencesForRole(role) {
+  return COMPETENCES_BY_ROLE[role] || []
+}

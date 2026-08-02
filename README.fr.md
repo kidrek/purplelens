@@ -4,7 +4,7 @@
 
 Plateforme multi-clients de pilotage d'une équipe Purple Team (cybersécurité offensive
 et défensive coordonnées). Elle gère le cycle complet : organisations, applications,
-ressources, scénarios de menace, audits, exercices Purple, chaînes d'attaque,
+personnes, scénarios de menace, audits, exercices Purple, chaînes d'attaque,
 observations défensives, vulnérabilités, tickets de détection, livrables — et un
 **sous-système de preuves chiffrées** de bout en bout.
 
@@ -54,9 +54,9 @@ de tickets de remédiation à la volée.*
 l'audit — détection qui progresse de run en run, verdicts par technique, indicateurs
 MTTD/MTTR et étapes passées « couvertes » par un ticket de détection clos.*
 
-![Page de détail d'un exercice Purple](docs/img/exercice-detail.png)
+![Éditeur des étapes d'un exercice Purple](docs/img/exercice-steps.png)
 
-*La vue plein écran d'un exercice (`/exercices/:id`) : la chaîne d'attaque rejouée pas à
+*L'éditeur d'étapes, empilé sur la fiche d'exercice : la chaîne d'attaque rejouée pas à
 pas face à la réponse défensive — verdict, horodatages de détection et de réaction, et
 observations de la Blue Team pour chaque technique.*
 
@@ -111,11 +111,11 @@ et l'exercice.*
 | | |
 |---|---|
 | ![Fiche organisation](docs/img/organisation-drawer.png) | ![Fiche application](docs/img/application-drawer.png) |
-| Fiche organisation : référent, TLP par défaut et rattachements (applications, audits, ressources). | Fiche application : criticité, environnement et liens vers audits et vulnérabilités du périmètre. |
+| Fiche organisation : référent, TLP par défaut et rattachements (applications, audits, personnes). | Fiche application : criticité, environnement et liens vers audits et vulnérabilités du périmètre. |
 
-![Ressources](docs/img/ressources.png)
+![Personnes](docs/img/ressources.png)
 
-*Ressources : auditeurs et moyens, rattachés aux organisations et sélectionnables dans les
+*Personnes : intervenants et contacts, rattachés aux organisations et sélectionnables dans les
 engagements.*
 
 ### Livrables & traçabilité
@@ -181,10 +181,11 @@ non-manager), création de comptes et désactivation.*
 
 - **Palette de commandes ⌘K** — navigation en recherche libre entre vues et articles
   méthodologiques.
-- **Page de détail plein écran des audits** (`/audits/:id`) : actions PTES groupées par
-  phase, jalons, générateur de livrables ancré sur l'audit.
+- **Liens profonds vers une fiche** (`/audits?open=<id>`, `/exercices?open=<id>`) — un lien
+  depuis une vulnérabilité, une organisation ou un scénario ouvre directement la fiche
+  visée ; le tiroir est la seule surface d'affichage du contenu d'un audit ou d'un exercice.
 - **Bandeaux de KPI par vue** — chaque liste (audits, exercices, vulnérabilités,
-  organisations, ressources, scénarios, journal) porte des agrégats calculés côté
+  organisations, personnes, scénarios, journal) porte des agrégats calculés côté
   serveur, avec les mêmes filtres que le tableau.
 - **Navigation pilotée par le serveur** — une entrée de menu n'apparaît que si le serveur
   accorde la lecture de l'entité (`readable_entities` de `/whoami`).
@@ -327,7 +328,7 @@ docs/               docs FR + miroirs docs/en/ (guide utilisateur, déploiement,
 D1 Python/FastAPI/SQLAlchemy async · D2 Vue 3 + réemploi des tokens DA ·
 D3 Docker Compose (Kubernetes hors périmètre) · D4 rôle géré dans le produit (l'IdP
 authentifie seulement) · D5 MFA globale pour les rôles opérationnels + step-up sur les
-actions à haut risque · D6 droits Manager en lecture seule sur Ressources/Applications/
+actions à haut risque · D6 droits Manager en lecture seule sur Personnes/Applications/
 Actions · D7 Keycloak embarqué (OIDC + PKCE) · D8 sur-chiffrement côté client reporté.
 
 ## Documentation

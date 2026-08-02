@@ -349,7 +349,10 @@ onMounted(() => { load(); preloadOrgs() })
 .pad{padding:12px 16px;margin:0}
 .sec-t{font-family:var(--font-eyebrow);text-transform:uppercase;letter-spacing:.05em;font-size:10.5px;color:var(--faint);font-weight:var(--eyebrow-weight);margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border-2)}
 .a{color:var(--violet-accent);text-decoration:none} .a:hover{text-decoration:underline}
-.chip{display:inline-block;background:var(--surface-3);border:1px solid var(--border-2);border-radius:var(--r-pill);padding:1px 8px;font-size:11.5px;margin:0 4px 4px 0}
+/* Géométrie du .chip normatif (base.css §0.3) : centre le texte quels que soient les jambages. */
+.chip{display:inline-flex;align-items:center;height:22px;padding:0 9px;line-height:1;white-space:nowrap;
+  background:var(--surface-3);border:1px solid var(--border-2);border-radius:var(--r-pill);
+  font-size:11.5px;margin:0 4px 4px 0}
 /* Carte d'identité de l'application */
 .id-card{border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px}
 .id-head{display:flex;align-items:center;gap:12px;padding:14px 15px;background:var(--surface-2);border-bottom:1px solid var(--border-2)}

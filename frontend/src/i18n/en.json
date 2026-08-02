@@ -13,7 +13,7 @@
     "journal": "Journal",
     "admin": "Administration",
     "applications": "Applications",
-    "ressources": "Resources",
+    "ressources": "People",
     "tickets": "Detection Tickets",
     "attack-matrix": "ATT&CK Matrix",
     "deliverables": "Deliverables",
@@ -56,7 +56,9 @@
     "all_clients": "All clients",
     "yes": "Yes",
     "no": "No",
-    "none": "No data provided."
+    "none": "No data provided.",
+    "sort_hint": "Sort on this column (3rd click: default order)",
+    "truncated": "{shown} of {total} rows shown — sorting and filters only cover these rows."
   },
   "evidence": {
     "title": "Evidence vault",
@@ -535,7 +537,7 @@
       "subtitle": "Map of the scope's entities — audited clients, providers and internal entities.",
       "search_ph": "Search name, sector…",
       "note": {
-        "lead": "Each organization is a tenancy boundary: applications, resources, audits and vulnerabilities all attach to it.",
+        "lead": "Each organization is a tenancy boundary: applications, people, audits and vulnerabilities all attach to it.",
         "clients_label": "Clients",
         "clients_text": "— entities on whose behalf the audits are carried out.",
         "autres_label": "Providers & internal",
@@ -612,8 +614,8 @@
     },
     "ressources": {
       "eyebrow": "Scope",
-      "title": "Resources",
-      "subtitle": "Mapping of staff and assets by organization.",
+      "title": "People",
+      "subtitle": "Team members and contacts across the organizations in scope.",
       "search_ph": "Search name, contact…",
       "note": {
         "lead": "This page brings together the people involved in audits, on both sides:",
@@ -629,7 +631,7 @@
       "filter_org_ph": "Search an organization…",
       "filter_role_ph": "Search a role…",
       "kpi": {
-        "ressources": "Resources",
+        "ressources": "People",
         "ressources_foot": "all categories",
         "orgs": "Organizations covered",
         "orgs_foot": "{pct} % of scope",
@@ -637,12 +639,24 @@
         "renforcer_foot": "{roles} (≤ {seuil})",
         "renforcer_ok": "balanced team"
       },
-      "repartition": {
-        "title": "Resource breakdown",
-        "desc": "Headcount by resource category and role coverage of the Purple team. Under-staffed roles are flagged in amber.",
-        "resume": "{humaines} human · {n} to reinforce",
-        "par_type": "By type · share of pool",
-        "par_role": "By role · headcount (share)"
+      "drawer": {
+        "subtitle": "Person",
+        "linked_account": "Linked account",
+        "unset": "Not provided",
+        "tile_audits": "Audits",
+        "tile_vulns": "Vulnerabilities",
+        "tile_exercices": "Exercises",
+        "sec_contact": "Contact",
+        "sec_competences": "Skills",
+        "no_competences": "No skills recorded for this person.",
+        "suggested": "Suggested for the {role} role:",
+        "sec_audits": "Audits — assigned auditor ({n})",
+        "no_audits": "This person is not an auditor on any audit yet.",
+        "more_audits": "and {n} more — refine from the Audits page",
+        "sec_vulns": "Vulnerabilities discovered ({n})",
+        "no_vulns": "No vulnerability discovered by this person yet.",
+        "more_vulns": "and {n} more — refine from the Vulnerabilities page",
+        "sec_exercices": "Related Purple exercises ({n})"
       }
     },
     "scenarios": {

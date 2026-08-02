@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import EntityTable from '../components/EntityTable.vue'
 import AuditDrawer from '../components/AuditDrawer.vue'
 import RefacSelect from '../components/RefacSelect.vue'
@@ -11,6 +12,8 @@ import { api } from '../api/client'
 
 const { t } = useI18n()
 const { enumLabel } = useLabels()
+const route = useRoute()
+const router = useRouter()
 
 // Colonnes : Organisation (client) et Application en tête, Date de début en fin.
 // `th` force l'en-tête (fields.client_id vaut « Client », fields.nom « Nom »).
@@ -37,6 +40,12 @@ const TLPS = ['RED', 'AMBER', 'GREEN', 'CLEAR']
 // et la section KPI (rechargée sur mutation via son reload() exposé).
 const tableRef = ref(null)
 const statsRef = ref(null)
+
+// Ancrage contextuel `?open=<id>` : ouvre directement le tiroir de l'audit visé (lien
+// depuis une vulnérabilité, une organisation, un scénario, ou ancienne URL /audits/:id).
+// L'id est mémorisé puis l'URL nettoyée, comme sur la bibliothèque.
+const openId = ref(route.query.open || null)
+onMounted(() => { if (route.query.open) router.replace({ path: '/audits' }) })
 
 // Bouton Rafraîchir : recharge le tableau ET les KPI (section découplée).
 function refreshAll() {
@@ -166,7 +175,7 @@ onMounted(async () => {
       </div>
     </div>
     <AuditsStats ref="statsRef" :f-orgs="fOrgs" :f-apps="fApps" :f-cats="fCats" :f-statuts="fStatuts" :f-types="fTypes" :f-prios="fPrios" :f-tlp="fTlp" />
-    <EntityTable ref="tableRef" entity="audits" :columns="cols" title="audit" action-variant="icon" :show-toolbar="false" :filter-fn="filterFn" :drawer="AuditDrawer" @changed="statsRef?.reload()" />
+    <EntityTable ref="tableRef" entity="audits" :columns="cols" title="audit" action-variant="icon" :show-toolbar="false" :filter-fn="filterFn" :drawer="AuditDrawer" :open-id="openId" @changed="statsRef?.reload()" />
   </div>
 </template>
 

@@ -33,7 +33,7 @@ session est révoquée (compte désactivé, rotation des clés).
 | Rôle       | Vocation principale |
 |------------|---------------------|
 | `admin`    | Administration, gestion des comptes, CRUD large (journal en **lecture seule**, jamais les clés de chiffrement) |
-| `manager`  | Pilotage et validation ; lecture seule sur Ressources/Applications/Actions (D6) |
+| `manager`  | Pilotage et validation ; lecture seule sur Personnes/Applications/Actions (D6) |
 | `ciso`     | Validation des vulnérabilités et tickets, vision de son périmètre |
 | `auditeur` | Conduite des audits, dépôt des preuves |
 | `voc`      | Gestion des vulnérabilités (Vulnerability Operations) |
@@ -65,7 +65,7 @@ mêmes filtres que le tableau.
 - **Applications** : inventaire applicatif (criticité, exposition, valeur métier) avec
   posture consolidée — vulnérabilités liées, couverture d'audit ; le panneau latéral
   d'une application est un mini-cockpit dédié.
-- **Ressources** : intervenants humains (rôle auditeur/SOC/CISO…, compétences) —
+- **Personnes** : intervenants et contacts (rôle auditeur/SOC/CISO…, compétences) —
   sélectionnables comme auditeurs sur les audits.
 - **Audits** : engagements (référence auto `TYPE_AAAAMM-NN_CLIENT_APP`, ex.
   `PEN_202602-01_ACME_PORTAIL`), catégorie, type de test, jalons PTES, statut, priorité.
@@ -167,7 +167,7 @@ droits sont figés dans la matrice serveur, jamais configurables à chaud.
 ## Mon compte — « Ma fiche »
 
 La page **Mon compte** permet d'enrôler le MFA (TOTP) et de tenir sa **fiche auditeur**
-(« Ma fiche ») : une fiche ressource liée à votre compte, par organisation de votre
+(« Ma fiche ») : une fiche personne liée à votre compte, par organisation de votre
 périmètre. Une fois créée, vous devenez sélectionnable comme auditeur d'un audit — sans
 attendre qu'un gestionnaire crée la fiche pour vous.
 

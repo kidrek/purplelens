@@ -69,6 +69,7 @@ tr:hover td{background:var(--row-active-bg)}
 .pill-amber{background:var(--c-amber-bg); border-color:var(--c-amber-bd); color:var(--c-amber-tx)}
 .pill-green{background:var(--c-green-bg); border-color:var(--c-green-bd); color:var(--c-green-tx)}
 .pill-cyan{background:var(--c-cyan-bg); border-color:var(--c-cyan-bd); color:var(--c-cyan-tx)}
+.pill-blue{background:var(--c-blue-bg); border-color:var(--c-blue-bd); color:var(--c-blue-tx)}
 .pill-gray{background:var(--c-gray-bg); border-color:var(--c-gray-bd); color:var(--c-gray-tx)}
 /* Chips — puces douces génériques (DA §0.3), variante plus grande que .pill */
 .chip{

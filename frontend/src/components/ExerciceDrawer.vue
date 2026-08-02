@@ -13,8 +13,14 @@ import { STATUT_EXO_TONE, TLP_TONE, VERDICT_TONE } from '../tones'
 // tableau de bord groupé de TOUS les RUNs de l'audit (posture, timeline d'étapes avec
 // verdicts/observations, remédiation, couverture par tactique MITRE) — porté depuis
 // l'ancienne page Exercices, en lecture seule. L'édition reste sur /exercices/:id.
-const props = defineProps({ record: { type: Object, required: true } })
-const emit = defineEmits(['close'])
+// `readonly` : rendu en panneau compagnon (cf. composables/useDrawerPair.js) — surface de
+// consultation seule. Les commandes d'édition disparaissent et les liens sortants
+// remplacent le compagnon en place via `open-entity` au lieu de naviguer.
+const props = defineProps({
+  record: { type: Object, required: true },
+  readonly: { type: Boolean, default: false },
+})
+const emit = defineEmits(['close', 'open-entity'])
 const { locale } = useI18n()
 
 const DICT = {
@@ -345,7 +351,7 @@ const trendGeo = computed(() => {
 
 <template>
   <DetailDrawer :subtitle="tr('subtitle')" wide @close="emit('close')">
-    <template #actions>
+    <template v-if="!readonly" #actions>
       <button class="btn slim" @click="editingExo = s">{{ tr('edit') }}</button>
     </template>
 
@@ -382,7 +388,13 @@ const trendGeo = computed(() => {
           </div>
           <div class="id-cell id-cell-wide">
             <div class="id-lbl"><span class="id-ico" v-html="PERIM_ICONS.audit"></span>{{ tr('audit') }}</div>
-            <div class="id-val mono">{{ audit?.nom || '—' }}</div>
+            <!-- En compagnon, l'audit remplace le panneau en place. -->
+            <div class="id-val mono">
+              <a v-if="audit && readonly" class="id-link" role="button" tabindex="0"
+                 @click="emit('open-entity', { kind: 'audit', record: { id: audit.id } })"
+                 @keydown.enter.prevent="emit('open-entity', { kind: 'audit', record: { id: audit.id } })">{{ audit.nom }}</a>
+              <template v-else>{{ audit?.nom || '—' }}</template>
+            </div>
           </div>
           <div class="id-cell">
             <div class="id-lbl"><span class="id-ico" v-html="PERIM_ICONS.period"></span>{{ tr('period') }}</div>
@@ -492,7 +504,7 @@ const trendGeo = computed(() => {
             <div class="cyc-tacmini">
               <span v-for="tt in c.tactics" :key="tt.id" class="cyc-tmb" :class="stvClass(tt.state)" :title="`${tt.label} · ${tt.det}/${tt.tot}`"></span>
             </div>
-            <div class="cyc-actions">
+            <div v-if="!readonly" class="cyc-actions">
               <button class="btn slim" :title="tr('editRunT')" @click.stop="editingExo = c.exo">✎ {{ tr('editRun') }}</button>
               <button class="btn slim" :title="tr('editStepsT')" @click.stop="stepsExo = c.exo">☰ {{ tr('editSteps') }}</button>
             </div>
@@ -600,7 +612,11 @@ const trendGeo = computed(() => {
 .dl dt{color:var(--muted)} .dl dd{margin:0;color:var(--text)}
 .mono{font-family:var(--font-data);font-size:12.5px}
 .prose{font-size:13px;color:var(--text);line-height:1.5;margin-top:10px}
-.chip{display:inline-block;background:var(--surface-3);border:1px solid var(--border);border-radius:var(--r-mini);padding:2px 9px;font-size:11.5px;color:var(--text);margin:0 6px 4px 0}
+/* Géométrie du .chip normatif (base.css §0.3) ; l'habillage reste la variante locale
+   (rayon --r-mini, bordure pleine) propre à ce tiroir. */
+.chip{display:inline-flex;align-items:center;height:22px;padding:0 9px;line-height:1;white-space:nowrap;
+  background:var(--surface-3);border:1px solid var(--border);border-radius:var(--r-mini);
+  font-size:11.5px;color:var(--text);margin:0 6px 4px 0}
 
 .pill{display:inline-block;padding:2px 9px;border-radius:var(--r-pill);font-size:11px;font-weight:600;border:1px solid transparent}
 .pill .dot{width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block;margin-right:5px}
@@ -651,6 +667,8 @@ const trendGeo = computed(() => {
 .id-lbl{display:flex;align-items:center;gap:6px;font-family:var(--font-eyebrow);text-transform:uppercase;letter-spacing:.04em;font-size:10px;color:var(--faint);font-weight:var(--eyebrow-weight)}
 .id-val{font-size:13px;color:var(--text);margin-top:4px;overflow:hidden;text-overflow:ellipsis}
 .id-val.mono{font-family:var(--font-data);font-size:12.5px}
+.id-link{color:var(--violet-accent);cursor:pointer}
+.id-link:hover{text-decoration:underline}
 .id-ico{display:inline-flex;width:13px;height:13px;color:var(--faint);flex:0 0 auto}
 .id-ico :deep(svg){width:100%;height:100%;display:block}
 .id-notes{padding:11px 15px;border-top:1px solid var(--border-2);background:var(--surface)}
